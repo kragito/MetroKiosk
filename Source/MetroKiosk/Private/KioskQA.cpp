@@ -1,7 +1,6 @@
 #include "KioskQA.h"
 
 #include "Engine/Engine.h"
-#include "Framework/Application/SlateApplication.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -9,6 +8,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "KioskScript.h"
 #include "UnrealClient.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogKioskQA, Log, All);
@@ -25,9 +25,15 @@ FKioskQARunner::~FKioskQARunner()
 	Shutdown();
 }
 
-void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession)
+void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, const TSharedRef<SWidget>& InRoot)
 {
 	Session = InSession;
+	Script = MakeShared<FKioskScriptRunner>();
+	if (Script->Initialise(InSession, InRoot))
+	{
+		return; // scripted run: timers stay live, nothing else to set up
+	}
+	Script.Reset();
 	const TCHAR* CommandLine = FCommandLine::Get();
 
 	FString ScreenName;
@@ -65,6 +71,7 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession)
 
 void FKioskQARunner::Shutdown()
 {
+	Script.Reset();
 	if (TickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
@@ -110,11 +117,6 @@ bool FKioskQARunner::Tick(float DeltaSeconds)
 		return false;
 	}
 	++FrameCounter;
-	if (FSlateApplication::IsInitialized())
-	{
-		// Keep the OS cursor off the canvas so no hover state leaks into captures.
-		FSlateApplication::Get().SetCursorPos(FVector2D(-4000.0, -4000.0));
-	}
 
 	switch (Phase)
 	{

@@ -463,12 +463,6 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 				{
 					Session->MapPan = FVector2f::ZeroVector;
 				}
-				else
-				{
-					const FVector2f Limit = FVector2f(530.f, 365.f) * (Session->MapZoom - 0.5f);
-					Session->MapPan.X = FMath::Clamp(Session->MapPan.X, -Limit.X, Limit.X);
-					Session->MapPan.Y = FMath::Clamp(Session->MapPan.Y, -Limit.Y, Limit.Y);
-				}
 				Session->NotifyChanged();
 				return FReply::Handled();
 			})

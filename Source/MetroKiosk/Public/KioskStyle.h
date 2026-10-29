@@ -40,6 +40,7 @@ struct FKioskColors
 	FLinearColor Chip;          // chip contact gold
 	FLinearColor OnBrandDivider; // hairline on the teal header
 	FLinearColor OnBrandSoft;   // secondary text on the teal header
+	FLinearColor MapLabelBg;    // translucent pill behind map labels
 	FLinearColor DeviceDark;    // card-slot slit in illustrations
 };
 

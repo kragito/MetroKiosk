@@ -1,6 +1,7 @@
 #include "SKioskMap.h"
 
 #include "KioskData.h"
+#include "KioskAutomation.h"
 #include "KioskLoc.h"
 #include "KioskStyle.h"
 #include "Fonts/FontMeasure.h"
@@ -21,6 +22,10 @@ void SKioskMap::Construct(const FArguments& InArgs)
 	Zoom = FMath::Max(1.f, InArgs._Zoom);
 	Session = InArgs._Session;
 	SetClipping(EWidgetClipping::ClipToBounds);
+	TSharedRef<FKioskAutomationMeta> Meta = MakeShared<FKioskAutomationMeta>();
+	Meta->Name = TEXT("Map");
+	Meta->Label = TEXT("Metro map");
+	AddMetadata(Meta);
 	OnStationTapped = InArgs._OnStationTapped;
 	SetCanTick(false);
 }
@@ -36,7 +41,10 @@ FVector2f SKioskMap::ToLocal(const FVector2f& MapPos, const FVector2f& LocalSize
 	{
 		Focus = Stations[SelectedStation].MapPos;
 	}
-	const FVector2f Pan = (Zoom > 1.01f && Session.IsValid()) ? Session->MapPan : FVector2f::ZeroVector;
+	FVector2f Pan = (Zoom > 1.01f && Session.IsValid()) ? Session->MapPan : FVector2f::ZeroVector;
+	const FVector2f PanLimit = LocalSize * 0.5f * (Zoom - 0.5f);
+	Pan.X = FMath::Clamp(Pan.X, -PanLimit.X, PanLimit.X);
+	Pan.Y = FMath::Clamp(Pan.Y, -PanLimit.Y, PanLimit.Y);
 	return LocalSize * 0.5f + Pan + (MapPos - Focus) * (BaseScale * Zoom);
 }
 
@@ -110,7 +118,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			const float Width = FontMeasure->Measure(Station.Name, LabelFont).X;
 			const float LabelX = LeftLabels.Contains(Station.Name) ? (-Draw - 6.f - Width) : (Draw + 6.f);
 			const FVector2f LabelPos = Pos + FVector2f(LabelX, -9.f);
-			const FSlateBrush* PillBrush = Style.Round(FLinearColor(C.White.R, C.White.G, C.White.B, 0.82f), 5.f);
+			const FSlateBrush* PillBrush = Style.Round(C.MapLabelBg, 5.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
 				AllottedGeometry.ToPaintGeometry(FVector2f(Width + 8.f, 20.f), FSlateLayoutTransform(LabelPos + FVector2f(-4.f, -1.f))), PillBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));

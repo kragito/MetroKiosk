@@ -5,13 +5,16 @@
 #include "Containers/Ticker.h"
 #include "KioskSession.h"
 
+class SWidget;
+class FKioskScriptRunner;
+
 class FKioskQARunner
 {
 public:
 	~FKioskQARunner();
 
 	/** Reads the command line; does nothing when no QA switch is present. */
-	void Initialise(const TSharedRef<FKioskSession>& InSession);
+	void Initialise(const TSharedRef<FKioskSession>& InSession, const TSharedRef<SWidget>& InRoot);
 	void Shutdown();
 
 private:
@@ -22,6 +25,7 @@ private:
 	enum class EPhase : uint8 { Idle, Settling, WaitingForCapture, Cooldown };
 
 	TSharedPtr<FKioskSession> Session;
+	TSharedPtr<FKioskScriptRunner> Script;
 	FTSTicker::FDelegateHandle TickerHandle;
 	TArray<FString> Steps;
 	FString CaptureDir;

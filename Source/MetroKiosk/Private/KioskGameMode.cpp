@@ -42,7 +42,7 @@ void AKioskGameMode::BeginPlay()
 	}
 
 	QARunner = MakeShared<FKioskQARunner>();
-	QARunner->Initialise(Session.ToSharedRef());
+	QARunner->Initialise(Session.ToSharedRef(), Root.ToSharedRef());
 }
 
 void AKioskGameMode::RemoveKioskWidget()

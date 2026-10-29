@@ -116,6 +116,8 @@ public:
 	bool ApplySample(const FString& Name);
 
 	void NotifyChanged();
+	/** Increments on every UI-visible change; used by the scripted harness to confirm a click had an effect. */
+	uint32 ChangeSerial() const { return Serial; }
 
 private:
 	void ResetState();
@@ -136,5 +138,6 @@ private:
 	int32 ReturnedAtNav = -1;
 	double ReturnedAtTime = 0.0;
 	int32 NavCount = 0;
+	uint32 Serial = 0;
 	EKioskLanguage Lang = EKioskLanguage::English;
 };

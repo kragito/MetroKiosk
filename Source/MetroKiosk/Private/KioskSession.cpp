@@ -637,6 +637,7 @@ void FKioskSession::Tick(float DeltaSeconds)
 
 void FKioskSession::NotifyChanged()
 {
+	++Serial;
 	OnChanged.Broadcast();
 }
 

@@ -1,5 +1,7 @@
 #include "SKioskButton.h"
 
+#include "KioskAutomation.h"
+
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
@@ -98,6 +100,11 @@ void SKioskButton::Construct(const FArguments& InArgs)
 	{
 		const FText Description = InArgs._ButtonTag.IsNone() ? Label : FText::FromName(InArgs._ButtonTag);
 		Button->SetTag(InArgs._ButtonTag.IsNone() ? FName(*Label.ToString()) : InArgs._ButtonTag);
+		TSharedRef<FKioskAutomationMeta> Meta = MakeShared<FKioskAutomationMeta>();
+		Meta->Name = Description.ToString();
+		Meta->Label = Label.ToString();
+		Meta->Enabled = Enabled;
+		Button->AddMetadata(Meta);
 #if WITH_ACCESSIBILITY
 		Button->SetAccessibleBehavior(EAccessibleBehavior::Custom, Description);
 #endif

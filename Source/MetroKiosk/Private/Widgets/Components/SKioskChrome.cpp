@@ -166,7 +166,7 @@ TSharedRef<SWidget> MakeLanguagePills(const TSharedRef<FKioskSession>& Session, 
 			SNew(SKioskButton)
 			.Kind(bSelected ? EKioskButtonKind::PillSelected : EKioskButtonKind::PillOutline)
 			.Label(FKioskLoc::LanguageName(Lang))
-			.ButtonTag(FName(*FString::Printf(TEXT("Language %d"), Index)))
+			.ButtonTag(FName(*FString::Printf(TEXT("Language %s"), Index == 0 ? TEXT("English") : (Index == 1 ? TEXT("Chinese") : (Index == 2 ? TEXT("Malay") : TEXT("Tamil"))))))
 			.FontPx(FontPx)
 			.Bold(bSelected)
 			.Height(Height)
