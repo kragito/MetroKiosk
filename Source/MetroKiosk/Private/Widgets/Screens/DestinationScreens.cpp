@@ -463,6 +463,12 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 				{
 					Session->MapPan = FVector2f::ZeroVector;
 				}
+				else
+				{
+					const FVector2f Limit = FVector2f(530.f, 365.f) * (Session->MapZoom - 0.5f);
+					Session->MapPan.X = FMath::Clamp(Session->MapPan.X, -Limit.X, Limit.X);
+					Session->MapPan.Y = FMath::Clamp(Session->MapPan.Y, -Limit.Y, Limit.Y);
+				}
 				Session->NotifyChanged();
 				return FReply::Handled();
 			})
@@ -514,7 +520,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 						.Label(LOCTEXT("FindOnMap", "Find station on the map"))
 						.ButtonTag(TEXT("Find station on the map"))
 						.Padding(FMargin(26.f, 0.f))
-						.OnClicked_Lambda([Session]() { Session->State.bKeyboardOpen = true; Session->Replace(EKioskScreen::Destination); return FReply::Handled(); })
+						.OnClicked_Lambda([Session]() { Session->OpenKeyboard(true); Session->Replace(EKioskScreen::Destination); return FReply::Handled(); })
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::Search, 32.f, C.Ink, 3.f) ]

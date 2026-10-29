@@ -67,6 +67,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	// Station dots and labels
 	const FSlateFontInfo LabelFont = Style.Font(14.f, true);
 	const FSlateFontInfo MarkerFont = Style.Font(17.f, true);
+	const TSharedRef<FSlateFontMeasure> FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
 	for (int32 Index = 0; Index < Stations.Num(); ++Index)
 	{
 		const FKioskStation& Station = Stations[Index];
@@ -82,39 +83,43 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				? Style.Round(C.Help, Radius * 1.3f, C.White, 4.f)
 				: Style.Round(C.White, Radius, bInterchange ? C.Ink : C.Line[Station.FirstLine()], bInterchange ? 4.f : 3.f);
 		const float Draw = (bHere && !bSelected) ? Radius * 1.3f : Radius;
-		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
+		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 3,
 			AllottedGeometry.ToPaintGeometry(FVector2f(Draw * 2.f, Draw * 2.f), FSlateLayoutTransform(Pos - FVector2f(Draw, Draw))), Dot,
 			ESlateDrawEffect::None, FKioskStyle::BrushTint(Dot));
 
-		if (bSelected || bInterchange || Zoom > 1.2f)
-		{
-			// Crowded stations around City Hall put their label on the left so the names do not overlap.
-			static const TSet<FString> LeftLabels = { TEXT("City Hall"), TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),
-				TEXT("Botanic Gardens"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Buona Vista"), TEXT("HarbourFront") };
-			float LabelX = Draw + 5.f;
-			if (LeftLabels.Contains(Station.Name))
-			{
-				const float Width = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Station.Name, LabelFont).X;
-				LabelX = -Draw - 5.f - Width;
-			}
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(FVector2f(200.f, 20.f), FSlateLayoutTransform(Pos + FVector2f(LabelX, -9.f))),
-				Station.Name, LabelFont, ESlateDrawEffect::None, bSelected ? C.Primary : C.Ink);
-		}
+		// City Hall shows the "You are here" marker instead of a plain label.
 		if (bHere)
 		{
-			const FVector2f BoxSize(124.f, 32.f);
-			const FVector2f BoxPos = Pos + FVector2f(Radius * 1.3f + 10.f, -BoxSize.Y - 4.f);
+			const FString Text = KT("You are here").ToString();
+			const float TextWidth = FontMeasure->Measure(Text, MarkerFont).X;
+			const FVector2f BoxSize(TextWidth + 22.f, 30.f);
+			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f);
 			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
-			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 3,
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 4,
-				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(10.f, 5.f))),
-				KT("You are here").ToString(), MarkerFont, ESlateDrawEffect::None, C.White);
+			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
+				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 4.f))),
+				Text, MarkerFont, ESlateDrawEffect::None, C.White);
+		}
+		else if (bSelected || bInterchange || Zoom > 1.2f)
+		{
+			// Crowded stations put their label on the left; every label sits on a soft white pill so lines never cut through it.
+			static const TSet<FString> LeftLabels = { TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),
+				TEXT("Botanic Gardens"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Buona Vista"), TEXT("HarbourFront") };
+			const float Width = FontMeasure->Measure(Station.Name, LabelFont).X;
+			const float LabelX = LeftLabels.Contains(Station.Name) ? (-Draw - 6.f - Width) : (Draw + 6.f);
+			const FVector2f LabelPos = Pos + FVector2f(LabelX, -9.f);
+			const FSlateBrush* PillBrush = Style.Round(FLinearColor(C.White.R, C.White.G, C.White.B, 0.82f), 5.f);
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
+				AllottedGeometry.ToPaintGeometry(FVector2f(Width + 8.f, 20.f), FSlateLayoutTransform(LabelPos + FVector2f(-4.f, -1.f))), PillBrush,
+				ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
+			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
+				AllottedGeometry.ToPaintGeometry(FVector2f(200.f, 20.f), FSlateLayoutTransform(LabelPos)),
+				Station.Name, LabelFont, ESlateDrawEffect::None, bSelected ? C.Primary : C.Ink);
 		}
 	}
-	return LayerId + 5;
+	return LayerId + 6;
 }
 
 FReply SKioskMap::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
@@ -190,6 +195,12 @@ FReply SKioskMap::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEve
 		OnStationTapped.ExecuteIfBound(Best);
 	}
 	return Reply;
+}
+
+void SKioskMap::OnMouseCaptureLost(const FCaptureLostEvent& CaptureLostEvent)
+{
+	bPressed = false;
+	bDragging = false;
 }
 
 FCursorReply SKioskMap::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const

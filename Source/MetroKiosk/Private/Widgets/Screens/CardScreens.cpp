@@ -236,7 +236,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 10.f, 0.f)
 					[
 						OptionCard(EKioskIcon::TopUpCard, KT("Top up another amount"), LOCTEXT("OtherAmounts", "$30, $100 or any amount"),
-							[Session]() { Session->State.Flow = EKioskFlow::TopUp; Session->GoTo(EKioskScreen::TopUpAmount); })
+							[Session]() { Session->State.Flow = EKioskFlow::TopUp; Session->OpenTopUpKeypad(false); Session->GoTo(EKioskScreen::TopUpAmount); })
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(10.f, 0.f, 0.f, 0.f)
 					[
@@ -300,7 +300,7 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 		C.Band, 26.f, C.BorderStrong, 2.f, FMargin(40.f, 34.f));
 
 	struct FAmount { int32 Cents; const TCHAR* Label; };
-	const FAmount Amounts[6] = { { 1000, TEXT("$10") }, { 2000, TEXT("$20") }, { 3000, TEXT("$30") }, { 5000, TEXT("$50") }, { 10000, TEXT("$100") }, { 15000, TEXT("More") } };
+	const FAmount Amounts[6] = { { 1000, TEXT("$10") }, { 2000, TEXT("$20") }, { 3000, TEXT("$30") }, { 5000, TEXT("$50") }, { 10000, TEXT("$100") }, { 0, TEXT("More") } };
 
 	TSharedRef<SVerticalBox> Grid = SNew(SVerticalBox);
 	for (int32 Row = 0; Row < 2; ++Row)
@@ -309,8 +309,9 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 		for (int32 Col = 0; Col < 3; ++Col)
 		{
 			const FAmount& Amount = Amounts[Row * 3 + Col];
-			const bool bSelected = Selected == Amount.Cents;
-			const FText Label = (Amount.Cents == 15000) ? KT("More") : FText::FromString(Amount.Label);
+			const bool bMore = Amount.Cents == 0;
+			const bool bSelected = !bMore && Selected == Amount.Cents;
+			const FText Label = bMore ? KT("More") : FText::FromString(Amount.Label);
 			const int32 Cents = Amount.Cents;
 			Cells->AddSlot().FillWidth(1.f).Padding(Col == 0 ? 0.f : 10.f, 0.f, Col == 2 ? 0.f : 10.f, 0.f)
 			[
@@ -320,7 +321,11 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 					.Label(Label)
 					.ButtonTag(*FString::Printf(TEXT("Amount %s"), Amount.Label))
 					.Padding(FMargin(0.f))
-					.OnClicked_Lambda([Session, Cents]() { Session->SelectTopUp(Cents); return FReply::Handled(); })
+					.OnClicked_Lambda([Session, Cents, bMore]()
+					{
+						if (bMore) { Session->OpenTopUpKeypad(true); } else { Session->SelectTopUp(Cents); }
+						return FReply::Handled();
+					})
 					[
 						SNew(SOverlay)
 						+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(Label, 44.f, true, C.Ink) ]

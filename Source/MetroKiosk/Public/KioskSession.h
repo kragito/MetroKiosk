@@ -88,6 +88,7 @@ public:
 	int32 ChangeCents() const;
 	/** Cash returned after leaving the cash screen, shown as a one-off banner on the next screen (0 = none). */
 	int32 ReturnedCashBanner() const { return (ReturnedCash > 0 && NavCount == ReturnedAtNav) ? ReturnedCash : 0; }
+	static constexpr double ReturnedCashSeconds = 10.0;
 	int32 CardBalanceCents() const { return CardBalance; }
 	int32 NewBalanceCents() const { return CardBalance + State.TopUpCents; }
 	FText TicketLabel() const;
@@ -133,6 +134,7 @@ private:
 	int32 CardBalance = 320;
 	int32 ReturnedCash = 0;
 	int32 ReturnedAtNav = -1;
+	double ReturnedAtTime = 0.0;
 	int32 NavCount = 0;
 	EKioskLanguage Lang = EKioskLanguage::English;
 };

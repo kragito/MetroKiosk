@@ -333,12 +333,12 @@ void STicketTypeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::OneWay, EKioskIcon::ArrowRight, KT("One-way"),
-						KT("One trip from here to one station.\nValid for 2 hours."), FText::GetEmpty(), FText::FromString(TEXT("$1.68")), false)
+						FKioskLoc::Tr(LOCTEXT("OneWayBody", "One trip from here to one station.\nValid for 2 hours.")), FText::GetEmpty(), FText::FromString(TEXT("$1.68")), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::RoundTrip, EKioskIcon::Swap, KT("Round trip"),
-						KT("There and back between two stations.\nReturn valid until 12:00 a.m. today.\n30% discount."),
+						FKioskLoc::Tr(LOCTEXT("RoundTripBody", "There and back between two stations.\nReturn valid until 12:00 a.m. today.\n30% discount.")),
 						FText::FromString(TEXT("$2.56 - $5.14")), FText::FromString(TEXT("$1.79 - $3.60")), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 0.f, 0.f)

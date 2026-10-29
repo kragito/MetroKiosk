@@ -33,6 +33,7 @@ void FKioskSession::NoteReturnedCash()
 	{
 		ReturnedCash = State.CashInsertedCents;
 		ReturnedAtNav = NavCount + 1;
+		ReturnedAtTime = FPlatformTime::Seconds();
 	}
 }
 
@@ -582,6 +583,11 @@ int32 FKioskSession::ReceiptSecondsLeft() const
 
 void FKioskSession::Tick(float DeltaSeconds)
 {
+	if (ReturnedCash > 0 && FPlatformTime::Seconds() - ReturnedAtTime > ReturnedCashSeconds)
+	{
+		ReturnedCash = 0; // expire the banner so the next customer never sees it
+		NotifyChanged();
+	}
 	if (bCallActive)
 	{
 		CallTime += DeltaSeconds;
