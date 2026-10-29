@@ -45,10 +45,13 @@ Steps are separated by `|`:
 | `click:<label>` | Touch-clicks the visible, enabled widget whose accessible name or label matches (exact match first, then case-insensitive contains). Fails with a reason if not found, disabled, or covered. A screenshot `NN_after_click_<label>.png` is taken automatically. |
 | `type:<text>` | Presses the on-screen keyboard or keypad keys one by one (`type:har`, `type:25`). Open the keyboard first (click `Search field`) or choose `Amount More` for the keypad. |
 | `drag:<label>:<dx>,<dy>` | Touch-drags from the widget centre by design pixels, for example `drag:Map:-250,-120` (zoom in first). |
+| `scroll:<label>:<dy>` | Mouse-wheel scrolls the named list by roughly `dy` design pixels (positive = down). Long station lists are named `Station list`: `scroll:Station list:600`, then click the station. Rows scrolled out of view fail with a "not hittable" reason. |
 | `wait:<seconds>` | Lets real time pass; timers run normally in script mode. |
 | `shot:<name>` | Saves `NN_<name>.png`. |
 | `lang:<en\|zh\|ms\|ta>` | Clicks the language pill. |
 | `dump` | Writes `NN_tree.txt`: every visible interactive widget with its name, enabled/disabled state and rect in design px (canvas 1917x1105). Use it to discover what can be clicked. |
+
+A failed step (not found, disabled, covered, or a click that changed nothing) logs `FAIL`, saves a `NN_failure.png`, and aborts the run with an `ABORT` line so later steps do not cascade. Pass `-KioskScriptKeepGoing` to the game (not the wrapper) to continue instead. Matching is exact first; if an exact match exists but is covered or disabled the step fails rather than falling back to a looser match.
 
 Outputs go to `-Out`: `log.txt` (one line per step, `OK`/`FAIL`/`WARN`, then `DONE`), the PNGs and the trees.
 Useful names: `Buy a ticket`, `Choose One-way`, `Station <name>`, `Confirm selected ticket`, `Add Adult|Child|Senior`,
@@ -67,8 +70,11 @@ with the purchase restored afterwards (outputs under `Saved/Journeys/`, which is
 
 ## Notes for future sessions
 - Non-English languages cover chrome and main headings only (table in `Private/KioskLoc.cpp`, keyed by the English text).
-- The harness occasionally drops the very first click after the window opens (seen with some window managers).
-  It retries up to four times and logs `WARN`; re-run the journey if a first step fails.
+- The harness enables Slate input while the app is not the active OS window (`SetHandleDeviceInputWhenApplicationNotActive`).
+  Without that, Slate refuses pointer capture for a background-launched window and every click is silently dropped.
+  `Tools/journey.ps1 -StealFocusForTest` opens Notepad over the game to prove journeys pass while the game is inactive.
+- Cursor parking was removed from the screenshot hooks (it moved the user's real mouse). It is harmless because
+  buttons show no hover state (Hovered looks the same as Normal).
 - PIE window placement on the author's machine is unreliable (the saved `NewWindowPosition` can be off-screen),
   which also breaks SlateInspector clicks. Prefer the scripted harness for UX runs.
 - Editing source: `Tools/build.ps1` closes the editor; relaunch with `Tools/launch_editor.ps1`.

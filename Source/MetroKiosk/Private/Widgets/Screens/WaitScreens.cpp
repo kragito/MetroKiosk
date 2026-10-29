@@ -351,7 +351,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 				.Label(KT("Print receipt"))
 				.LeftIcon(EKioskIcon::Printer)
 				.FontPx(21.f)
-				.OnClicked_Lambda([bPrinted]() { *bPrinted = true; return FReply::Handled(); })
+				.OnClicked_Lambda([Session, bPrinted]() { *bPrinted = true; Session->NotifyChanged(); return FReply::Handled(); })
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight()
@@ -363,7 +363,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 				.Label(KT("Email receipt"))
 				.LeftIcon(EKioskIcon::Mail)
 				.FontPx(21.f)
-				.OnClicked_Lambda([bEmailed]() { *bEmailed = true; return FReply::Handled(); })
+				.OnClicked_Lambda([Session, bEmailed]() { *bEmailed = true; Session->NotifyChanged(); return FReply::Handled(); })
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)

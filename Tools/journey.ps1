@@ -4,7 +4,8 @@
 param(
     [Parameter(Mandatory = $true)][string]$Script,
     [Parameter(Mandatory = $true)][string]$Out,
-    [int]$TimeoutSeconds = 300
+    [int]$TimeoutSeconds = 300,
+    [switch]$StealFocusForTest   # test aid: opens Notepad over the game so it is NOT the active window
 )
 
 $Engine = "C:\Program Files\Epic Games\UE_5.8\Engine"
@@ -28,17 +29,23 @@ if (-not (Test-Path $Dll) -or $newestSource.LastWriteTime -gt (Get-Item $Dll).La
 New-Item -ItemType Directory -Force $Out | Out-Null
 Remove-Item (Join-Path $Out "*") -Include *.png, *.txt -ErrorAction SilentlyContinue
 
-$args = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound", "-log",
+$args = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
           "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"")
 # Let any previous -game process finish closing so its window cannot interfere.
 While (Get-Process UnrealEditor -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -match 'Preview' -or $_.MainWindowTitle -eq 'MetroKiosk' }) { Start-Sleep -Seconds 1 }
 Start-Sleep -Seconds 2
 $proc = Start-Process -FilePath "$Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList $args -PassThru
+$np = $null
+if ($StealFocusForTest) {
+    Start-Sleep -Seconds 4
+    $np = Start-Process notepad -PassThru -WindowStyle Maximized
+}
 if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
     Write-Output "TIMEOUT after $TimeoutSeconds s; stopping the game process (the editor is not touched)."
     Stop-Process -Id $proc.Id -Force
 }
 
+if ($np -and -not $np.HasExited) { Stop-Process -Id $np.Id -Force }
 $log = Join-Path $Out "log.txt"
 if (Test-Path $log) { Get-Content $log -Encoding UTF8 } else { Write-Output "No log.txt was written." }
 Write-Output "Output: $Out"

@@ -52,6 +52,11 @@ FKioskScriptRunner::~FKioskScriptRunner()
 
 void FKioskScriptRunner::Shutdown()
 {
+	if (bInputOverrideActive && FSlateApplication::IsInitialized())
+	{
+		FSlateApplication::Get().SetHandleDeviceInputWhenApplicationNotActive(bPrevHandleInactive);
+		bInputOverrideActive = false;
+	}
 	if (TickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
@@ -80,6 +85,12 @@ bool FKioskScriptRunner::Initialise(const TSharedRef<FKioskSession>& InSession, 
 
 	Session = InSession;
 	Root = InRoot;
+	bKeepGoing = FParse::Param(FCommandLine::Get(), TEXT("KioskScriptKeepGoing"));
+	// Slate refuses pointer capture while the application is not the active OS window, which would silently drop
+	// every click when the OS declines to focus a background-launched window. Script mode accepts input regardless.
+	bPrevHandleInactive = FSlateApplication::Get().GetHandleDeviceInputWhenApplicationNotActive();
+	FSlateApplication::Get().SetHandleDeviceInputWhenApplicationNotActive(true);
+	bInputOverrideActive = true;
 	ParseScript(Script.TrimQuotes());
 	Log(FString::Printf(TEXT("SCRIPT %d steps, out=%s"), Steps.Num(), *OutDir));
 	TickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FKioskScriptRunner::Tick), 0.f);
@@ -151,6 +162,18 @@ void FKioskScriptRunner::ParseScript(const FString& Script)
 			Delta.Split(TEXT(","), &Dx, &Dy);
 			Step.Text = Target;
 			Step.Delta = FVector2f(FCString::Atof(*Dx), FCString::Atof(*Dy));
+			Steps.Add(Step);
+		}
+		else if (Verb == TEXT("scroll"))
+		{
+			Step.Kind = EStepKind::Scroll;
+			FString Target, Dy;
+			if (!Arg.Split(TEXT(":"), &Target, &Dy))
+			{
+				Target = Arg;
+			}
+			Step.Text = Target;
+			Step.Delta = FVector2f(0.f, FCString::Atof(*Dy));
 			Steps.Add(Step);
 		}
 		else if (Verb == TEXT("wait"))
@@ -229,7 +252,7 @@ bool FKioskScriptRunner::IsHittable(const FEntry& Entry, FVector2D& OutScreenPos
 	const FGeometry Geo = Entry.Widget->GetTickSpaceGeometry();
 	if (Geo.GetLocalSize().X < 1.f || Geo.GetLocalSize().Y < 1.f)
 	{
-		OutWhy = TEXT("zero size");
+		OutWhy = TEXT("not laid out (scrolled out of view? try scroll:<list>:<dy>)");
 		return false;
 	}
 	OutScreenPos = FVector2D(Geo.GetAbsolutePosition() + Geo.GetAbsoluteSize() * 0.5f);
@@ -269,9 +292,11 @@ bool FKioskScriptRunner::FindEntry(const FString& Label, FEntry& OutEntry, FStri
 	TArray<FEntry> Entries;
 	CollectEntries(Entries);
 
-	FString DisabledMatch;
+	// Exact matches win. If an exact match exists but cannot be pressed, fail with its reason instead of
+	// falling through to a looser "contains" match (a covered "Continue" must never click "Continue - check dates").
 	for (int32 Pass = 0; Pass < 2; ++Pass)
 	{
+		FString FirstReason;
 		for (const FEntry& Entry : Entries)
 		{
 			const bool bMatch = (Pass == 0)
@@ -281,26 +306,33 @@ bool FKioskScriptRunner::FindEntry(const FString& Label, FEntry& OutEntry, FStri
 			{
 				continue;
 			}
-			if (!Entry.bEnabled)
-			{
-				DisabledMatch = Entry.Name;
-				continue;
-			}
 			FVector2D Pos;
 			FString Why;
+			if (!Entry.bEnabled)
+			{
+				if (FirstReason.IsEmpty())
+				{
+					FirstReason = FString::Printf(TEXT("'%s' is disabled"), *Entry.Name);
+				}
+				continue;
+			}
 			if (IsHittable(Entry, Pos, Why))
 			{
 				OutEntry = Entry;
 				return true;
 			}
-			OutWhy = FString::Printf(TEXT("'%s' not hittable: %s"), *Entry.Name, *Why);
+			if (FirstReason.IsEmpty())
+			{
+				FirstReason = FString::Printf(TEXT("'%s' not hittable: %s"), *Entry.Name, *Why);
+			}
+		}
+		if (!FirstReason.IsEmpty())
+		{
+			OutWhy = FirstReason;
+			return false;
 		}
 	}
-	if (OutWhy.IsEmpty())
-	{
-		OutWhy = DisabledMatch.IsEmpty() ? FString::Printf(TEXT("no visible widget matches '%s'"), *Label)
-			: FString::Printf(TEXT("'%s' is disabled"), *DisabledMatch);
-	}
+	OutWhy = FString::Printf(TEXT("no visible widget matches '%s'"), *Label);
 	return false;
 }
 
@@ -355,6 +387,28 @@ bool FKioskScriptRunner::DoDrag(const FString& Label, const FVector2f& DesignDel
 	return true;
 }
 
+bool FKioskScriptRunner::DoScroll(const FString& Label, float DesignDy, FString& OutWhy)
+{
+	FEntry Entry;
+	if (!FindEntry(Label, Entry, OutWhy))
+	{
+		return false;
+	}
+	FVector2D Pos;
+	FString Why;
+	IsHittable(Entry, Pos, Why);
+
+	// Mouse-wheel notches at the centre of the target; positive dy scrolls the content down (towards later items).
+	const int32 Notches = FMath::Max(1, FMath::CeilToInt(FMath::Abs(DesignDy) / 60.f));
+	const float Wheel = DesignDy > 0.f ? -1.f : 1.f;
+	for (int32 Index = 0; Index < Notches; ++Index)
+	{
+		const FPointerEvent WheelEvent(0, Pos, Pos, TSet<FKey>(), EKeys::MouseScrollDown, Wheel, FModifierKeysState());
+		FSlateApplication::Get().ProcessMouseWheelOrGestureEvent(WheelEvent, nullptr);
+	}
+	return true;
+}
+
 void FKioskScriptRunner::DoDump()
 {
 	TArray<FEntry> Entries;
@@ -405,7 +459,6 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 		if (bOk)
 		{
 			ActiveClick = Step;
-			ClickAttempt = 1;
 			FrameCounter = 0;
 			Phase = EPhase::VerifyClick;
 			return;
@@ -419,6 +472,9 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 			QueueShot(TEXT("after_drag_") + SafeName(Step.Text));
 			return;
 		}
+		break;
+	case EStepKind::Scroll:
+		bOk = DoScroll(Step.Text, Step.Delta.Y, Why);
 		break;
 	case EStepKind::Wait:
 		if (Step.Text == TEXT("UNKNOWN"))
@@ -449,16 +505,32 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 	}
 	else
 	{
-		++FailCount;
 		Log(FString::Printf(TEXT("STEP %d FAIL: %s - %s"), StepIndex, *Step.Source, *Why));
+		FailStep(Why);
+		return;
 	}
 	FrameCounter = 0;
 	Phase = EPhase::Settle;
 }
 
+void FKioskScriptRunner::FailStep(const FString& Why)
+{
+	++FailCount;
+	if (bKeepGoing)
+	{
+		FrameCounter = 0;
+		Phase = EPhase::Settle;
+		return;
+	}
+	const int32 Skipped = Steps.Num() - NextStep;
+	Log(FString::Printf(TEXT("ABORT: step %d failed (%s); skipping the remaining %d step(s). Pass -KioskScriptKeepGoing to continue after failures."), StepIndex, *Why, Skipped));
+	bFinishAfterShot = true;
+	QueueShot(TEXT("failure"));
+}
+
 void FKioskScriptRunner::Finish()
 {
-	Log(FString::Printf(TEXT("DONE: %d steps, %d failed"), Steps.Num(), FailCount));
+	Log(FString::Printf(TEXT("DONE: %d steps, %d failed (window was %s)"), Steps.Num(), FailCount, FSlateApplication::Get().IsActive() ? TEXT("active") : TEXT("NOT active")));
 	Phase = EPhase::Done;
 	FPlatformMisc::RequestExit(false);
 }
@@ -511,33 +583,15 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 	case EPhase::VerifyClick:
 		if (FrameCounter >= SettleFrames)
 		{
-			if (Session->ChangeSerial() == SerialBeforeClick && ClickAttempt < 4)
-			{
-				FString Why;
-				++ClickAttempt;
-				FrameCounter = 0;
-				if (!DoClick(ActiveClick.Text, Why))
-				{
-					Log(FString::Printf(TEXT("STEP %d WARN: retry %d could not click: %s"), StepIndex, ClickAttempt, *Why));
-				}
-				break;
-			}
+			const bool bActive = FSlateApplication::Get().IsActive();
 			if (Session->ChangeSerial() == SerialBeforeClick)
 			{
-				FEntry Diag;
-				FString DiagWhy;
-				FVector2D DiagPos(0, 0);
-				FString Leaf = TEXT("?");
-				if (FindEntry(ActiveClick.Text, Diag, DiagWhy))
-				{
-					IsHittable(Diag, DiagPos, DiagWhy);
-					FSlateApplication& DiagApp = FSlateApplication::Get();
-					const FWidgetPath DiagPath = DiagApp.LocateWindowUnderMouse(DiagPos, DiagApp.GetInteractiveTopLevelWindows(), false, 0);
-					Leaf = DiagPath.IsValid() ? FString::Printf(TEXT("%s in window '%s' (%d windows)"), *DiagPath.GetLastWidget()->ToString().Left(60), *DiagPath.GetWindow()->GetTitle().ToString(), DiagApp.GetInteractiveTopLevelWindows().Num()) : FString(TEXT("no path"));
-				}
-				Log(FString::Printf(TEXT("STEP %d WARN: click on '%s' changed nothing after %d attempts; touch hit-test at (%.0f,%.0f): %s"), StepIndex, *ActiveClick.Text, ClickAttempt, DiagPos.X, DiagPos.Y, *Leaf));
+				const FString Why = FString::Printf(TEXT("click delivered but nothing changed (application active=%d)"), bActive ? 1 : 0);
+				Log(FString::Printf(TEXT("STEP %d FAIL: %s - %s"), StepIndex, *ActiveClick.Source, *Why));
+				FailStep(Why);
+				break;
 			}
-			Log(FString::Printf(TEXT("STEP %d OK: %s%s"), StepIndex, *ActiveClick.Source, ClickAttempt > 1 ? TEXT(" (retried)") : TEXT("")));
+			Log(FString::Printf(TEXT("STEP %d OK: %s"), StepIndex, *ActiveClick.Source));
 			if (ActiveClick.bAutoShot)
 			{
 				QueueShot(ActiveClick.ShotName.IsEmpty() ? (TEXT("after_click_") + SafeName(ActiveClick.Text)) : ActiveClick.ShotName);
@@ -580,6 +634,11 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 	case EPhase::WaitingForShot:
 		if (!FScreenshotRequest::IsScreenshotRequested() && IFileManager::Get().FileExists(*PendingShotPath))
 		{
+			if (bFinishAfterShot)
+			{
+				Finish();
+				return false;
+			}
 			FrameCounter = 0;
 			Phase = EPhase::Settle;
 		}

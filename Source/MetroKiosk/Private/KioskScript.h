@@ -18,7 +18,7 @@ public:
 	void Shutdown();
 
 private:
-	enum class EStepKind : uint8 { Click, Drag, Wait, Shot, Dump };
+	enum class EStepKind : uint8 { Click, Drag, Scroll, Wait, Shot, Dump };
 	struct FStep
 	{
 		EStepKind Kind = EStepKind::Click;
@@ -46,6 +46,8 @@ private:
 	bool FindEntry(const FString& Label, FEntry& OutEntry, FString& OutWhy) const;
 	bool IsHittable(const FEntry& Entry, FVector2D& OutScreenPos, FString& OutWhy) const;
 	bool DoClick(const FString& Label, FString& OutWhy);
+	bool DoScroll(const FString& Label, float DesignDy, FString& OutWhy);
+	void FailStep(const FString& Why);
 	bool DoDrag(const FString& Label, const FVector2f& DesignDelta, FString& OutWhy);
 	void DoDump();
 	void QueueShot(const FString& Name);
@@ -71,7 +73,10 @@ private:
 	// click verification: a click that changes nothing is retried (the first events after window start can be dropped)
 	FStep ActiveClick;
 	uint32 SerialBeforeClick = 0;
-	int32 ClickAttempt = 0;
+	bool bPrevHandleInactive = false;
+	bool bInputOverrideActive = false;
+	bool bKeepGoing = false;
+	bool bFinishAfterShot = false;
 	int32 StableFrames = 0;
 	float StartupSeconds = 0.f;
 	FVector2f LastRootSize = FVector2f::ZeroVector;

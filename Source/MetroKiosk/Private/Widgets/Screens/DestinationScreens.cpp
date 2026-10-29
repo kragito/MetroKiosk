@@ -3,6 +3,7 @@
 
 #include "KioskData.h"
 #include "KioskLoc.h"
+#include "Widgets/Components/KioskAutomation.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Components/SKioskMap.h"
@@ -115,6 +116,17 @@ namespace
 		];
 	}
 
+	/** Scrollable station list; named "Station list" so scripted tests can scroll it. */
+	TSharedRef<SWidget> ScrollableList(const TSharedRef<SWidget>& Rows)
+	{
+		TSharedRef<SScrollBox> Box = SNew(SScrollBox).ScrollBarVisibility(EVisibility::Collapsed) + SScrollBox::Slot()[ Rows ];
+		TSharedRef<FKioskAutomationMeta> Meta = MakeShared<FKioskAutomationMeta>();
+		Meta->Name = TEXT("Station list");
+		Meta->Label = TEXT("Station list");
+		Box->AddMetadata(Meta);
+		return Box;
+	}
+
 	TSharedRef<SWidget> StationListPanel(const TSharedRef<FKioskSession>& Session)
 	{
 		const FKioskColors& C = KC();
@@ -137,7 +149,7 @@ namespace
 			[
 				// Short lists need no scrolling (and stay visible to UI automation); long line lists scroll.
 				Stations.Num() > 6
-					? StaticCastSharedRef<SWidget>(SNew(SScrollBox).ScrollBarVisibility(EVisibility::Collapsed) + SScrollBox::Slot()[ Rows ])
+					? ScrollableList(Rows)
 					: StaticCastSharedRef<SWidget>(Rows)
 			];
 	}
