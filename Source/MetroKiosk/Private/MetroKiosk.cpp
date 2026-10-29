@@ -1,3 +1,15 @@
+#include "KioskStyle.h"
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_PRIMARY_GAME_MODULE(FDefaultGameModuleImpl, MetroKiosk, "MetroKiosk");
+/** Primary game module; releases the shared style (fonts, brushes) before Slate shuts down. */
+class FMetroKioskModule : public FDefaultGameModuleImpl
+{
+public:
+	virtual void ShutdownModule() override
+	{
+		FKioskStyle::Shutdown();
+		FDefaultGameModuleImpl::ShutdownModule();
+	}
+};
+
+IMPLEMENT_PRIMARY_GAME_MODULE(FMetroKioskModule, MetroKiosk, "MetroKiosk");
