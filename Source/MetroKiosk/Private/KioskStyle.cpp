@@ -47,7 +47,11 @@ namespace
 		{
 			// Tamil is not covered by the engine fonts; use the Windows system face (collection: regular, bold).
 			const FString Nirmala = TEXT("C:/Windows/Fonts/Nirmala.ttc");
-			if (FPlatformFileManager::Get().GetPlatformFile().FileExists(*Nirmala))
+			if (!FPlatformFileManager::Get().GetPlatformFile().FileExists(*Nirmala))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Kiosk: Tamil font %s not found; Tamil text will not render"), *Nirmala);
+			}
+			else
 			{
 				FCompositeSubFont Tamil;
 				Tamil.Typeface.AppendFont(RegularName, Nirmala, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
@@ -101,6 +105,9 @@ FKioskColors::FKioskColors()
 	, White(1.f, 1.f, 1.f, 1.f)
 	, Black(0.f, 0.f, 0.f, 1.f)
 	, Chip(Hex(TEXT("E0AE2E")))
+	, OnBrandDivider(1.f, 1.f, 1.f, 0.3f)
+	, OnBrandSoft(1.f, 1.f, 1.f, 0.88f)
+	, DeviceDark(Hex(TEXT("0D1424")))
 {
 	Line[0] = Hex(TEXT("D42E12"));
 	Line[1] = Hex(TEXT("009645"));
@@ -237,7 +244,8 @@ const FButtonStyle& FKioskStyle::ButtonStyle(EKioskButtonKind Kind)
 
 	TSharedPtr<FButtonStyle> Style = MakeShared<FButtonStyle>();
 	Style->SetNormal(*Round(Look.Fill, Look.Radius, Look.Border, Look.BorderWidth));
-	Style->SetHovered(*Round(Look.Hover, Look.Radius, Look.Border, Look.BorderWidth));
+	// Touch kiosk: no hover feedback, only a pressed state.
+	Style->SetHovered(*Round(Look.Fill, Look.Radius, Look.Border, Look.BorderWidth));
 	Style->SetPressed(*Round(Look.Pressed, Look.Radius, Look.Border, Look.BorderWidth));
 	if (Look.bGreyWhenDisabled)
 	{

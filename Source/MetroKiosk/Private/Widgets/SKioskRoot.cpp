@@ -135,6 +135,23 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 			]
 		];
 
+	if (const int32 Returned = S->ReturnedCashBanner())
+	{
+		using namespace KioskUI;
+		const FKioskColors& C = Style.C;
+		Canvas->AddSlot().HAlign(HAlign_Center).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 0.f, Current == EKioskScreen::Home ? 190.f : 150.f)
+		[
+			Panel(
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 16.f, 0.f)[ Icon(EKioskIcon::Tray, 34.f, C.Ink, 3.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					Text(FText::Format(LOCTEXT("CashReturned", "Your {0} has been returned to the collection tray."), FKioskSession::Money(Returned)), 24.f, true, C.Ink)
+				],
+				C.AmberFill, 20.f, C.AmberStroke, 2.f, FMargin(30.f, 16.f))
+		];
+	}
+
 	if (S->IsCallActive() && !bHelp)
 	{
 		Canvas->AddSlot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 0.f, 14.f, 0.f)[ BuildCallPip() ];

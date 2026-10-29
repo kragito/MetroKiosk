@@ -14,18 +14,6 @@ using namespace KioskUI;
 
 namespace
 {
-	TSharedRef<SWidget> Placed(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg = 0.f)
-	{
-		TSharedRef<SBox> Box = SNew(SBox).WidthOverride(Size.X).HeightOverride(Size.Y)[ Child ];
-		if (!FMath::IsNearlyZero(AngleDeg))
-		{
-			Box->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-			Box->SetRenderTransform(FSlateRenderTransform(FQuat2D(FMath::DegreesToRadians(AngleDeg))));
-		}
-		return SNew(SConstraintCanvas)
-			+ SConstraintCanvas::Slot().Anchors(FAnchors(0.f, 0.f)).Offset(FMargin(Pos.X, Pos.Y, Size.X, Size.Y)).Alignment(FVector2D(0.f, 0.f))[ Box ];
-	}
-
 	/** White "Metro card" with a teal stripe. */
 	TSharedRef<SWidget> MetroCardGraphic(float Width, float Height)
 	{
@@ -38,7 +26,7 @@ namespace
 			]
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(Width * 0.07f, 0.f, 0.f, Height * 0.14f)
 			[
-				Text(FText::FromString(TEXT("Metro card")), Height * 0.12f, true, C.Ink)
+				Text(KT("Metro card"), Height * 0.12f, true, C.Ink)
 			],
 			C.Surface, 16.f, C.Ink, 3.f);
 	}
@@ -66,14 +54,14 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 {
 	const FKioskColors& C = KC();
 	TSharedRef<SWidget> Illustration = SNew(SOverlay)
-		+ SOverlay::Slot()[ Placed(MetroCardGraphic(380.f, 240.f), FVector2D(150.f, 40.f), FVector2D(380.f, 240.f), -8.f) ]
-		+ SOverlay::Slot()[ Placed(Icon(EKioskIcon::Contactless, 150.f, C.Primary, 5.f), FVector2D(225.f, 250.f), FVector2D(150.f, 150.f), -90.f) ]
+		+ SOverlay::Slot()[ Positioned(MetroCardGraphic(380.f, 240.f), FVector2D(150.f, 40.f), FVector2D(380.f, 240.f), -8.f) ]
+		+ SOverlay::Slot()[ Positioned(Icon(EKioskIcon::Contactless, 150.f, C.Primary, 5.f), FVector2D(225.f, 250.f), FVector2D(150.f, 150.f), -90.f) ]
 		+ SOverlay::Slot()
 		[
-			Placed(Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Panel(SNew(SSpacer).Size(FVector2D(190.f, 52.f)), C.Primary, 12.f) ], C.Ink, 24.f),
+			Positioned(Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Panel(SNew(SSpacer).Size(FVector2D(190.f, 52.f)), C.Primary, 12.f) ], C.Ink, 24.f),
 				FVector2D(130.f, 410.f), FVector2D(340.f, 100.f))
 		]
-		+ SOverlay::Slot()[ Placed(Icon(EKioskIcon::ArrowRight, 110.f, C.Ink, 5.f), FVector2D(500.f, 410.f), FVector2D(100.f, 100.f)) ];
+		+ SOverlay::Slot()[ Positioned(Icon(EKioskIcon::ArrowRight, 110.f, C.Ink, 5.f), FVector2D(500.f, 410.f), FVector2D(100.f, 100.f)) ];
 
 	ChildSlot
 	.Padding(75.f, 40.f, 142.f, 56.f)
@@ -82,7 +70,7 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 		+ SHorizontalBox::Slot().FillWidth(0.45f).Padding(0.f, 0.f, 50.f, 0.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 70.f, 0.f, 0.f)[ TextWrap(KT("Place your transit card on the reader"), 50.f, true, C.Ink) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 70.f, 0.f, 0.f)[ TextWrap(KT("Place your transit card on the reader"), 44.f, true, C.Ink) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 22.f, 0.f, 0.f)
 			[
 				TextWrap(LOCTEXT("ScanBody", "The reader is to the right of the screen, at the top. It glows green when it's ready. Hold the card still until this screen changes."), 22.f, false, C.Ink, 1.25f)
@@ -102,7 +90,7 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
 			[
-				SimControl(FText::FromString(TEXT("SIMULATE: tap card on reader")), FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }))
+				SimControl(KT("SIMULATE: tap card on reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }))
 			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.55f)
@@ -112,7 +100,7 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(640.f).HeightOverride(540.f)[ Illustration ] ]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 34.f, 28.f)
 				[
-					Text(FText::FromString(TEXT("Card reader · top right of the screen")), 17.f, true, C.Ink)
+					Text(KT("Card reader · top right of the screen"), 17.f, true, C.Ink)
 				],
 				C.Band, 36.f)
 		]
@@ -124,8 +112,6 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSession>& Session)
 {
 	const FKioskColors& C = KC();
-	const FKioskState& State = Session->State;
-	(void)State;
 
 	TSharedRef<SWidget> CardPanel = Panel(
 		SNew(SVerticalBox)
@@ -265,6 +251,27 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 
 // --- top-up amount -------------------------------------------------------------------------
 
+namespace
+{
+	TSharedRef<SWidget> KeypadKey(const TSharedRef<FKioskSession>& Session, int32 Digit)
+	{
+		return SNew(SKioskButton)
+			.Kind(EKioskButtonKind::Key)
+			.Label(FText::AsNumber(Digit))
+			.ButtonTag(*FString::Printf(TEXT("Keypad %d"), Digit))
+			.FontPx(38.f)
+			.OnClicked_Lambda([Session, Digit]() { Session->PressTopUpDigit(Digit); return FReply::Handled(); });
+	}
+
+	TSharedRef<SWidget> KeypadRow(const TSharedRef<FKioskSession>& Session, int32 A, int32 B, int32 C)
+	{
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 8.f, 0.f)[ KeypadKey(Session, A) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 8.f, 0.f)[ KeypadKey(Session, B) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 0.f, 0.f)[ KeypadKey(Session, C) ];
+	}
+}
+
 void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSession>& Session)
 {
 	const FKioskColors& C = KC();
@@ -331,6 +338,51 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 		Grid->AddSlot().FillHeight(1.f).Padding(0.f, Row == 0 ? 0.f : 10.f, 0.f, Row == 0 ? 10.f : 0.f)[ Cells ];
 	}
 
+
+	// Custom amount: whole-dollar numeric keypad ($5 to $500).
+	TSharedRef<SWidget> Keypad = SNew(SVerticalBox)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)
+		[
+			Panel(
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+				[
+					Text(FText::Format(LOCTEXT("KeypadAmount", "${0}"), FText::FromString(Session->State.TopUpDigits.IsEmpty() ? TEXT("0") : *Session->State.TopUpDigits)), 52.f, true, C.Ink)
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					Text(FText::Format(LOCTEXT("KeypadRange", "Enter a whole-dollar amount from ${0} to ${1}"), FText::AsNumber(FKioskSession::MinTopUpDollars), FText::AsNumber(FKioskSession::MaxTopUpDollars)), 17.f, false, C.Muted)
+				],
+				C.Surface, 18.f, C.Ink, 3.f, FMargin(30.f, 14.f))
+		]
+		+ SVerticalBox::Slot().FillHeight(1.f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 8.f)[ KeypadRow(Session, 1, 2, 3) ]
+			+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 8.f)[ KeypadRow(Session, 4, 5, 6) ]
+			+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 0.f, 0.f, 8.f)[ KeypadRow(Session, 7, 8, 9) ]
+			+ SVerticalBox::Slot().FillHeight(1.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 8.f, 0.f)
+				[
+					SNew(SKioskButton).Kind(EKioskButtonKind::KeyMuted).Label(KT("Back to amounts")).FontPx(20.f).ButtonTag(TEXT("Back to amounts"))
+					.OnClicked_Lambda([Session]() { Session->OpenTopUpKeypad(false); return FReply::Handled(); })
+				]
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 8.f, 0.f)[ KeypadKey(Session, 0) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 0.f, 0.f)
+				[
+					SNew(SKioskButton).Kind(EKioskButtonKind::KeyMuted).Label(LOCTEXT("BackspaceKey", "Backspace")).ButtonTag(TEXT("Keypad Backspace"))
+					.OnClicked_Lambda([Session]() { Session->BackspaceTopUp(); return FReply::Handled(); })
+					[
+						Icon(EKioskIcon::Backspace, 40.f, C.Ink, 3.f)
+					]
+				]
+			]
+		];
+
+	TSharedRef<SWidget> AmountArea = Session->State.bTopUpKeypad ? Keypad : StaticCastSharedRef<SWidget>(Grid);
+
 	ChildSlot
 	.Padding(80.f, 24.f, 64.f, 38.f)
 	[
@@ -343,7 +395,7 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			+ SHorizontalBox::Slot().FillWidth(0.7f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(0.78f)[ Grid ]
+				+ SVerticalBox::Slot().FillHeight(0.78f)[ AmountArea ]
 				+ SVerticalBox::Slot().FillHeight(0.22f).HAlign(HAlign_Right).VAlign(VAlign_Center)
 				[
 					SNew(SKioskButton)
@@ -579,7 +631,7 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 						.Label(KT("Go to payment"))
 						.RightIcon(EKioskIcon::ArrowRight)
 						.FontPx(32.f)
-						.OnClicked_Lambda([Session]() { Session->ContinueFromPayment(); return FReply::Handled(); })
+						.OnClicked_Lambda([Session]() { Session->GoToPayment(); return FReply::Handled(); })
 					]
 				]
 			]
@@ -620,23 +672,23 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 	TSharedRef<SWidget> Illustration = SNew(SOverlay)
 		+ SOverlay::Slot()
 		[
-			Placed(Panel(SNew(SBox).Padding(20.f)[ Panel(SNew(SSpacer), C.Brand, 8.f) ], C.Ink, 18.f),
+			Positioned(Panel(SNew(SBox).Padding(20.f)[ Panel(SNew(SSpacer), C.Brand, 8.f) ], C.Ink, 18.f),
 				FVector2D(90.f, 10.f), FVector2D(480.f, 260.f))
 		]
-		+ SOverlay::Slot()[ Placed(Panel(SNew(SSpacer), C.Primary, 6.f), FVector2D(300.f, 290.f), FVector2D(60.f, 12.f)) ]
-		+ SOverlay::Slot()[ Placed(MetroCardGraphic(220.f, 140.f), FVector2D(255.f, 300.f), FVector2D(220.f, 140.f), -3.f) ]
+		+ SOverlay::Slot()[ Positioned(Panel(SNew(SSpacer), C.Primary, 6.f), FVector2D(300.f, 290.f), FVector2D(60.f, 12.f)) ]
+		+ SOverlay::Slot()[ Positioned(MetroCardGraphic(220.f, 140.f), FVector2D(255.f, 300.f), FVector2D(220.f, 140.f), -3.f) ]
 		+ SOverlay::Slot()
 		[
-			Placed(
+			Positioned(
 				SNew(SBox).Clipping(EWidgetClipping::ClipToBounds)
 				[
 					SNew(SOverlay)
-					+ SOverlay::Slot().VAlign(VAlign_Top)[ Placed(Panel(SNew(SSpacer), C.BorderStrong, 165.f, C.Ink, 4.f), FVector2D(0.f, -165.f), FVector2D(330.f, 330.f)) ]
+					+ SOverlay::Slot().VAlign(VAlign_Top)[ Positioned(Panel(SNew(SSpacer), C.BorderStrong, 165.f, C.Ink, 4.f), FVector2D(0.f, -165.f), FVector2D(330.f, 330.f)) ]
 					+ SOverlay::Slot().VAlign(VAlign_Top)[ SNew(SBox).HeightOverride(4.f)[ SNew(SBorder).BorderImage(FKioskStyle::Get().Solid(C.Ink)).BorderBackgroundColor(FLinearColor::White) ] ]
 				],
 				FVector2D(150.f, 400.f), FVector2D(330.f, 165.f))
 		]
-		+ SOverlay::Slot()[ Placed(Icon(EKioskIcon::ArrowUp, 140.f, C.Primary, 6.f), FVector2D(500.f, 330.f), FVector2D(70.f, 200.f)) ];
+		+ SOverlay::Slot()[ Positioned(Icon(EKioskIcon::ArrowUp, 140.f, C.Primary, 6.f), FVector2D(500.f, 330.f), FVector2D(70.f, 200.f)) ];
 
 	ChildSlot
 	.Padding(75.f, 40.f, 80.f, 40.f)
@@ -675,10 +727,16 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(70.f, 0.f, 0.f, 0.f)[ BalanceDetail ],
 					C.Surface, 20.f, C.BorderStrong, 2.f, FMargin(32.f, 22.f))
 			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
+			[
+				Session->ChangeCents() > 0
+					? Text(FText::Format(LOCTEXT("DoneChange", "Take your change from the tray: {0}"), FKioskSession::Money(Session->ChangeCents())), 21.f, true, C.Primary)
+					: StaticCastSharedRef<STextBlock>(Text(FText::GetEmpty(), 4.f))
+			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
 			[
-				SimControl(FText::FromString(TEXT("SIMULATE: lift card off reader")), FOnClicked::CreateLambda([Session]() { Session->SimulateCardLift(); return FReply::Handled(); }))
+				SimControl(KT("SIMULATE: lift card off reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateCardLift(); return FReply::Handled(); }))
 			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.5f)
@@ -688,7 +746,7 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ SNew(SBox).WidthOverride(640.f).HeightOverride(620.f)[ Illustration ] ]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 30.f, 24.f)
 				[
-					Text(FText::FromString(TEXT("Metro card reader · below the screen")), 16.f, true, C.Ink)
+					Text(KT("Metro card reader · below the screen"), 16.f, true, C.Ink)
 				],
 				C.Band, 30.f)
 		]

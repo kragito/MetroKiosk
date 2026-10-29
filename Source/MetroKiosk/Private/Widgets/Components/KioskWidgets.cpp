@@ -3,6 +3,7 @@
 #include "KioskData.h"
 #include "SKioskButton.h"
 #include "SKioskDashedBox.h"
+#include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/Layout/SSpacer.h"
 
 namespace KioskUI
@@ -153,6 +154,18 @@ namespace KioskUI
 					]
 				]
 			];
+	}
+
+	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg)
+	{
+		TSharedRef<SBox> Box = SNew(SBox).WidthOverride(Size.X).HeightOverride(Size.Y)[ Child ];
+		if (!FMath::IsNearlyZero(AngleDeg))
+		{
+			Box->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
+			Box->SetRenderTransform(FSlateRenderTransform(FQuat2D(FMath::DegreesToRadians(AngleDeg))));
+		}
+		return SNew(SConstraintCanvas)
+			+ SConstraintCanvas::Slot().Anchors(FAnchors(0.f, 0.f)).Offset(FMargin(Pos.X, Pos.Y, Size.X, Size.Y)).Alignment(FVector2D(0.f, 0.f))[ Box ];
 	}
 
 	TSharedRef<SWidget> ProgressBar(TFunction<float()> Fraction, float Width, float Height, const FLinearColor& Track, const FLinearColor& Fill)

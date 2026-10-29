@@ -15,18 +15,6 @@ using namespace KioskUI;
 
 namespace
 {
-	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg = 0.f)
-	{
-		TSharedRef<SBox> Box = SNew(SBox).WidthOverride(Size.X).HeightOverride(Size.Y)[ Child ];
-		if (!FMath::IsNearlyZero(AngleDeg))
-		{
-			Box->SetRenderTransformPivot(FVector2D(0.5f, 0.5f));
-			Box->SetRenderTransform(FSlateRenderTransform(FQuat2D(FMath::DegreesToRadians(AngleDeg))));
-		}
-		return SNew(SConstraintCanvas)
-			+ SConstraintCanvas::Slot().Anchors(FAnchors(0.f, 0.f)).Offset(FMargin(Pos.X, Pos.Y, Size.X, Size.Y)).Alignment(FVector2D(0.f, 0.f))[ Box ];
-	}
-
 	TSharedRef<SWidget> CardIllustrationTap()
 	{
 		const FKioskColors& C = KC();
@@ -36,7 +24,7 @@ namespace
 			[
 				SNew(SBox).HeightOverride(52.f)[ SNew(SBorder).BorderImage(FKioskStyle::Get().Solid(C.Help)).BorderBackgroundColor(FLinearColor::White) ]
 			]
-			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(24.f, 12.f, 0.f, 0.f)[ Text(FText::FromString(TEXT("Bank card")), 20.f, true, C.Ink) ]
+			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(24.f, 12.f, 0.f, 0.f)[ Text(KT("Bank card"), 20.f, true, C.Ink) ]
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(26.f, 0.f, 0.f, 26.f)[ Panel(SNew(SSpacer).Size(FVector2D(52.f, 40.f)), C.Chip, 6.f) ]
 			+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 30.f, 34.f)[ Panel(SNew(SSpacer).Size(FVector2D(120.f, 12.f)), C.BorderStrong, 6.f) ],
 			C.Surface, 22.f, C.Ink, 4.f);
@@ -64,15 +52,15 @@ namespace
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(24.f, 78.f, 0.f, 0.f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ Text(FText::FromString(TEXT("Chip first")), 22.f, true, C.Ink) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(FText::FromString(TEXT("facing up")), 16.f, false, C.Ink) ]
+				+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Chip first"), 22.f, true, C.Ink) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(KT("facing up"), 16.f, false, C.Ink) ]
 			]
 			+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(24.f, 190.f, 0.f, 0.f)[ Panel(SNew(SSpacer).Size(FVector2D(62.f, 50.f)), C.Chip, 8.f) ],
 			C.Surface, 22.f, C.Ink, 4.f);
 
 		TSharedRef<SWidget> Slot = Panel(
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(30.f, 18.f, 30.f, 0.f)[ Panel(SNew(SSpacer).Size(FVector2D(1.f, 14.f)), FLinearColor(0.05f, 0.08f, 0.15f, 1.f), 7.f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(30.f, 18.f, 30.f, 0.f)[ Panel(SNew(SSpacer).Size(FVector2D(1.f, 14.f)), C.DeviceDark, 7.f) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(40.f, 28.f, 40.f, 0.f)[ Panel(SNew(SSpacer).Size(FVector2D(1.f, 14.f)), C.Primary, 7.f) ],
 			C.Ink, 20.f);
 
@@ -152,7 +140,7 @@ namespace
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
 				[
-					Text(FText::FromString(TEXT("SIMULATE: tap a note or coin to insert it")), 16.f, true, C.SimInk)
+					Text(KT("SIMULATE: tap a note or coin to insert it"), 16.f, true, C.SimInk)
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
@@ -184,7 +172,7 @@ namespace
 						+ SVerticalBox::Slot().AutoHeight()
 						[
 							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Dot(C.Transparent, 1.f) ]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).Padding(FMargin(0.f, 0.f, 12.f, 0.f))[ Icon(EKioskIcon::Coin, 34.f, C.Ink, 3.f) ] ]
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(LOCTEXT("Coins", "Coins"), 20.f, true, C.Ink) ]
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
@@ -194,7 +182,7 @@ namespace
 							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(FText::FromString(TEXT("20¢")), 20, 94.f, true) ]
 							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(FText::FromString(TEXT("50¢")), 50, 94.f, true) ]
 						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
+						+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(0.f, 12.f, 0.f, 0.f)
 						[
 							Chip(FText::FromString(TEXT("$1")), 100, 94.f, true)
 						]
@@ -315,8 +303,8 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 					+ SHorizontalBox::Slot().AutoWidth()[ Text(FText::Format(LOCTEXT("PayTail", " {0}"), Session->PaymentTail()), 29.f, false, C.Ink) ],
 					C.Surface, 34.f, C.BorderStrong, 2.f, FMargin(36.f, 16.f))
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 40.f, 0.f, 0.f)[ TextWrap(Heading, 46.f, true, C.Ink, 1.0f) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 18.f, 0.f, 0.f)[ TextWrap(Body, 21.f, false, C.Ink, 1.2f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 40.f, 0.f, 0.f)[ TextWrap(Heading, 42.f, true, C.Ink, 1.0f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 18.f, 0.f, 0.f)[ TextWrap(Body, 20.f, false, C.Ink, 1.2f) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 28.f, 0.f, 0.f).HAlign(HAlign_Left)[ StatusPill(Session, bProcessing, bCash) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(18.f, 32.f, 0.f, 0.f)[ TipBox ]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
@@ -350,7 +338,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 	const FText Kind = FText::FromString(FString::Printf(TEXT("%s · %s"), *Session->TicketLabel().ToString().ToUpper(),
 		State.Children + State.Seniors > 0 ? TEXT("MIXED") : TEXT("ADULT")));
 	const FText Trip = State.Ticket == ETicketType::DayPass
-		? FText::FromString(TEXT("All lines"))
+		? KT("All lines")
 		: FText::Format(LOCTEXT("TripArrow", "City Hall → {0}"), Session->DestinationLabel());
 
 	TSharedRef<SWidget> ReceiptButtons = SNew(SVerticalBox)

@@ -38,6 +38,9 @@ struct FKioskColors
 	FLinearColor Black;
 	FLinearColor Line[6];       // NS EW NE CC DT TE
 	FLinearColor Chip;          // chip contact gold
+	FLinearColor OnBrandDivider; // hairline on the teal header
+	FLinearColor OnBrandSoft;   // secondary text on the teal header
+	FLinearColor DeviceDark;    // card-slot slit in illustrations
 };
 
 enum class EKioskButtonKind : uint8

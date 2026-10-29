@@ -260,6 +260,10 @@ namespace
 			Ip.RRect(0.2f, 0.34f, 0.2f, 0.16f, 0.03f);
 			Ip.Line(0.6f, 0.64f, 0.82f, 0.64f);
 			break;
+		case EKioskIcon::Coin:
+			Ip.Circle(0.5f, 0.5f, 0.42f);
+			Ip.Circle(0.5f, 0.5f, 0.24f);
+			break;
 		case EKioskIcon::Reader:
 			Ip.RRect(0.06f, 0.3f, 0.88f, 0.4f, 0.1f);
 			Ip.RRect(0.24f, 0.44f, 0.52f, 0.12f, 0.05f, true);

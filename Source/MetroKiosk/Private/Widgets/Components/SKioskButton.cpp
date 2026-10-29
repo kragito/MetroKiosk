@@ -84,9 +84,10 @@ void SKioskButton::Construct(const FArguments& InArgs)
 		.ContentPadding(InArgs._Padding)
 		.HAlign(bCustomContent ? HAlign_Fill : HAlign_Center)
 		.VAlign(bCustomContent ? VAlign_Fill : VAlign_Center)
-		.OnClicked_Lambda([bPressable, Clicked = InArgs._OnClicked]()
+		// Visuals are chosen at construction (screens rebuild on state change); the bound attribute is re-read on every press.
+		.OnClicked_Lambda([Enabled, Clicked = InArgs._OnClicked]()
 		{
-			return (bPressable && Clicked.IsBound()) ? Clicked.Execute() : FReply::Handled();
+			return (Enabled.Get(true) && Clicked.IsBound()) ? Clicked.Execute() : FReply::Handled();
 		})
 		[
 			Inner

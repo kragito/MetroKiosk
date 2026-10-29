@@ -44,6 +44,7 @@ enum class EKioskIcon : uint8
 	Cash,
 	ChipCard,
 	Reader,
+	Coin,
 };
 
 class SKioskIcon : public SLeafWidget

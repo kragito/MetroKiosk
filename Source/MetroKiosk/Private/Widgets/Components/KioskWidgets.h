@@ -40,6 +40,9 @@ namespace KioskUI
 	/** Clearly-marked on-screen stand-in for a hardware action (card tap, chip insert, card lift). */
 	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked);
 
+	/** Places a fixed-size child at an offset inside an SOverlay slot (optionally rotated about its centre). */
+	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg = 0.f);
+
 	/** Rounded progress bar. Fraction is evaluated every frame. */
 	TSharedRef<SWidget> ProgressBar(TFunction<float()> Fraction, float Width, float Height, const FLinearColor& Track, const FLinearColor& Fill);
 }

@@ -31,12 +31,6 @@ enum class ETicketType : uint8 { OneWay, RoundTrip, DayPass };
 enum class EPayMethod : uint8 { Tap, Chip, Cash };
 enum class EKioskLanguage : uint8 { English, Chinese, Malay, Tamil };
 
-namespace KioskScreenNames
-{
-	METROKIOSK_API FString ToString(EKioskScreen Screen);
-	METROKIOSK_API bool TryParse(const FString& Name, EKioskScreen& OutScreen);
-}
-
 /** Everything a customer has chosen so far in one visit. */
 struct FKioskState
 {
@@ -53,4 +47,6 @@ struct FKioskState
 	int32 LineFilter = INDEX_NONE;
 	FString SearchText;
 	bool bKeyboardOpen = false;
+	bool bTopUpKeypad = false;   // custom amount entry instead of the preset grid
+	FString TopUpDigits;
 };

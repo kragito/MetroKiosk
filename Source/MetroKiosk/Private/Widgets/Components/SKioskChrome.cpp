@@ -18,7 +18,7 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 
 	TSharedRef<SWidget> Logo = bHelp
 		? Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Headset, 42.f, C.Help, 3.f) ], C.White, 14.f)
-		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("M")), 56.f, true, C.White) ], C.Logo, 14.f);
+		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(INVTEXT("M"), 56.f, true, C.White) ], C.Logo, 14.f);
 
 	TSharedRef<SWidget> Left = SNullWidget::NullWidget;
 	if (bHelp)
@@ -32,12 +32,12 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 			[
 				SNew(SBox).WidthOverride(2.f).HeightOverride(46.f)
 				[
-					SNew(SBorder).BorderImage(Style.Solid(FLinearColor(1.f, 1.f, 1.f, 0.3f))).BorderBackgroundColor(FLinearColor::White)
+					SNew(SBorder).BorderImage(Style.Solid(C.OnBrandDivider)).BorderBackgroundColor(FLinearColor::White)
 				]
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(36.f, 0.f, 0.f, 0.f)
 			[
-				Text(KT("You are at"), 22.f, false, FLinearColor(1.f, 1.f, 1.f, 0.88f))
+				Text(KT("You are at"), 22.f, false, C.OnBrandSoft)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
 			[

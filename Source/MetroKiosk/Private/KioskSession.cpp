@@ -20,13 +20,33 @@ void FKioskSession::ResetState()
 {
 	State = FKioskState();
 	MapZoom = 1.f;
+	MapPan = FVector2f::ZeroVector;
+	++NavCount;
 	History.Reset();
 	CurrentScreen = EKioskScreen::Home;
 	ScreenSeconds = 0.f;
 }
 
+void FKioskSession::NoteReturnedCash()
+{
+	if (State.CashInsertedCents > 0 && CurrentScreen == EKioskScreen::WaitCash)
+	{
+		ReturnedCash = State.CashInsertedCents;
+		ReturnedAtNav = NavCount + 1;
+	}
+}
+
 void FKioskSession::EnterScreen(EKioskScreen Screen)
 {
+	++NavCount;
+	if (Screen != EKioskScreen::Destination)
+	{
+		State.bKeyboardOpen = false;
+	}
+	if (Screen != EKioskScreen::DestinationMap)
+	{
+		MapPan = FVector2f::ZeroVector;
+	}
 	CurrentScreen = Screen;
 	ScreenSeconds = 0.f;
 	NotifyChanged();
@@ -51,6 +71,7 @@ void FKioskSession::Back()
 	}
 	if (IsWaitScreen(CurrentScreen))
 	{
+		NoteReturnedCash();
 		State.CashInsertedCents = 0;
 	}
 	const EKioskScreen Previous = History.Pop();
@@ -59,12 +80,16 @@ void FKioskSession::Back()
 
 void FKioskSession::StartOver()
 {
+	NoteReturnedCash();
+	EndCall();
 	ResetState();
 	NotifyChanged();
 }
 
 void FKioskSession::ReturnHome(bool bResetLanguage)
 {
+	NoteReturnedCash();
+	EndCall();
 	ResetState();
 	if (bResetLanguage)
 	{
@@ -129,6 +154,9 @@ void FKioskSession::ChooseTicket(ETicketType Type)
 {
 	State.Flow = EKioskFlow::Ticket;
 	State.Ticket = Type;
+	State.bKeyboardOpen = false;
+	State.SearchText.Reset();
+	State.LineFilter = INDEX_NONE;
 	if (Type == ETicketType::DayPass)
 	{
 		State.Destination = INDEX_NONE;
@@ -161,6 +189,10 @@ void FKioskSession::SetSearchText(const FString& Text)
 void FKioskSession::OpenKeyboard(bool bOpen)
 {
 	State.bKeyboardOpen = bOpen;
+	if (bOpen)
+	{
+		State.LineFilter = INDEX_NONE; // the filter pills are hidden while typing, so never filter silently
+	}
 	NotifyChanged();
 }
 
@@ -275,6 +307,35 @@ void FKioskSession::ContinueTopUp()
 	}
 }
 
+void FKioskSession::OpenTopUpKeypad(bool bOpen)
+{
+	State.bTopUpKeypad = bOpen;
+	State.TopUpDigits.Reset();
+	State.TopUpCents = 0;
+	NotifyChanged();
+}
+
+void FKioskSession::PressTopUpDigit(int32 Digit)
+{
+	const FString Next = State.TopUpDigits + FString::FromInt(Digit);
+	const int32 Dollars = FCString::Atoi(*Next);
+	if (Dollars > MaxTopUpDollars || Next.Len() > 3)
+	{
+		return;
+	}
+	State.TopUpDigits = Dollars == 0 ? FString() : FString::FromInt(Dollars);
+	State.TopUpCents = (Dollars >= MinTopUpDollars) ? Dollars * 100 : 0;
+	NotifyChanged();
+}
+
+void FKioskSession::BackspaceTopUp()
+{
+	State.TopUpDigits.LeftChopInline(1);
+	const int32 Dollars = FCString::Atoi(*State.TopUpDigits);
+	State.TopUpCents = (Dollars >= MinTopUpDollars) ? Dollars * 100 : 0;
+	NotifyChanged();
+}
+
 void FKioskSession::QuickTopUp(int32 Cents)
 {
 	State.Flow = EKioskFlow::TopUp;
@@ -288,7 +349,7 @@ void FKioskSession::SelectConcession(int32 Index)
 	NotifyChanged();
 }
 
-void FKioskSession::ContinueFromPayment()
+void FKioskSession::GoToPayment()
 {
 	GoTo(EKioskScreen::PayMethod);
 }
@@ -303,7 +364,7 @@ int32 FKioskSession::AdultFareCents() const
 	}
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
 	const int32 OneWay = Stations.IsValidIndex(State.Destination) ? Stations[State.Destination].FareCents : 168;
-	return State.Ticket == ETicketType::RoundTrip ? FMath::RoundToInt(OneWay * 2 * 0.7f) : OneWay;
+	return State.Ticket == ETicketType::RoundTrip ? (OneWay * 2 * 7 + 5) / 10 : OneWay;
 }
 
 int32 FKioskSession::ReducedFareCents() const
@@ -312,7 +373,7 @@ int32 FKioskSession::ReducedFareCents() const
 	{
 		return 560;
 	}
-	return FMath::RoundToInt(AdultFareCents() * 0.7f);
+	return (AdultFareCents() * 7 + 5) / 10;
 }
 
 int32 FKioskSession::TicketTotalCents() const
@@ -476,7 +537,7 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		Info.Labels.Add(Info.Current > 1 ? TicketLabel() : KT("Ticket"));
 		if (Info.Current > 2)
 		{
-			Info.Labels.Add(State.Ticket == ETicketType::DayPass ? FText::FromString(TEXT("All lines")) : DestinationLabel());
+			Info.Labels.Add(State.Ticket == ETicketType::DayPass ? KT("All lines") : DestinationLabel());
 		}
 		else
 		{
@@ -492,14 +553,14 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		case EKioskScreen::DoneLiftCard: Info.Current = 5; break;
 		default: Info.Current = bWait ? 4 : 3; break;
 		}
-		Info.Labels.Add(FText::FromString(TEXT("Tap card")));
+		Info.Labels.Add(KT("Tap card"));
 		if (Info.Current > 2)
 		{
-			Info.Labels.Add(State.Flow == EKioskFlow::TopUp ? FText::FromString(TEXT("Top-up")) : FText::FromString(TEXT("Concession Pass")));
+			Info.Labels.Add(State.Flow == EKioskFlow::TopUp ? KT("Top-up") : KT("Concession Pass"));
 		}
 		else
 		{
-			Info.Labels.Add(FText::FromString(TEXT("What to do?")));
+			Info.Labels.Add(KT("What to do?"));
 		}
 	}
 	Info.Labels.Add(KT("Review"));
@@ -641,6 +702,7 @@ bool FKioskSession::ApplySample(const FString& Name)
 	else if (Name == TEXT("CardOptions")) { State.Flow = EKioskFlow::TopUp; Place(S::CardOptions, { S::Home, S::ScanCard }); }
 	else if (Name == TEXT("TopUpAmount")) { State.Flow = EKioskFlow::TopUp; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
 	else if (Name == TEXT("TopUpAmountSelected")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
+	else if (Name == TEXT("TopUpKeypad")) { State.Flow = EKioskFlow::TopUp; State.bTopUpKeypad = true; State.TopUpDigits = TEXT("25"); State.TopUpCents = 2500; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
 	else if (Name == TEXT("Concession")) { State.Flow = EKioskFlow::Concession; Place(S::Concession, { S::Home, S::ScanCard }); }
 	else if (Name == TEXT("ConcessionSelected")) { State.Flow = EKioskFlow::Concession; State.Concession = 2; Place(S::Concession, { S::Home, S::ScanCard }); }
 	else if (Name == TEXT("PassDates")) { State.Flow = EKioskFlow::Concession; State.Concession = 2; Place(S::PassDates, { S::Home, S::ScanCard, S::Concession }); }

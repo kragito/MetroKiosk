@@ -1,6 +1,7 @@
 #include "KioskQA.h"
 
 #include "Engine/Engine.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -32,7 +33,6 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession)
 	FString ScreenName;
 	if (FParse::Value(CommandLine, TEXT("-KioskScreen="), ScreenName))
 	{
-		Session->bFreezeTimers = true;
 		if (!Session->ApplySample(ScreenName))
 		{
 			UE_LOG(LogKioskQA, Warning, TEXT("Unknown -KioskScreen name '%s'"), *ScreenName);
@@ -50,7 +50,7 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession)
 			TEXT("Home"), TEXT("TicketType"), TEXT("Destination"), TEXT("DestinationSearch"), TEXT("DestinationMap"),
 			TEXT("DestinationSelected"), TEXT("Review"), TEXT("PayMethod"), TEXT("WaitTapCard"), TEXT("WaitChipCard"),
 			TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
-			TEXT("HelpCall"), TEXT("HelpPip"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"), TEXT("TopUpAmountSelected"),
+			TEXT("HelpCall"), TEXT("HelpPip"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"), TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"),
 			TEXT("Concession"), TEXT("ConcessionSelected"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
 			TEXT("Home_Chinese"), TEXT("Home_Tamil"), TEXT("Home_Malay") };
 
@@ -110,6 +110,11 @@ bool FKioskQARunner::Tick(float DeltaSeconds)
 		return false;
 	}
 	++FrameCounter;
+	if (FSlateApplication::IsInitialized())
+	{
+		// Keep the OS cursor off the canvas so no hover state leaks into captures.
+		FSlateApplication::Get().SetCursorPos(FVector2D(-4000.0, -4000.0));
+	}
 
 	switch (Phase)
 	{

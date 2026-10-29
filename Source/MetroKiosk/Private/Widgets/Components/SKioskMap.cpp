@@ -1,7 +1,11 @@
 #include "SKioskMap.h"
 
 #include "KioskData.h"
+#include "KioskLoc.h"
 #include "KioskStyle.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "Rendering/DrawElements.h"
 
 namespace
@@ -15,6 +19,8 @@ void SKioskMap::Construct(const FArguments& InArgs)
 {
 	SelectedStation = InArgs._SelectedStation;
 	Zoom = FMath::Max(1.f, InArgs._Zoom);
+	Session = InArgs._Session;
+	SetClipping(EWidgetClipping::ClipToBounds);
 	OnStationTapped = InArgs._OnStationTapped;
 	SetCanTick(false);
 }
@@ -30,7 +36,8 @@ FVector2f SKioskMap::ToLocal(const FVector2f& MapPos, const FVector2f& LocalSize
 	{
 		Focus = Stations[SelectedStation].MapPos;
 	}
-	return LocalSize * 0.5f + (MapPos - Focus) * (BaseScale * Zoom);
+	const FVector2f Pan = (Zoom > 1.01f && Session.IsValid()) ? Session->MapPan : FVector2f::ZeroVector;
+	return LocalSize * 0.5f + Pan + (MapPos - Focus) * (BaseScale * Zoom);
 }
 
 int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect,
@@ -81,21 +88,30 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 
 		if (bSelected || bInterchange || Zoom > 1.2f)
 		{
+			// Crowded stations around City Hall put their label on the left so the names do not overlap.
+			static const TSet<FString> LeftLabels = { TEXT("City Hall"), TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),
+				TEXT("Botanic Gardens"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Buona Vista"), TEXT("HarbourFront") };
+			float LabelX = Draw + 5.f;
+			if (LeftLabels.Contains(Station.Name))
+			{
+				const float Width = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Station.Name, LabelFont).X;
+				LabelX = -Draw - 5.f - Width;
+			}
 			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(FVector2f(200.f, 20.f), FSlateLayoutTransform(Pos + FVector2f(Draw + 5.f, -9.f))),
+				AllottedGeometry.ToPaintGeometry(FVector2f(200.f, 20.f), FSlateLayoutTransform(Pos + FVector2f(LabelX, -9.f))),
 				Station.Name, LabelFont, ESlateDrawEffect::None, bSelected ? C.Primary : C.Ink);
 		}
 		if (bHere)
 		{
 			const FVector2f BoxSize(124.f, 32.f);
-			const FVector2f BoxPos = Pos + FVector2f(-BoxSize.X * 0.5f, -Radius * 1.3f - BoxSize.Y - 6.f);
+			const FVector2f BoxPos = Pos + FVector2f(Radius * 1.3f + 10.f, -BoxSize.Y - 4.f);
 			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 3,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
 			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 4,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(10.f, 5.f))),
-				TEXT("You are here"), MarkerFont, ESlateDrawEffect::None, C.White);
+				KT("You are here").ToString(), MarkerFont, ESlateDrawEffect::None, C.White);
 		}
 	}
 	return LayerId + 5;
@@ -106,6 +122,49 @@ FReply SKioskMap::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerE
 	if (MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
 	{
 		return FReply::Unhandled();
+	}
+	bPressed = true;
+	bDragging = false;
+	DragStart = DragLast = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	return FReply::Handled().CaptureMouse(AsShared());
+}
+
+FReply SKioskMap::OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (!bPressed)
+	{
+		return FReply::Unhandled();
+	}
+	const FVector2f Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	if (!bDragging && FVector2f::Distance(Local, DragStart) > 10.f)
+	{
+		bDragging = true;
+	}
+	if (bDragging && Zoom > 1.01f && Session.IsValid())
+	{
+		const FVector2f Limit = MyGeometry.GetLocalSize() * 0.5f * (Zoom - 0.5f);
+		FVector2f Pan = Session->MapPan + (Local - DragLast);
+		Pan.X = FMath::Clamp(Pan.X, -Limit.X, Limit.X);
+		Pan.Y = FMath::Clamp(Pan.Y, -Limit.Y, Limit.Y);
+		Session->MapPan = Pan;
+	}
+	DragLast = Local;
+	return FReply::Handled();
+}
+
+FReply SKioskMap::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (!bPressed || MouseEvent.GetEffectingButton() != EKeys::LeftMouseButton)
+	{
+		return FReply::Unhandled();
+	}
+	bPressed = false;
+	const bool bWasDrag = bDragging;
+	bDragging = false;
+	FReply Reply = FReply::Handled().ReleaseMouseCapture();
+	if (bWasDrag)
+	{
+		return Reply;
 	}
 	const FVector2f Local = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
 	const FVector2f Size = MyGeometry.GetLocalSize();
@@ -129,9 +188,8 @@ FReply SKioskMap::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerE
 	if (Best != INDEX_NONE)
 	{
 		OnStationTapped.ExecuteIfBound(Best);
-		return FReply::Handled();
 	}
-	return FReply::Unhandled();
+	return Reply;
 }
 
 FCursorReply SKioskMap::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const

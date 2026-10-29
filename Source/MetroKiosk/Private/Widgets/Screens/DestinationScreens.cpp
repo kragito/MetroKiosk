@@ -223,7 +223,8 @@ namespace
 								.Label(LOCTEXT("ClearSearch", "Clear search"))
 								.ButtonTag(TEXT("Clear search"))
 								.Padding(FMargin(0.f))
-								.OnClicked_Lambda([Session]() { Session->SetSearchText(FString()); return FReply::Handled(); })
+								
+								.OnClicked_Lambda([Session]() { Session->State.SearchText.Reset(); Session->OpenKeyboard(false); return FReply::Handled(); })
 								[
 									Icon(EKioskIcon::Close, 22.f, C.Ink, 3.f)
 								]
@@ -299,7 +300,7 @@ namespace
 				.ButtonTag(TEXT("Key Clear"))
 				.FontPx(22.f).Bold(false)
 				.Width(136.f).Height(KeyH)
-				.OnClicked_Lambda([Session]() { Session->SetSearchText(FString()); return FReply::Handled(); })
+				.OnClicked_Lambda([Session]() { Session->State.SearchText.Reset(); Session->OpenKeyboard(false); return FReply::Handled(); })
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(Gap, 0.f, 0.f, 0.f)
 			[
@@ -310,6 +311,16 @@ namespace
 				.FontPx(22.f).Bold(false)
 				.Height(KeyH)
 				.OnClicked_Lambda([Session]() { Session->SetSearchText(Session->State.SearchText + TEXT(" ")); return FReply::Handled(); })
+			]
+			+ SHorizontalBox::Slot().AutoWidth().Padding(Gap, 0.f, 0.f, 0.f)
+			[
+				SNew(SKioskButton)
+				.Kind(EKioskButtonKind::Primary)
+				.Label(KT("Done"))
+				.ButtonTag(TEXT("Hide keyboard"))
+				.FontPx(22.f)
+				.Width(150.f).Height(KeyH)
+				.OnClicked_Lambda([Session]() { Session->OpenKeyboard(false); return FReply::Handled(); })
 			]
 		];
 		return Board;
@@ -371,7 +382,7 @@ void SDestinationScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 	{
 		Right->AddSlot().AutoHeight().Padding(4.f, 8.f, 0.f, 0.f)
 		[
-			Text(FText::FromString(TEXT("A keyboard will popup. The list narrows with every letter you type.")), 16.f, false, C.Muted)
+			Text(KT("A keyboard will popup. The list narrows with every letter you type."), 16.f, false, C.Muted)
 		];
 		Right->AddSlot().AutoHeight().Padding(4.f, 22.f, 0.f, 10.f)[ Text(KT("Filter by line"), 19.f, true, C.Ink) ];
 		Right->AddSlot().AutoHeight()[ LineFilterGrid(Session) ];
@@ -448,6 +459,10 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 			.OnClicked_Lambda([Session, Delta]()
 			{
 				Session->MapZoom = FMath::Clamp(Session->MapZoom + Delta, 1.f, 2.5f);
+				if (Session->MapZoom <= 1.f)
+				{
+					Session->MapPan = FVector2f::ZeroVector;
+				}
 				Session->NotifyChanged();
 				return FReply::Handled();
 			})
@@ -469,11 +484,12 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 					SNew(SKioskMap)
 					.SelectedStation(Session->State.Destination)
 					.Zoom(Session->MapZoom)
+					.Session(Session)
 					.OnStationTapped(FOnKioskStationTapped::CreateLambda([Session](int32 Index) { Session->SelectDestination(Index); }))
 				]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 22.f, 22.f, 0.f)
 				[
-					Panel(Text(FText::FromString(TEXT("Tap a station · pinch to zoom")), 18.f, true, C.Ink), C.Band, 16.f, C.Transparent, 0.f, FMargin(24.f, 16.f))
+					Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), 18.f, true, C.Ink), C.Band, 16.f, C.Transparent, 0.f, FMargin(24.f, 16.f))
 				]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 22.f, 22.f)
 				[
@@ -512,7 +528,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(4.f, 8.f, 0.f, 0.f)
 				[
-					Text(FText::FromString(TEXT("A keyboard will popup. The list narrows with every letter you type.")), 16.f, false, C.Muted)
+					Text(KT("A keyboard will popup. The list narrows with every letter you type."), 16.f, false, C.Muted)
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 28.f, 0.f, 0.f)
 				[

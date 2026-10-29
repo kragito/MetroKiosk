@@ -48,6 +48,8 @@ public:
 	bool bCaptionsOn = true;
 	/** Map zoom factor (1 = whole network). */
 	float MapZoom = 1.f;
+	/** Map pan in widget pixels (only used while zoomed in). */
+	FVector2f MapPan = FVector2f::ZeroVector;
 
 	// --- language ---------------------------------------------------------------------------
 	EKioskLanguage Language() const;
@@ -70,7 +72,12 @@ public:
 	void ContinueTopUp();
 	void QuickTopUp(int32 Cents);
 	void SelectConcession(int32 Index);
-	void ContinueFromPayment();
+	void GoToPayment();
+	void OpenTopUpKeypad(bool bOpen);
+	void PressTopUpDigit(int32 Digit);
+	void BackspaceTopUp();
+	static constexpr int32 MaxTopUpDollars = 500;
+	static constexpr int32 MinTopUpDollars = 5;
 
 	// --- derived data -----------------------------------------------------------------------
 	int32 RiderCount() const { return State.Adults + State.Children + State.Seniors; }
@@ -79,6 +86,8 @@ public:
 	int32 TicketTotalCents() const;
 	int32 TotalCents() const;
 	int32 ChangeCents() const;
+	/** Cash returned after leaving the cash screen, shown as a one-off banner on the next screen (0 = none). */
+	int32 ReturnedCashBanner() const { return (ReturnedCash > 0 && NavCount == ReturnedAtNav) ? ReturnedCash : 0; }
 	int32 CardBalanceCents() const { return CardBalance; }
 	int32 NewBalanceCents() const { return CardBalance + State.TopUpCents; }
 	FText TicketLabel() const;
@@ -109,6 +118,7 @@ public:
 
 private:
 	void ResetState();
+	void NoteReturnedCash();
 	void EnterScreen(EKioskScreen Screen);
 	void BeginProcessing();
 	void FinishProcessing();
@@ -121,5 +131,8 @@ private:
 	bool bCallActive = false;
 	bool bHelpFullscreen = false;
 	int32 CardBalance = 320;
+	int32 ReturnedCash = 0;
+	int32 ReturnedAtNav = -1;
+	int32 NavCount = 0;
 	EKioskLanguage Lang = EKioskLanguage::English;
 };

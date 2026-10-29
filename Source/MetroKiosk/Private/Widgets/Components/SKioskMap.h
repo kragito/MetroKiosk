@@ -13,6 +13,7 @@ public:
 	SLATE_BEGIN_ARGS(SKioskMap) {}
 		SLATE_ARGUMENT(int32, SelectedStation)
 		SLATE_ARGUMENT(float, Zoom)
+		SLATE_ARGUMENT(TSharedPtr<FKioskSession>, Session)
 		SLATE_EVENT(FOnKioskStationTapped, OnStationTapped)
 	SLATE_END_ARGS()
 
@@ -22,6 +23,8 @@ public:
 		FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override;
 	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override { return FVector2D(900.f, 600.f); }
 	virtual FReply OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
+	virtual FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FCursorReply OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const override;
 
 private:
@@ -30,5 +33,10 @@ private:
 
 	int32 SelectedStation = INDEX_NONE;
 	float Zoom = 1.f;
+	TSharedPtr<FKioskSession> Session;
+	FVector2f DragLast = FVector2f::ZeroVector;
+	FVector2f DragStart = FVector2f::ZeroVector;
+	bool bPressed = false;
+	bool bDragging = false;
 	FOnKioskStationTapped OnStationTapped;
 };

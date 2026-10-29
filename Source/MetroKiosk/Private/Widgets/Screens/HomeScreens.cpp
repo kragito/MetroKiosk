@@ -38,7 +38,7 @@ namespace
 				[
 					Icon(EKioskIcon::ArrowRight, 70.f, C.Ink, 5.f)
 				]
-				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(30.f, 0.f, 20.f, 26.f)
+				+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Bottom).Padding(30.f, 0.f, 30.f, 26.f)
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight()[ Text(Title, 40.f, true, C.Ink) ]
@@ -63,18 +63,18 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		+ SOverlay::Slot().VAlign(VAlign_Bottom).Padding(40.f, 0.f, 36.f, 40.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("One-time ticket"), 48.f, true, C.White) ]
+			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("One-time ticket"), 44.f, true, C.White) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
 			[
 				TextWrap(KT("Printed ticket for one trip. Choose one-way, round trip or a day pass."), 24.f, false, C.White, 1.0f)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
-				Pill(FText::FromString(TEXT("One-way · $1.68")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 54.f, 14.f))
+				Pill(FText::Format(INVTEXT("{0} · $1.68"), KT("One-way")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 54.f, 14.f))
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
-				Pill(FText::FromString(TEXT("Day pass · $8.00")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 38.f, 14.f))
+				Pill(FText::Format(INVTEXT("{0} · $8.00"), KT("Day pass")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 38.f, 14.f))
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
@@ -196,24 +196,23 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(30.f, 0.f, 0.f, 0.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ SNew(SBox).MaxDesiredWidth(1000.f)[ TextWrap(KT("Or place your card on the reader to begin"), 46.f, true, C.Ink) ] ]
-			+ SVerticalBox::Slot().AutoHeight()[ Text(KT("We'll show your balance and what you can do with it"), 27.f, false, C.Muted) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Or place your card on the reader to begin"), 40.f, true, C.Ink) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Text(KT("We'll show your balance and what you can do with it"), 25.f, false, C.Muted) ]
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 50.f, 0.f)
-		[
-			SimControl(FText::FromString(TEXT("SIMULATE: tap card on reader")), FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }))
-		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 130.f, 0.f)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 60.f, 0.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Text(KT("Reader here"), 31.f, true, C.Ink) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 8.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+			[
+				SimControl(KT("SIMULATE: tap card on reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }))
+			]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 10.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth()[ Icon(EKioskIcon::DoubleChevronDown, 34.f, C.Primary, 4.f) ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(10.f, 0.f, 0.f, 0.f)[ Icon(EKioskIcon::DoubleChevronDown, 34.f, C.Primary, 4.f) ]
-				+ SHorizontalBox::Slot().AutoWidth().Padding(10.f, 0.f, 0.f, 0.f)[ Icon(EKioskIcon::DoubleChevronDown, 34.f, C.Primary, 4.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("Reader here"), 28.f, true, C.Ink) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)[ Icon(EKioskIcon::DoubleChevronDown, 34.f, C.Primary, 4.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(6.f, 0.f, 0.f, 0.f)[ Icon(EKioskIcon::DoubleChevronDown, 34.f, C.Primary, 4.f) ]
 			]
 		],
 		C.Surface, 0.f);
@@ -291,7 +290,7 @@ namespace
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
 				[
 					bBestValue
-						? Pill(FText::FromString(TEXT("Best for 3+ rides")), C.PrimaryTint, C.Ink, 18.f, true, C.Transparent, FMargin(20.f, 8.f))
+						? Pill(KT("Best for 3+ rides"), C.PrimaryTint, C.Ink, 18.f, true, C.Transparent, FMargin(20.f, 8.f))
 						: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 				]
 			]
@@ -334,25 +333,25 @@ void STicketTypeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::OneWay, EKioskIcon::ArrowRight, KT("One-way"),
-						FText::FromString(TEXT("One trip from here to one station.\nValid for 2 hours.")), FText::GetEmpty(), FText::FromString(TEXT("$1.68")), false)
+						KT("One trip from here to one station.\nValid for 2 hours."), FText::GetEmpty(), FText::FromString(TEXT("$1.68")), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::RoundTrip, EKioskIcon::Swap, KT("Round trip"),
-						FText::FromString(TEXT("There and back between two stations.\nReturn valid until 12:00 a.m. today.\n30% discount.")),
+						KT("There and back between two stations.\nReturn valid until 12:00 a.m. today.\n30% discount."),
 						FText::FromString(TEXT("$2.56 - $5.14")), FText::FromString(TEXT("$1.79 - $3.60")), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 0.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::DayPass, EKioskIcon::Clock, KT("Day pass"),
-						FText::FromString(TEXT("Unlimited rides on every line until 12:00 a.m. tonight. No destination needed.")),
+						KT("Unlimited rides on every line until 12:00 a.m. tonight. No destination needed."),
 						FText::GetEmpty(), FText::FromString(TEXT("$8.00")), true)
 				]
 			]
 		]
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)
 		[
-			Text(FText::FromString(TEXT("Prices are for one adult. Add children or seniors on the Review step.")), 17.f, false, C.Muted)
+			Text(KT("Prices are for one adult. Add children or seniors on the Review step."), 17.f, false, C.Muted)
 		]
 	];
 }

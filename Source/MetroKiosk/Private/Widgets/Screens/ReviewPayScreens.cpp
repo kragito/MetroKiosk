@@ -88,8 +88,8 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 
 	const int32 Minutes = bHasDestination ? Stations[Session->State.Destination].Minutes + 1 : 0;
 	const FText Note = bHasDestination
-		? FText::Format(LOCTEXT("ValidNote", "Valid for 2 hours after purchase. About {0} min on the {1} line."),
-			FText::AsNumber(Minutes), FText::FromString(FKioskData::Line(Stations[Session->State.Destination].FirstLine()).ColorName))
+		? FText::Format(LOCTEXT("ValidNote", "Valid for 2 hours after purchase. About {0} min on the {1}."),
+			FText::AsNumber(Minutes), FText::FromString(FKioskData::Line(Stations[Session->State.Destination].FirstLine()).FullName))
 		: LOCTEXT("ValidDay", "Unlimited rides on every line until 12:00 a.m. tonight.");
 
 	TSharedRef<SVerticalBox> Trip = SNew(SVerticalBox);
@@ -128,7 +128,6 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 		]
 	];
 
-	auto Count = [&](int32 Value) { return Value; };
 	const FKioskState& State = Session->State;
 	const int32 Riders = Session->RiderCount();
 
@@ -150,17 +149,17 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 14.f)[ Text(KT("Who is riding?"), 20.f, true, C.Ink) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
 				[
-					RiderRow(Session, 0, KT("Adult"), FText::Format(LOCTEXT("EachAdult", "{0} each"), FKioskSession::Money(Session->AdultFareCents())), Count(State.Adults))
+					RiderRow(Session, 0, KT("Adult"), FText::Format(LOCTEXT("EachAdult", "{0} each"), FKioskSession::Money(Session->AdultFareCents())), State.Adults)
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 12.f)
 				[
 					RiderRow(Session, 1, KT("Child (5–17)"),
-						FText::Format(LOCTEXT("EachChild", "{0} each · 30% off · under 5 ride free"), FKioskSession::Money(Session->ReducedFareCents())), Count(State.Children))
+						FText::Format(LOCTEXT("EachChild", "{0} each · 30% off · under 5 ride free"), FKioskSession::Money(Session->ReducedFareCents())), State.Children)
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
 					RiderRow(Session, 2, KT("Senior (65+)"),
-						FText::Format(LOCTEXT("EachSenior", "{0} each · 30% off"), FKioskSession::Money(Session->ReducedFareCents())), Count(State.Seniors))
+						FText::Format(LOCTEXT("EachSenior", "{0} each · 30% off"), FKioskSession::Money(Session->ReducedFareCents())), State.Seniors)
 				]
 				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 				+ SVerticalBox::Slot().AutoHeight()
@@ -183,7 +182,7 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 						.RightIcon(EKioskIcon::ArrowRight)
 						.FontPx(31.f)
 						.Width(390.f).Height(94.f)
-						.OnClicked_Lambda([Session]() { Session->ContinueFromPayment(); return FReply::Handled(); })
+						.OnClicked_Lambda([Session]() { Session->GoToPayment(); return FReply::Handled(); })
 					]
 				]
 			]
@@ -252,7 +251,7 @@ void SPayMethodScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
 			[
-				Text(FText::FromString(TEXT("Use any method below. The lit slot on the kiosk shows you where.")), 19.f, false, C.Ink)
+				Text(KT("Use any method below. The lit slot on the kiosk shows you where."), 19.f, false, C.Ink)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -265,17 +264,17 @@ void SPayMethodScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 18.f, 0.f)
 			[
 				PayCard(Session, EPayMethod::Tap, EKioskIcon::Contactless, KT("Tap card or phone"),
-					FText::FromString(TEXT("Hold it flat on the reader until you hear a beep.")), KT("Pay with card"), true)
+					KT("Hold it flat on the reader until you hear a beep."), KT("Pay with card"), true)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 18.f, 0.f)
 			[
 				PayCard(Session, EPayMethod::Chip, EKioskIcon::ChipCard, KT("Insert chip card"),
-					FText::FromString(TEXT("Chip first, facing up. Leave it in until the screen says to remove it.")), FText::FromString(TEXT("Pay with chip card/NETs")), false)
+					KT("Chip first, facing up. Leave it in until the screen says to remove it."), KT("Pay with chip card/NETs"), false)
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 0.f, 0.f)
 			[
 				PayCard(Session, EPayMethod::Cash, EKioskIcon::Cash, KT("Pay with cash"),
-					FText::FromString(TEXT("Bills up to $20 and coins. Change drops into the tray.")), KT("Pay with cash"), false)
+					KT("Bills up to $20 and coins. Change drops into the tray."), KT("Pay with cash"), false)
 			]
 		]
 	];
