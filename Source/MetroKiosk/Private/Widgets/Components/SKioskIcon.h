@@ -45,6 +45,13 @@ enum class EKioskIcon : uint8
 	ChipCard,
 	Reader,
 	Coin,
+	Star,
+	Bag,
+	Cross,
+	Plane,
+	Cap,
+	Fork,
+	Pin,
 };
 
 class SKioskIcon : public SLeafWidget

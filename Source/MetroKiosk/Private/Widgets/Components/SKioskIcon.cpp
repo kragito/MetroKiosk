@@ -268,6 +268,50 @@ namespace
 			Ip.RRect(0.06f, 0.3f, 0.88f, 0.4f, 0.1f);
 			Ip.RRect(0.24f, 0.44f, 0.52f, 0.12f, 0.05f, true);
 			break;
+		case EKioskIcon::Star:
+		{
+			TArray<V> Points;
+			for (int32 Index = 0; Index < 10; ++Index)
+			{
+				const float Radius = (Index % 2 == 0) ? 0.44f : 0.19f;
+				const float Angle = FMath::DegreesToRadians(-90.f + Index * 36.f);
+				Points.Add(V(0.5f + Radius * FMath::Cos(Angle), 0.54f + Radius * FMath::Sin(Angle)));
+			}
+			Ip.Poly(Points, true);
+			break;
+		}
+		case EKioskIcon::Bag:
+			Ip.RRect(0.18f, 0.34f, 0.64f, 0.54f, 0.06f);
+			Ip.Arc(0.5f, 0.36f, 0.15f, 0.17f, 180.f, 360.f);
+			break;
+		case EKioskIcon::Cross:
+			Ip.RRect(0.38f, 0.12f, 0.24f, 0.76f, 0.04f, true);
+			Ip.RRect(0.12f, 0.38f, 0.76f, 0.24f, 0.04f, true);
+			break;
+		case EKioskIcon::Plane:
+			Ip.Line(0.5f, 0.1f, 0.5f, 0.9f);
+			Ip.Poly({ V(0.08f, 0.62f), V(0.5f, 0.38f), V(0.92f, 0.62f) });
+			Ip.Poly({ V(0.32f, 0.88f), V(0.5f, 0.76f), V(0.68f, 0.88f) });
+			break;
+		case EKioskIcon::Cap:
+			Ip.Poly({ V(0.5f, 0.2f), V(0.94f, 0.4f), V(0.5f, 0.6f), V(0.06f, 0.4f) }, true);
+			Ip.Poly({ V(0.24f, 0.52f), V(0.24f, 0.74f), V(0.5f, 0.84f), V(0.76f, 0.74f), V(0.76f, 0.52f) });
+			Ip.Line(0.94f, 0.4f, 0.94f, 0.7f);
+			break;
+		case EKioskIcon::Fork:
+			Ip.Line(0.2f, 0.12f, 0.2f, 0.4f);
+			Ip.Line(0.34f, 0.12f, 0.34f, 0.4f);
+			Ip.Line(0.48f, 0.12f, 0.48f, 0.4f);
+			Ip.Arc(0.34f, 0.4f, 0.14f, 0.12f, 0.f, 180.f);
+			Ip.Line(0.34f, 0.52f, 0.34f, 0.88f);
+			Ip.Poly({ V(0.72f, 0.12f), V(0.84f, 0.3f), V(0.84f, 0.52f), V(0.72f, 0.52f) }, true);
+			Ip.Line(0.72f, 0.52f, 0.72f, 0.88f);
+			break;
+		case EKioskIcon::Pin:
+			Ip.Arc(0.5f, 0.38f, 0.28f, 0.28f, 140.f, 400.f);
+			Ip.Poly({ V(0.285f, 0.56f), V(0.5f, 0.9f), V(0.715f, 0.56f) });
+			Ip.Dot(0.5f, 0.38f, 0.09f);
+			break;
 		default:
 			break;
 		}
