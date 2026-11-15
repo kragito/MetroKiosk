@@ -7,29 +7,28 @@
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Layout/SSpacer.h"
 
-#define LOCTEXT_NAMESPACE "KioskHelp"
-
 using namespace KioskUI;
 
 namespace
 {
-	TSharedRef<SWidget> ActionCard(const TSharedRef<FKioskSession>& Session, EKioskIcon IconType, const FText& Label, bool bActive, TFunction<void()> Toggle)
+	TSharedRef<SWidget> ActionCard(const TSharedRef<FKioskSession>& Session, EKioskIcon IconType, const FText& Label, const FName& Tag, bool bActive, TFunction<void()> Toggle)
 	{
 		const FKioskColors& C = KC();
-		return SNew(SBox).HeightOverride(100.f)
+		return SNew(SBox).MinDesiredHeight(100.f)
 		[
 			Panel(
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::Card)
 				.Label(Label)
+				.ButtonTag(Tag)
 				.Padding(FMargin(0.f))
 				.OnClicked_Lambda([Toggle]() { Toggle(); return FReply::Handled(); })
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, 34.f, C.Ink, 3.f) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)[ Text(Label, 22.f, true, C.Ink) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconSm, C.Ink, 3.f) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 10.f, 0.f, 10.f)[ TextWrap(Label, KioskType::H3, true, C.Ink, 1.f) ]
 				],
-				bActive ? C.HelpTint : C.Surface, 18.f, bActive ? C.Ink : C.BorderStrong, bActive ? 3.f : 2.f, FMargin(28.f, 0.f))
+				bActive ? C.HelpTint : C.Surface, KioskLayout::InnerRadius, bActive ? C.Ink : C.BorderStrong, bActive ? 3.f : 2.f, FMargin(28.f, 0.f))
 		];
 	}
 }
@@ -40,9 +39,9 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
 
 	const FText Caption = (Session->State.Flow == EKioskFlow::Ticket && Stations.IsValidIndex(Session->State.Destination))
-		? FText::Format(LOCTEXT("CaptionTicket", "Hi, I can see you're buying a {0} ticket to {1}. How can I help?"),
+		? FText::Format(KT("Hi, I can see you're buying a {0} ticket to {1}. How can I help?"),
 			FText::FromString(Session->TicketLabel().ToString().ToLower()), FText::FromString(Stations[Session->State.Destination].Name))
-		: LOCTEXT("CaptionGeneric", "Hi, I can see you're in the middle of a purchase. How can I help?");
+		: KT("Hi, I can see you're in the middle of a purchase. How can I help?");
 
 	TSharedRef<SWidget> Video = Panel(
 		SNew(SOverlay)
@@ -56,8 +55,8 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 					TextDyn([Session]()
 					{
 						const int32 Seconds = Session->CallSeconds();
-						return FText::Format(LOCTEXT("Connected", "Connected · {0}:{1}"), FText::AsNumber(Seconds / 60), FText::FromString(FString::Printf(TEXT("%02d"), Seconds % 60)));
-					}, 21.f, true, C.Ink)
+						return FText::Format(KT("Connected · {0}:{1}"), FText::AsNumber(Seconds / 60), FText::FromString(FString::Printf(TEXT("%02d"), Seconds % 60)));
+					}, KioskType::Body, true, C.Ink)
 				],
 				C.White, 22.f, C.Transparent, 0.f, FMargin(22.f, 10.f))
 		]
@@ -65,35 +64,35 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Icon(EKioskIcon::Person, 90.f, C.White, 4.f) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 22.f, 0.f, 0.f)[ Text(LOCTEXT("VideoFeed", "[Staff video feed]"), 16.f, false, C.White) ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 22.f, 0.f, 0.f)[ Text(KT("[Staff video feed]"), KioskType::Caption, false, C.White) ]
 		],
-		C.Video, 28.f);
+		C.Video, KioskLayout::CardRadius);
 
 	ChildSlot
-	.Padding(73.f, 50.f, 75.f, 40.f)
+	.Padding(KioskLayout::PageX, 44.f, KioskLayout::PageX, 36.f)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.58f).Padding(0.f, 0.f, 46.f, 0.f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().FillHeight(1.f)[ Video ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)
 			[
-				SNew(SBox).HeightOverride(180.f)
+				SNew(SBox).MinDesiredHeight(180.f)
 				[
-					Panel(
+					Card(
 						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ Text(LOCTEXT("LiveCaptions", "LIVE CAPTIONS"), 14.f, true, C.Muted) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
+						+ SVerticalBox::Slot().AutoHeight()[ Text(KT("LIVE CAPTIONS"), KioskType::Caption, true, C.Muted) ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 						[
 							Session->bCaptionsOn
 								? StaticCastSharedRef<SWidget>(
 									SNew(SHorizontalBox)
-									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Text(LOCTEXT("StaffSays", "Staff:"), 20.f, true, C.Help) ]
-									+ SHorizontalBox::Slot().FillWidth(1.f).Padding(22.f, 0.f, 0.f, 0.f)[ TextWrap(Caption, 20.f, false, C.Ink, 1.5f) ])
-								: StaticCastSharedRef<SWidget>(Text(LOCTEXT("CaptionsOff", "Captions are off."), 20.f, false, C.Muted))
+									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Text(KT("Staff:"), KioskType::Body, true, C.Help) ]
+									+ SHorizontalBox::Slot().FillWidth(1.f).Padding(20.f, 0.f, 0.f, 0.f)[ TextWrap(Caption, KioskType::Body, false, C.Ink, 1.4f) ])
+								: StaticCastSharedRef<SWidget>(Text(KT("Captions are off."), KioskType::Body, false, C.Muted))
 						],
-						C.Surface, 24.f, C.BorderStrong, 2.f, FMargin(34.f, 28.f))
+						C.Surface, C.BorderStrong, 2.f, FMargin(34.f, 26.f))
 				]
 			]
 		]
@@ -102,39 +101,39 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				Panel(
+				Card(
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 6.f, 22.f, 0.f)[ Icon(EKioskIcon::Pause, 34.f, C.Help, 3.f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 6.f, 22.f, 0.f)[ Icon(EKioskIcon::Pause, KioskLayout::IconSm, C.Help, 3.f) ]
 					+ SHorizontalBox::Slot().FillWidth(1.f)
 					[
 						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Your purchase is paused."), 29.f, true, C.Ink) ]
+						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Your purchase is paused."), KioskType::H2, true, C.Ink, 1.f) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 						[
-							TextWrap(LOCTEXT("PausedBody", "Nothing has been charged. You can pick up where you left off."), 21.f, false, C.Ink, 1.3f)
+							TextWrap(Session->HelpPausedBody(), KioskType::Body, false, C.Ink, 1.25f)
 						]
 					],
-					C.HelpTint, 22.f, C.Transparent, 0.f, FMargin(34.f, 30.f))
+					C.HelpTint, C.Transparent, 0.f, FMargin(30.f, 26.f))
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
 			[
-				ActionCard(Session, EKioskIcon::Mic, Session->bMicMuted ? LOCTEXT("Unmute", "Unmute microphone") : KT("Mute microphone"), Session->bMicMuted,
+				ActionCard(Session, EKioskIcon::Mic, Session->bMicMuted ? KT("Unmute microphone") : KT("Mute microphone"), TEXT("Mute microphone"), Session->bMicMuted,
 					[Session]() { Session->bMicMuted = !Session->bMicMuted; Session->NotifyChanged(); })
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
-				ActionCard(Session, EKioskIcon::Person, Session->bStaffRequested ? LOCTEXT("StaffComing", "Staff are on their way") : KT("Ask staff to come here"), Session->bStaffRequested,
+				ActionCard(Session, EKioskIcon::Person, Session->bStaffRequested ? KT("Staff are on their way") : KT("Ask staff to come here"), TEXT("Ask staff to come here"), Session->bStaffRequested,
 					[Session]() { Session->bStaffRequested = !Session->bStaffRequested; Session->NotifyChanged(); })
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
-				ActionCard(Session, EKioskIcon::Captions, Session->bCaptionsOn ? KT("Captions are on") : LOCTEXT("CaptionsOffLabel", "Captions are off"), false,
+				ActionCard(Session, EKioskIcon::Captions, Session->bCaptionsOn ? KT("Captions are on") : KT("Captions are off"), TEXT("Captions"), false,
 					[Session]() { Session->bCaptionsOn = !Session->bCaptionsOn; Session->NotifyChanged(); })
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right)
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				Text(LOCTEXT("Footnote", "Or visit the staffed office at Gate B, or call [HELPLINE NUMBER]."), 15.f, false, C.Muted)
+				TextWrap(KT("Or visit the staffed office at Gate B, or use the Help button on the front of the kiosk."), KioskType::Caption, false, C.Muted, 1.15f, ETextJustify::Right)
 			]
 		]
 	];
@@ -166,4 +165,3 @@ TSharedRef<SWidget> MakeKioskScreen(EKioskScreen Screen, const TSharedRef<FKiosk
 	}
 }
 
-#undef LOCTEXT_NAMESPACE

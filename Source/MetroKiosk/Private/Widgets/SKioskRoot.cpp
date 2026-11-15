@@ -1,13 +1,12 @@
 #include "SKioskRoot.h"
 
+#include "KioskLoc.h"
 #include "KioskStyle.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Components/SKioskChrome.h"
 #include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Screens/KioskScreens.h"
-
-#define LOCTEXT_NAMESPACE "KioskRoot"
 
 void SKioskRoot::Construct(const FArguments& InArgs, const TSharedRef<FKioskSession>& InSession)
 {
@@ -23,6 +22,15 @@ SKioskRoot::~SKioskRoot()
 	{
 		Session->OnChanged.Remove(ChangedHandle);
 	}
+}
+
+FReply SKioskRoot::OnPreviewMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
+{
+	if (Session.IsValid())
+	{
+		Session->NoteActivity();
+	}
+	return FReply::Unhandled();
 }
 
 EActiveTimerReturnType SKioskRoot::OnFrame(double InCurrentTime, float InDeltaTime)
@@ -98,10 +106,8 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 			bShowFooter = false;
 			break;
 		case EKioskScreen::TicketType:
-		case EKioskScreen::ScanCard:
 			Config.bBack = true;
 			break;
-		case EKioskScreen::CardOptions:
 		case EKioskScreen::DoneLiftCard:
 			break;
 		case EKioskScreen::Receipt:
@@ -146,15 +152,19 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 16.f, 0.f)[ Icon(EKioskIcon::Tray, 34.f, C.Ink, 3.f) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					Text(FText::Format(LOCTEXT("CashReturned", "Your {0} has been returned to the collection tray."), FKioskSession::Money(Returned)), 24.f, true, C.Ink)
+					Text(FText::Format(KT("Your {0} has been returned to the collection tray."), FKioskSession::Money(Returned)), KioskType::H3, true, C.Ink)
 				],
-				C.AmberFill, 20.f, C.AmberStroke, 2.f, FMargin(30.f, 16.f))
+				C.AmberFill, KioskLayout::CardRadius, C.AmberStroke, 2.f, FMargin(30.f, 16.f))
 		];
 	}
 
 	if (S->IsCallActive() && !bHelp)
 	{
 		Canvas->AddSlot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 0.f, 14.f, 0.f)[ BuildCallPip() ];
+	}
+	if (S->IsIdlePrompt() && !bHelp)
+	{
+		Canvas->AddSlot()[ BuildIdlePrompt() ];
 	}
 	return Canvas;
 }
@@ -170,7 +180,7 @@ TSharedRef<SWidget> SKioskRoot::BuildCallPip()
 		Panel(
 			SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Card)
-			.Label(LOCTEXT("PipLabel", "Return to the help call"))
+			.Label(KT("Return to the help call"))
 			.Padding(FMargin(0.f))
 			.OnClicked_Lambda([S]() { S->ResumeCall(); return FReply::Handled(); })
 			[
@@ -182,7 +192,7 @@ TSharedRef<SWidget> SKioskRoot::BuildCallPip()
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)[ Dot(C.Primary, 11.f) ]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 						[
-							TextDyn([S]() { return FText::FromString(FString::Printf(TEXT("%d:%02d"), S->CallSeconds() / 60, S->CallSeconds() % 60)); }, 15.f, true, C.Ink)
+							TextDyn([S]() { return FText::FromString(FString::Printf(TEXT("%d:%02d"), S->CallSeconds() / 60, S->CallSeconds() % 60)); }, KioskType::Caption, true, C.Ink)
 						],
 						C.White, 14.f, C.Transparent, 0.f, FMargin(14.f, 5.f))
 				]
@@ -190,11 +200,73 @@ TSharedRef<SWidget> SKioskRoot::BuildCallPip()
 				[
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Icon(EKioskIcon::Person, 48.f, C.White, 3.f) ]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ Text(LOCTEXT("PipFeed", "[Staff video feed]"), 14.f, false, C.White) ]
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ Text(KT("[Staff video feed]"), KioskType::Caption, false, C.White) ]
 				]
 			],
-			C.Video, 14.f)
+			C.Video, KioskLayout::InnerRadius)
 	];
 }
 
-#undef LOCTEXT_NAMESPACE
+TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()
+{
+	using namespace KioskUI;
+	const FKioskColors& C = KC();
+	const TSharedRef<FKioskSession> S = Session.ToSharedRef();
+
+	return SNew(SBorder)
+		.BorderImage(FKioskStyle::Get().Solid(FLinearColor(0.05f, 0.08f, 0.15f, 0.62f)))
+		.BorderBackgroundColor(FLinearColor::White)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Center)
+		[
+			SNew(SBox).WidthOverride(900.f)
+			[
+				Card(
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
+					[
+						SNew(SBox).WidthOverride(96.f).HeightOverride(96.f)
+						[
+							Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Clock, 56.f, C.White, 5.f) ], C.AmberStrong, 48.f)
+						]
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Center)
+					[
+						TextWrap(KT("Are you still there?"), KioskType::H1, true, C.Ink, 1.f, ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Center)
+					[
+						TextDyn([S]() { return FText::Format(KT("Your purchase will be cancelled and the kiosk will reset in {0} s."), FText::AsNumber(S->IdlePromptSecondsLeft())); },
+							KioskType::Body, false, C.Ink, ETextJustify::Center)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 28.f, 0.f, 0.f)
+					[
+						ProgressBar([S]() { return static_cast<float>(S->IdlePromptSecondsLeft()) / FKioskSession::IdlePromptSeconds; }, 0.f, 14.f, C.Disabled, C.AmberStrong)
+					]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 34.f, 0.f, 0.f)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 12.f, 0.f)
+						[
+							SNew(SKioskButton)
+							.Kind(EKioskButtonKind::Primary)
+							.Label(KT("Continue"))
+							.ButtonTag(TEXT("Continue"))
+							.OnClicked_Lambda([S]() { S->DismissIdlePrompt(); return FReply::Handled(); })
+						]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(12.f, 0.f, 0.f, 0.f)
+						[
+							SNew(SKioskButton)
+							.Kind(EKioskButtonKind::Outline)
+							.Label(KT("Start over"))
+							.LeftIcon(EKioskIcon::Restart)
+							.ButtonTag(TEXT("Start over"))
+							.MinHeight(KioskLayout::BtnPrimaryH)
+							.OnClicked_Lambda([S]() { S->ReturnHome(true); return FReply::Handled(); })
+						]
+					],
+					C.Surface, C.Ink, 3.f, FMargin(54.f, 44.f))
+			]
+		];
+}
+

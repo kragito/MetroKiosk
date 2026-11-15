@@ -58,7 +58,7 @@ namespace
 				Tamil.Typeface.AppendFont(BoldName, Nirmala, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
 				Tamil.Typeface.Fonts[1].Font.SetSubFaceIndex(1);
 				Tamil.CharacterRanges.Add(FInt32Range(FInt32RangeBound::Inclusive(0x0B80), FInt32RangeBound::Inclusive(0x0BFF)));
-				Tamil.ScalingFactor = 0.78f;
+				Tamil.ScalingFactor = 0.9f;
 				Font->SubTypefaces.Add(Tamil);
 			}
 		}
@@ -93,7 +93,7 @@ FKioskColors::FKioskColors()
 	, HelpTint(Hex(TEXT("E3EDF8")))
 	, Band(Hex(TEXT("DAE5F1")))
 	, Disabled(Hex(TEXT("D5DFEA")))
-	, DisabledInk(Hex(TEXT("1B2A4A")))
+	, DisabledInk(Hex(TEXT("5F6F88")))
 	, Danger(Hex(TEXT("C62828")))
 	, AmberFill(Hex(TEXT("FFF3CD")))
 	, AmberStroke(Hex(TEXT("E0A100")))
@@ -241,6 +241,12 @@ const FButtonStyle& FKioskStyle::ButtonStyle(EKioskButtonKind Kind)
 	case EKioskButtonKind::KeyMuted:
 		Look = { C.Band, Darker(C.Band, 1.04f), Darker(C.Band, 0.92f), C.BorderStrong, 2.f, 12.f, false };
 		break;
+	case EKioskButtonKind::Compact:
+		Look = { C.Surface, C.HelpTint, C.Band, C.Ink, 2.f, 14.f, false };
+		break;
+	case EKioskButtonKind::Link:
+		Look = { Clear, FLinearColor(C.Ink.R, C.Ink.G, C.Ink.B, 0.04f), FLinearColor(C.Ink.R, C.Ink.G, C.Ink.B, 0.1f), Clear, 0.f, 12.f, false };
+		break;
 	}
 
 	TSharedPtr<FButtonStyle> Style = MakeShared<FButtonStyle>();
@@ -248,13 +254,14 @@ const FButtonStyle& FKioskStyle::ButtonStyle(EKioskButtonKind Kind)
 	// Touch kiosk: no hover feedback, only a pressed state.
 	Style->SetHovered(*Round(Look.Fill, Look.Radius, Look.Border, Look.BorderWidth));
 	Style->SetPressed(*Round(Look.Pressed, Look.Radius, Look.Border, Look.BorderWidth));
-	if (Look.bGreyWhenDisabled)
+	if (Kind == EKioskButtonKind::Card || Kind == EKioskButtonKind::Link)
 	{
-		Style->SetDisabled(*Round(C.Disabled, Look.Radius));
+		Style->SetDisabled(*Round(Look.Fill, Look.Radius, Look.Border, Look.BorderWidth));
 	}
 	else
 	{
-		Style->SetDisabled(*Round(Look.Fill, Look.Radius, Look.Border, Look.BorderWidth));
+		// Every disabled control looks the same: flat grey with a hairline, so it can never be mistaken for a choice.
+		Style->SetDisabled(*Round(C.Disabled, Look.Radius, Look.Border.A > 0.f ? C.BorderStrong : Clear, Look.Border.A > 0.f ? 2.f : 0.f));
 	}
 	Style->SetNormalPadding(FMargin(0.f));
 	Style->SetPressedPadding(FMargin(0.f));

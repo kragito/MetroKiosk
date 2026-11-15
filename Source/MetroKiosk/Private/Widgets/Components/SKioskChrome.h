@@ -56,5 +56,7 @@ public:
 	void Construct(const FArguments& InArgs, const TSharedRef<FKioskSession>& InSession);
 };
 
-/** Row of four language pills (used by the footer and the Home language card). */
-TSharedRef<SWidget> MakeLanguagePills(const TSharedRef<FKioskSession>& Session, float Height, float FontPx, float Gap);
+/** One language pill: same style, height and label size in the footer and on Home. bFill stretches it to its slot. */
+TSharedRef<SWidget> MakeLanguagePill(const TSharedRef<FKioskSession>& Session, EKioskLanguage Language, bool bFill);
+/** Row of four equal-width language pills (the footer). */
+TSharedRef<SWidget> MakeLanguagePills(const TSharedRef<FKioskSession>& Session);

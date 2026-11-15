@@ -19,11 +19,14 @@ public:
 
 	virtual bool SupportsKeyboardFocus() const override { return true; }
 	TSharedRef<FKioskSession> GetSession() const { return Session.ToSharedRef(); }
+	/** Any touch on the kiosk counts as activity for the "Are you still there?" timer. */
+	virtual FReply OnPreviewMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 
 private:
 	void Rebuild();
 	TSharedRef<SWidget> BuildCanvas();
 	TSharedRef<SWidget> BuildCallPip();
+	TSharedRef<SWidget> BuildIdlePrompt();
 	EActiveTimerReturnType OnFrame(double InCurrentTime, float InDeltaTime);
 
 	TSharedPtr<FKioskSession> Session;

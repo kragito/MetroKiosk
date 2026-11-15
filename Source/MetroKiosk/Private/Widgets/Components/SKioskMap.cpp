@@ -76,8 +76,8 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	}
 
 	// Station dots and labels
-	const FSlateFontInfo LabelFont = Style.Font(14.f, true);
-	const FSlateFontInfo MarkerFont = Style.Font(17.f, true);
+	const FSlateFontInfo LabelFont = Style.Font(KioskType::MapLabel, true);
+	const FSlateFontInfo MarkerFont = Style.Font(KioskType::Caption, true);
 	const TSharedRef<FSlateFontMeasure> FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
 	for (int32 Index = 0; Index < Stations.Num(); ++Index)
 	{
@@ -111,14 +111,14 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		{
 			const FString Text = KT("You are here").ToString();
 			const float TextWidth = FontMeasure->Measure(Text, MarkerFont).X;
-			const FVector2f BoxSize(TextWidth + 22.f, 30.f);
+			const FVector2f BoxSize(TextWidth + 22.f, 32.f);
 			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f);
 			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
 			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
-				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 4.f))),
+				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 5.f))),
 				Text, MarkerFont, ESlateDrawEffect::None, C.White);
 		}
 		else if (!bDim && (bSelected || bInterchange || bOnFilter || Zoom > 1.2f))
@@ -128,13 +128,13 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				TEXT("Botanic Gardens"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Buona Vista"), TEXT("HarbourFront") };
 			const float Width = FontMeasure->Measure(Station.Name, LabelFont).X;
 			const float LabelX = LeftLabels.Contains(Station.Name) ? (-Draw - 6.f - Width) : (Draw + 6.f);
-			const FVector2f LabelPos = Pos + FVector2f(LabelX, -9.f);
+			const FVector2f LabelPos = Pos + FVector2f(LabelX, -10.f);
 			const FSlateBrush* PillBrush = Style.Round(C.MapLabelBg, 5.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
-				AllottedGeometry.ToPaintGeometry(FVector2f(Width + 8.f, 20.f), FSlateLayoutTransform(LabelPos + FVector2f(-4.f, -1.f))), PillBrush,
+				AllottedGeometry.ToPaintGeometry(FVector2f(Width + 8.f, 24.f), FSlateLayoutTransform(LabelPos + FVector2f(-4.f, -2.f))), PillBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
 			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(FVector2f(200.f, 20.f), FSlateLayoutTransform(LabelPos)),
+				AllottedGeometry.ToPaintGeometry(FVector2f(220.f, 24.f), FSlateLayoutTransform(LabelPos)),
 				Station.Name, LabelFont, ESlateDrawEffect::None, bSelected ? C.Primary : C.Ink);
 		}
 	}

@@ -11,8 +11,6 @@
 #include "Widgets/Components/SKioskMap.h"
 #include "Widgets/Layout/SSpacer.h"
 
-#define LOCTEXT_NAMESPACE "KioskMap"
-
 using namespace KioskUI;
 
 namespace
@@ -36,13 +34,13 @@ namespace
 					.Padding(FMargin(12.f, 0.f))
 					.OnClicked_Lambda([Session, Line]() { Session->SetLineFilter(Line); return FReply::Handled(); })
 					[
-						SNew(SBox).VAlign(VAlign_Center)[ LineBadge(Line, 32.f) ]
+						SNew(SBox).VAlign(VAlign_Center)[ LineBadge(Line) ]
 					]
 				]
 			];
 		}
 		return SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Highlight one line (optional)"), 17.f, true, C.Muted) ]
+			+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Highlight one line (optional)"), KioskType::Caption, true, C.Muted) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ Badges ];
 	}
 }
@@ -56,6 +54,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 		return SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Key)
 			.Label(Label)
+			.ButtonTag(Delta > 0.f ? TEXT("Zoom in") : TEXT("Zoom out"))
 			.Padding(FMargin(0.f))
 			.Width(72.f).Height(72.f)
 			.OnClicked_Lambda([Session, Delta]()
@@ -74,7 +73,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 	};
 
 	ChildSlot
-	.Padding(75.f, 26.f, 75.f, 30.f)
+	.Padding(KioskLayout::PageX, 26.f, KioskLayout::PageX, 30.f)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 40.f, 0.f)
@@ -91,40 +90,39 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 				]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 22.f, 22.f, 0.f)
 				[
-					Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), 18.f, true, C.Ink), C.Band, 16.f, C.Transparent, 0.f, FMargin(24.f, 16.f))
+					Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), KioskType::Caption, true, C.Ink), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(24.f, 16.f))
 				]
 				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 22.f, 22.f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()[ ZoomButton(EKioskIcon::Plus, LOCTEXT("ZoomIn", "Zoom in"), 0.5f) ]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ ZoomButton(EKioskIcon::Minus, LOCTEXT("ZoomOut", "Zoom out"), -0.5f) ]
+					+ SHorizontalBox::Slot().AutoWidth()[ ZoomButton(EKioskIcon::Plus, KT("Zoom in"), 0.5f) ]
+					+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ ZoomButton(EKioskIcon::Minus, KT("Zoom out"), -0.5f) ]
 				],
-				C.Surface, 22.f, C.BorderStrong, 2.f, FMargin(2.f))
+				C.Surface, KioskLayout::CardRadius, C.BorderStrong, 2.f, FMargin(2.f))
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
-			SNew(SBox).WidthOverride(660.f)
+			SNew(SBox).WidthOverride(680.f)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Where are you going?"), 38.f, true, C.Ink) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Where are you going?"), KioskType::H1, true, C.Ink) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)
 				[
-					SNew(SBox).HeightOverride(78.f)
+					SNew(SBox).MinDesiredHeight(78.f)
 					[
 						SNew(SKioskButton)
 						.Kind(EKioskButtonKind::OutlineMuted)
 						.Label(KT("Search for a place or station"))
 						.ButtonTag(TEXT("Search"))
 						.Padding(FMargin(26.f, 0.f))
-						.OnClicked_Lambda([Session]() { Session->OpenKeyboard(true); Session->Replace(EKioskScreen::Destination); return FReply::Handled(); })
+						.OnClicked_Lambda([Session]() { Session->OpenSearchField(); Session->ShowDestinationList(); return FReply::Handled(); })
 						[
 							SNew(SHorizontalBox)
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::Search, 32.f, C.Ink, 3.f) ]
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)
+							+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)
 							[
-								Text(KT("Search for a place or station"), 22.f, false, C.Muted)
+								TextWrap(KT("Search for a place or station"), KioskType::Body, false, C.Muted)
 							]
-							+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
 						]
 					]
 				]
@@ -132,15 +130,12 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 20.f, 0.f, 0.f)[ LineHighlighter(Session) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
 				[
-					SNew(SBox).HeightOverride(80.f)
-					[
-						SNew(SKioskButton)
-						.Kind(EKioskButtonKind::OutlineMuted)
-						.Label(KT("Open station list view"))
-						.LeftIcon(EKioskIcon::List)
-						.FontPx(21.f).Bold(false)
-						.OnClicked_Lambda([Session]() { Session->Replace(EKioskScreen::Destination); return FReply::Handled(); })
-					]
+					SNew(SKioskButton)
+					.Kind(EKioskButtonKind::Outline)
+					.Label(KT("Open station list view"))
+					.ButtonTag(TEXT("Open station list view"))
+					.LeftIcon(EKioskIcon::List)
+					.OnClicked_Lambda([Session]() { Session->ShowDestinationList(); return FReply::Handled(); })
 				]
 				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 				+ SVerticalBox::Slot().AutoHeight()[ KioskDest::ConfirmButton(Session) ]
@@ -149,4 +144,3 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 	];
 }
 
-#undef LOCTEXT_NAMESPACE

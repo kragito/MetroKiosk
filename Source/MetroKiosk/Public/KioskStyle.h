@@ -60,7 +60,49 @@ enum class EKioskButtonKind : uint8
 	PillOutline,   // white pill with border
 	Key,           // keyboard key
 	KeyMuted,      // keyboard function key
+	Compact,       // small outlined control (Change)
+	Link,          // underlined text link
 };
+
+/** One type scale for the whole kiosk (design pixels). Nothing readable is below Caption; map labels are the only exception. */
+namespace KioskType
+{
+	constexpr float Display = 52.f;  // hero statements and the big balance
+	constexpr float H1 = 42.f;       // screen titles
+	constexpr float H2 = 32.f;       // card titles
+	constexpr float H3 = 26.f;       // sub-titles, tile names
+	constexpr float Body = 22.f;     // running text
+	constexpr float Caption = 18.f;  // smallest readable text
+	constexpr float Figure = 48.f;   // money
+	constexpr float MapLabel = 16.f; // map labels only
+	constexpr float BtnPrimary = 30.f;
+	constexpr float BtnStd = 26.f;
+	constexpr float BtnPill = 22.f;
+	constexpr float BtnKey = 28.f;
+}
+
+/** Shared metrics: grid, radii, button heights per role, icon sizes. */
+namespace KioskLayout
+{
+	constexpr float PageX = 75.f;        // left/right screen margin
+	constexpr float PageTop = 28.f;
+	constexpr float PageBottom = 28.f;
+	constexpr float Gutter = 36.f;       // between columns
+	constexpr float TileGap = 16.f;      // between stacked cards or tiles
+	constexpr float CardRadius = 26.f;
+	constexpr float InnerRadius = 16.f;
+	constexpr float CardPad = 34.f;
+	constexpr float BtnPrimaryH = 104.f; // green: proceed / pay
+	constexpr float BtnStdH = 88.f;      // navy choose, outlined secondary, help
+	constexpr float BtnCompactH = 60.f;  // Change, small controls
+	constexpr float PillH = 72.f;        // language pills
+	constexpr float PillW = 172.f;
+	constexpr float KeyH = 76.f;
+	constexpr float IconSm = 34.f;
+	constexpr float IconMd = 62.f;
+	constexpr float IconLg = 96.f;
+	constexpr float FooterH = 128.f;
+}
 
 class METROKIOSK_API FKioskStyle
 {

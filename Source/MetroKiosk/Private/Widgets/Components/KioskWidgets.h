@@ -25,8 +25,10 @@ namespace KioskUI
 	TSharedRef<SBorder> Panel(const TSharedRef<SWidget>& Child, const FLinearColor& Fill, float Radius,
 		const FLinearColor& Border = FLinearColor::Transparent, float BorderWidth = 0.f, const FMargin& Padding = FMargin(0.f));
 
-	TSharedRef<SWidget> LineBadge(int32 LineIndex, float Height = 26.f);
-	TSharedRef<SWidget> LineBadges(uint8 LineMask, float Height = 26.f, float Gap = 6.f);
+	/** Line badges are one size everywhere; their code is 18 px so it stays readable. */
+	constexpr float BadgeHeight = 32.f;
+	TSharedRef<SWidget> LineBadge(int32 LineIndex, float Height = BadgeHeight);
+	TSharedRef<SWidget> LineBadges(uint8 LineMask, float Height = BadgeHeight, float Gap = 6.f);
 
 	TSharedRef<SWidget> Pill(const FText& Label, const FLinearColor& Fill, const FLinearColor& TextColor, float Px, bool bBold = true,
 		const FLinearColor& Border = FLinearColor::Transparent, const FMargin& Padding = FMargin(20.f, 8.f));
@@ -37,8 +39,39 @@ namespace KioskUI
 	/** Horizontal hairline. */
 	TSharedRef<SWidget> Rule(const FLinearColor& Color, float Thickness = 2.f);
 
+	/** White card with the standard radius and padding (the one card look used on every screen). */
+	TSharedRef<SBorder> Card(const TSharedRef<SWidget>& Child, const FLinearColor& Fill, const FLinearColor& Border,
+		float BorderWidth = 2.f, const FMargin& Padding = FMargin(KioskLayout::CardPad));
+
+	/** Navy full-width bar that looks like a "choose" button, for use inside a tile that is itself the touch target. */
+	TSharedRef<SWidget> ActionBar(const FText& Label, bool bArrow = false);
+
+	/** The single "Change" control used on Review and Destination. */
+	TSharedRef<SWidget> ChangeButton(FOnClicked OnClicked, const FName& Tag = TEXT("Change"));
+
+	/** Parts of the kiosk front that the UI points at. Physical layout (single source of truth):
+	 *  metro card reader below the screen (left), contactless reader right (top), chip/NETS slot + PIN pad right (middle),
+	 *  note and coin slots right (lower), collection tray below the screen (centre). */
+	enum class EHardware : uint32
+	{
+		MetroReader = 1 << 0,
+		Contactless = 1 << 1,
+		ChipSlot = 1 << 2,
+		CashSlots = 1 << 3,
+		Tray = 1 << 4,
+	};
+	inline uint32 Mask(EHardware A) { return static_cast<uint32>(A); }
+	inline uint32 Mask(EHardware A, EHardware B) { return static_cast<uint32>(A) | static_cast<uint32>(B); }
+	/** One-line location for a device, e.g. "Metro card reader · below the screen, left". */
+	FText HardwareName(EHardware Which);
+	/** Small kiosk-front diagram with the given parts lit green. */
+	TSharedRef<SWidget> HardwareDiagram(uint32 HighlightMask, float Scale = 1.f);
+	/** Diagram plus a caption naming each lit part. */
+	TSharedRef<SWidget> HardwareHint(uint32 HighlightMask, float Scale = 1.f, float CaptionPx = KioskType::Caption);
+
 	/** Clearly-marked on-screen stand-in for a hardware action (card tap, chip insert, card lift). */
-	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked);
+	/** Tag is the English name used by the scripted harness, so journeys work in any language. */
+	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked, const FName& Tag = NAME_None);
 
 	/** Places a fixed-size child at an offset inside an SOverlay slot (optionally rotated about its centre). */
 	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg = 0.f);

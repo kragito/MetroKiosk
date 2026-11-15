@@ -5,8 +5,6 @@
 #include "SKioskButton.h"
 #include "Widgets/Layout/SSpacer.h"
 
-#define LOCTEXT_NAMESPACE "KioskChrome"
-
 // --- header --------------------------------------------------------------------------------
 
 void SKioskHeader::Construct(const FArguments& InArgs)
@@ -17,13 +15,13 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 	const bool bHelp = InArgs._bHelpMode;
 
 	TSharedRef<SWidget> Logo = bHelp
-		? Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Headset, 42.f, C.Help, 3.f) ], C.White, 14.f)
-		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(INVTEXT("M"), 56.f, true, C.White) ], C.Logo, 14.f);
+		? Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Headset, 42.f, C.Help, 3.f) ], C.White, KioskLayout::InnerRadius)
+		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("M")), 56.f, true, C.White) ], C.Logo, KioskLayout::InnerRadius);
 
 	TSharedRef<SWidget> Left = SNullWidget::NullWidget;
 	if (bHelp)
 	{
-		Left = Text(KT("Help · In call with staff"), 22.f, true, C.White);
+		Left = Text(KT("Help · In call with staff"), KioskType::H3, true, C.White);
 	}
 	else
 	{
@@ -37,15 +35,15 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(36.f, 0.f, 0.f, 0.f)
 			[
-				Text(KT("You are at"), 22.f, false, C.OnBrandSoft)
+				Text(KT("You are at"), KioskType::Body, false, C.OnBrandSoft)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
 			[
-				Text(KT("City Hall"), 40.f, true, C.White)
+				Text(KT("City Hall"), KioskType::H1, true, C.White)
 			]
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 4.f, 0.f, 0.f)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 4.f, 0.f, 0.f)
 			[
-				LineBadges(0b000011, 24.f, 6.f)
+				LineBadges(0b000011)
 			];
 	}
 
@@ -78,7 +76,7 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					TextDyn([]() { return FKioskSession::ClockText(); }, 25.f, false, C.White)
+					TextDyn([]() { return FKioskSession::ClockText(); }, KioskType::H3, false, C.White)
 				]
 			]
 		]
@@ -104,28 +102,28 @@ void SKioskStepBar::Construct(const FArguments& InArgs)
 		TSharedRef<SWidget> Circle = SNullWidget::NullWidget;
 		if (bDone)
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, 22.f, C.White, 3.f) ], C.Primary, 19.f);
+			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, 24.f, C.White, 3.f) ], C.Primary, 22.f);
 		}
 		else if (bCurrent)
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), 18.f, true, C.White) ], C.Ink, 19.f);
+			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, true, C.White) ], C.Ink, 22.f);
 		}
 		else
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), 17.f, false, C.Muted) ], C.Transparent, 19.f, C.Muted, 2.f);
+			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, false, C.Muted) ], C.Transparent, 22.f, C.Muted, 2.f);
 		}
 
 		Row->AddSlot().AutoWidth().VAlign(VAlign_Center)
 		[
-			SNew(SBox).WidthOverride(38.f).HeightOverride(38.f)[ Circle ]
+			SNew(SBox).WidthOverride(44.f).HeightOverride(44.f)[ Circle ]
 		];
-		Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(10.f, 0.f, 0.f, 0.f)
+		Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)
 		[
-			Text(Steps.Labels[Index], 17.f, false, bDone || bCurrent ? C.Ink : C.Muted)
+			Text(Steps.Labels[Index], KioskType::Body, bCurrent, bDone || bCurrent ? C.Ink : C.Muted)
 		];
 		if (Index + 1 < Steps.Labels.Num())
 		{
-			Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 12.f, 0.f)
+			Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 14.f, 0.f)
 			[
 				SNew(SBox).WidthOverride(54.f).HeightOverride(3.f)
 				[
@@ -143,7 +141,7 @@ void SKioskStepBar::Construct(const FArguments& InArgs)
 			SNew(SBorder)
 			.BorderImage(Style.Solid(C.Band))
 			.BorderBackgroundColor(FLinearColor::White)
-			.Padding(FMargin(75.f, 0.f, 0.f, 0.f))
+			.Padding(FMargin(KioskLayout::PageX, 0.f, 0.f, 0.f))
 			.VAlign(VAlign_Center)
 			[
 				Row
@@ -154,24 +152,28 @@ void SKioskStepBar::Construct(const FArguments& InArgs)
 
 // --- footer --------------------------------------------------------------------------------
 
-TSharedRef<SWidget> MakeLanguagePills(const TSharedRef<FKioskSession>& Session, float Height, float FontPx, float Gap)
+TSharedRef<SWidget> MakeLanguagePill(const TSharedRef<FKioskSession>& Session, EKioskLanguage Lang, bool bFill)
+{
+	const bool bSelected = Session->Language() == Lang;
+	const int32 Index = static_cast<int32>(Lang);
+	return SNew(SKioskButton)
+		.Kind(bSelected ? EKioskButtonKind::PillSelected : EKioskButtonKind::PillOutline)
+		.Label(FKioskLoc::LanguageName(Lang))
+		.ButtonTag(FName(*FString::Printf(TEXT("Language %s"), Index == 0 ? TEXT("English") : (Index == 1 ? TEXT("Chinese") : (Index == 2 ? TEXT("Malay") : TEXT("Tamil"))))))
+		.Bold(true)
+		.MinWidth(bFill ? 0.f : KioskLayout::PillW)
+		.Padding(FMargin(18.f, 6.f))
+		.OnClicked_Lambda([Session, Lang]() { Session->SetLanguage(Lang); return FReply::Handled(); });
+}
+
+TSharedRef<SWidget> MakeLanguagePills(const TSharedRef<FKioskSession>& Session)
 {
 	TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
 	for (int32 Index = 0; Index < 4; ++Index)
 	{
-		const EKioskLanguage Lang = static_cast<EKioskLanguage>(Index);
-		const bool bSelected = Session->Language() == Lang;
-		Row->AddSlot().AutoWidth().Padding(Index == 0 ? 0.f : Gap, 0.f, 0.f, 0.f)
+		Row->AddSlot().AutoWidth().Padding(Index == 0 ? 0.f : 10.f, 0.f, 0.f, 0.f)
 		[
-			SNew(SKioskButton)
-			.Kind(bSelected ? EKioskButtonKind::PillSelected : EKioskButtonKind::PillOutline)
-			.Label(FKioskLoc::LanguageName(Lang))
-			.ButtonTag(FName(*FString::Printf(TEXT("Language %s"), Index == 0 ? TEXT("English") : (Index == 1 ? TEXT("Chinese") : (Index == 2 ? TEXT("Malay") : TEXT("Tamil"))))))
-			.FontPx(FontPx)
-			.Bold(bSelected)
-			.Height(Height)
-			.Padding(FMargin(30.f, 0.f))
-			.OnClicked_Lambda([Session, Lang]() { Session->SetLanguage(Lang); return FReply::Handled(); })
+			MakeLanguagePill(Session, static_cast<EKioskLanguage>(Index), false)
 		];
 	}
 	return Row;
@@ -192,24 +194,23 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Outline)
 			.Label(KT("Back"))
+			.ButtonTag(TEXT("Back"))
 			.LeftIcon(EKioskIcon::ChevronLeft)
-			.FontPx(25.f)
-			.Width(193.f).Height(92.f)
+			.MinWidth(190.f).MaxWidth(300.f)
 			.Enabled(Config.bNavEnabled)
 			.OnClicked_Lambda([Session]() { Session->Back(); return FReply::Handled(); })
 		];
 	}
 	if (Config.bStartOver)
 	{
-		Left->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)
+		Left->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(Config.bBack ? 16.f : 0.f, 0.f, 0.f, 0.f)
 		[
 			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::OutlineMuted)
+			.Kind(EKioskButtonKind::Outline)
 			.Label(KT("Start over"))
+			.ButtonTag(TEXT("Start over"))
 			.LeftIcon(EKioskIcon::Restart)
-			.FontPx(25.f)
-			.Bold(false)
-			.Width(202.f).Height(92.f)
+			.MinWidth(210.f).MaxWidth(320.f)
 			.Enabled(Config.bNavEnabled)
 			.OnClicked_Lambda([Session]() { Session->StartOver(); return FReply::Handled(); })
 		];
@@ -221,8 +222,8 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Outline)
 			.Label(KT("+ Buy another ticket"))
-			.FontPx(23.f)
-			.Width(322.f).Height(92.f)
+			.ButtonTag(TEXT("+ Buy another ticket"))
+			.MaxWidth(380.f)
 			.OnClicked_Lambda([Session]() { Session->StartOver(); Session->GoTo(EKioskScreen::TicketType); return FReply::Handled(); })
 		];
 	}
@@ -234,17 +235,17 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			.Kind(EKioskButtonKind::HelpLight)
 			.Label(KT("Back to call"))
 			.ButtonTag(TEXT("Back to call"))
-			.Width(309.f).Height(92.f)
+			.MinWidth(300.f).MaxWidth(420.f)
 			.OnClicked_Lambda([Session]() { Session->ResumeCall(); return FReply::Handled(); })
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 14.f, 0.f)
 				[
-					Dot(C.Primary, 30.f)
+					Dot(C.Primary, 26.f)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					Text(KT("Back to call"), 28.f, true, C.Ink)
+					Text(KT("Back to call"), KioskType::BtnStd, true, C.Ink)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
 				[
@@ -257,16 +258,16 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 		HelpButton = SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Help)
 			.Label(KT("Help · talk to staff"))
+			.ButtonTag(TEXT("Help"))
 			.LeftIcon(EKioskIcon::Headset)
-			.FontPx(23.f)
-			.Width(309.f).Height(92.f)
+			.MinWidth(300.f).MaxWidth(400.f)
 			.OnClicked_Lambda([Session]() { Session->StartCall(); return FReply::Handled(); });
 	}
 
 	ChildSlot
 	[
 		SNew(SBox)
-		.HeightOverride(128.f)
+		.HeightOverride(KioskLayout::FooterH)
 		[
 			SNew(SBorder)
 			.BorderImage(Style.Solid(C.Surface))
@@ -281,7 +282,7 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 				+ SVerticalBox::Slot().FillHeight(1.f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(75.f, 0.f, 0.f, 0.f)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(KioskLayout::PageX, 0.f, 0.f, 0.f)
 					[
 						Left
 					]
@@ -291,9 +292,9 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						MakeLanguagePills(Session, 71.f, 21.f, 10.f)
+						MakeLanguagePills(Session)
 					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(40.f, 0.f, 73.f, 0.f)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(32.f, 0.f, 73.f, 0.f)
 					[
 						HelpButton
 					]
@@ -314,7 +315,7 @@ void SKioskHelpFooter::Construct(const FArguments& InArgs, const TSharedRef<FKio
 	ChildSlot
 	[
 		SNew(SBox)
-		.HeightOverride(128.f)
+		.HeightOverride(KioskLayout::FooterH)
 		[
 			SNew(SBorder)
 			.BorderImage(Style.Solid(C.Surface))
@@ -334,9 +335,9 @@ void SKioskHelpFooter::Construct(const FArguments& InArgs, const TSharedRef<FKio
 						SNew(SKioskButton)
 						.Kind(EKioskButtonKind::Primary)
 						.Label(KT("Back to my purchase"))
+						.ButtonTag(TEXT("Back to my purchase"))
 						.LeftIcon(EKioskIcon::ChevronLeft)
-						.FontPx(33.f)
-						.Width(500.f).Height(92.f)
+						.MinWidth(420.f).MaxWidth(760.f)
 						.OnClicked_Lambda([Session]() { Session->ReturnToPurchase(); return FReply::Handled(); })
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.f)
@@ -348,9 +349,10 @@ void SKioskHelpFooter::Construct(const FArguments& InArgs, const TSharedRef<FKio
 						SNew(SKioskButton)
 						.Kind(EKioskButtonKind::DangerOutline)
 						.Label(KT("End call"))
+						.ButtonTag(TEXT("End call"))
 						.LeftIcon(EKioskIcon::Close)
-						.FontPx(33.f)
-						.Width(308.f).Height(92.f)
+						.MinWidth(280.f).MaxWidth(420.f)
+						.MinHeight(KioskLayout::BtnPrimaryH)
 						.OnClicked_Lambda([Session]() { Session->EndCall(); return FReply::Handled(); })
 					]
 				]
@@ -358,5 +360,3 @@ void SKioskHelpFooter::Construct(const FArguments& InArgs, const TSharedRef<FKio
 		]
 	];
 }
-
-#undef LOCTEXT_NAMESPACE

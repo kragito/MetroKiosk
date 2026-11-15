@@ -6,15 +6,22 @@
 #include "SKioskIcon.h"
 #include "Widgets/SCompoundWidget.h"
 
+/** Default label size and minimum height for each button role. */
+float KioskButtonRoleFont(EKioskButtonKind Kind);
+float KioskButtonRoleHeight(EKioskButtonKind Kind);
+
 class SKioskButton : public SCompoundWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SKioskButton)
 		: _Kind(EKioskButtonKind::Primary)
-		, _FontPx(24.f)
+		, _FontPx(0.f)
 		, _Width(0.f)
 		, _Height(0.f)
-		, _Padding(FMargin(24.f, 0.f))
+		, _MinWidth(0.f)
+		, _MinHeight(-1.f)
+		, _MaxWidth(0.f)
+		, _Padding(FMargin(28.f, 10.f))
 		, _LeftIcon(EKioskIcon::None)
 		, _RightIcon(EKioskIcon::None)
 		, _IconPx(0.f)
@@ -25,8 +32,13 @@ public:
 		SLATE_ARGUMENT(FText, Label)
 		SLATE_ARGUMENT(EKioskButtonKind, Kind)
 		SLATE_ARGUMENT(float, FontPx)
+		/** Exact size (icon buttons, keys). Prefer MinWidth/MinHeight so labels can grow or wrap. */
 		SLATE_ARGUMENT(float, Width)
 		SLATE_ARGUMENT(float, Height)
+		SLATE_ARGUMENT(float, MinWidth)
+		/** Defaults to the height of the button's role (see KioskLayout); 0 turns the minimum off. */
+		SLATE_ARGUMENT(float, MinHeight)
+		SLATE_ARGUMENT(float, MaxWidth)
 		SLATE_ARGUMENT(FMargin, Padding)
 		SLATE_ARGUMENT(EKioskIcon, LeftIcon)
 		SLATE_ARGUMENT(EKioskIcon, RightIcon)

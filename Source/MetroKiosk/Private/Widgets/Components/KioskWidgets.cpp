@@ -1,9 +1,14 @@
 #include "KioskWidgets.h"
 
 #include "KioskData.h"
+#include "KioskLoc.h"
 #include "SKioskButton.h"
 #include "SKioskDashedBox.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Rendering/SlateRenderer.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
+#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/Layout/SSpacer.h"
 
 namespace KioskUI
@@ -127,7 +132,120 @@ namespace KioskUI
 			];
 	}
 
-	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked)
+	TSharedRef<SBorder> Card(const TSharedRef<SWidget>& Child, const FLinearColor& Fill, const FLinearColor& Border, float BorderWidth, const FMargin& Padding)
+	{
+		return Panel(Child, Fill, KioskLayout::CardRadius, Border, BorderWidth, Padding);
+	}
+
+	TSharedRef<SWidget> ActionBar(const FText& Label, bool bArrow)
+	{
+		const FKioskColors& C = KC();
+		const FSlateFontInfo Font = FKioskStyle::Get().Font(KioskType::BtnStd, true);
+		float Measured = 0.f;
+		if (FSlateApplication::IsInitialized() && FSlateApplication::Get().GetRenderer())
+		{
+			Measured = FSlateApplication::Get().GetRenderer()->GetFontMeasureService()->Measure(Label, Font).X;
+		}
+		TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+			[
+				SNew(SBox).MinDesiredWidth(Measured > 0.f ? FOptionalSize(Measured + 6.f) : FOptionalSize())
+				[
+					SNew(STextBlock).Text(Label).Font(Font).ColorAndOpacity(C.White).Justification(ETextJustify::Center).AutoWrapText(true)
+				]
+			];
+		if (bArrow)
+		{
+			Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)[ Icon(EKioskIcon::ArrowRight, KioskType::BtnStd, C.White) ];
+		}
+		return SNew(SBox).MinDesiredHeight(KioskLayout::BtnStdH)
+		[
+			Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Row ], C.Ink, 14.f, C.Transparent, 0.f, FMargin(20.f, 10.f))
+		];
+	}
+
+	TSharedRef<SWidget> ChangeButton(FOnClicked OnClicked, const FName& Tag)
+	{
+		return SNew(SKioskButton)
+			.Kind(EKioskButtonKind::Compact)
+			.Label(KT("Change"))
+			.ButtonTag(Tag)
+			.Padding(FMargin(26.f, 8.f))
+			.OnClicked(OnClicked);
+	}
+
+	FText HardwareName(EHardware Which)
+	{
+		switch (Which)
+		{
+		case EHardware::MetroReader: return KT("Metro card reader · below the screen, left");
+		case EHardware::Contactless: return KT("Contactless reader · right of the screen, top");
+		case EHardware::ChipSlot: return KT("Chip and NETS slot, PIN pad · right of the screen, middle");
+		case EHardware::CashSlots: return KT("Note and coin slots · right of the screen, lower down");
+		default: return KT("Collection tray · below the screen, centre");
+		}
+	}
+
+	TSharedRef<SWidget> HardwareDiagram(uint32 HighlightMask, float Scale)
+	{
+		FKioskStyle& Style = FKioskStyle::Get();
+		const FKioskColors& C = Style.C;
+		constexpr float W = 400.f;
+		constexpr float H = 236.f;
+
+		auto Part = [&](EHardware Which, FVector2D Pos, FVector2D Size, EKioskIcon IconType, float IconPx, float Radius)
+		{
+			const bool bLit = (HighlightMask & Mask(Which)) != 0;
+			TSharedRef<SWidget> Inner = IconType == EKioskIcon::None
+				? StaticCastSharedRef<SWidget>(SNew(SSpacer))
+				: StaticCastSharedRef<SWidget>(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(IconType, IconPx, bLit ? C.White : C.Muted, 3.f) ]);
+			return Positioned(
+				Panel(Inner, bLit ? C.Primary : C.Band, Radius, bLit ? C.Ink : C.BorderStrong, bLit ? 3.f : 2.f),
+				Pos, Size);
+		};
+
+		TSharedRef<SOverlay> Body = SNew(SOverlay)
+			+ SOverlay::Slot()[ Positioned(Panel(SNew(SSpacer), C.Surface, 22.f, C.Ink, 3.f), FVector2D(0.f, 0.f), FVector2D(W, H)) ]
+			+ SOverlay::Slot()[ Positioned(Panel(SNew(SSpacer), C.Video, 12.f), FVector2D(24.f, 20.f), FVector2D(262.f, 150.f)) ]
+			+ SOverlay::Slot()[ Part(EHardware::Contactless, FVector2D(304.f, 20.f), FVector2D(72.f, 46.f), EKioskIcon::Contactless, 30.f, 10.f) ]
+			+ SOverlay::Slot()[ Part(EHardware::ChipSlot, FVector2D(304.f, 74.f), FVector2D(72.f, 46.f), EKioskIcon::ChipCard, 30.f, 10.f) ]
+			+ SOverlay::Slot()[ Part(EHardware::CashSlots, FVector2D(304.f, 128.f), FVector2D(72.f, 42.f), EKioskIcon::Cash, 28.f, 10.f) ]
+			+ SOverlay::Slot()[ Part(EHardware::MetroReader, FVector2D(24.f, 184.f), FVector2D(92.f, 34.f), EKioskIcon::Contactless, 24.f, 10.f) ]
+			+ SOverlay::Slot()[ Part(EHardware::Tray, FVector2D(138.f, 184.f), FVector2D(94.f, 34.f), EKioskIcon::Tray, 24.f, 10.f) ];
+
+		return SNew(SBox).WidthOverride(W * Scale).HeightOverride(H * Scale)
+		[
+			SNew(SScaleBox).Stretch(EStretch::ScaleToFit)
+			[
+				SNew(SBox).WidthOverride(W).HeightOverride(H)[ Body ]
+			]
+		];
+	}
+
+	TSharedRef<SWidget> HardwareHint(uint32 HighlightMask, float Scale, float CaptionPx)
+	{
+		const FKioskColors& C = KC();
+		TSharedRef<SVerticalBox> Captions = SNew(SVerticalBox);
+		bool bFirst = true;
+		for (EHardware Which : { EHardware::MetroReader, EHardware::Contactless, EHardware::ChipSlot, EHardware::CashSlots, EHardware::Tray })
+		{
+			if (HighlightMask & Mask(Which))
+			{
+				Captions->AddSlot().AutoHeight().Padding(0.f, bFirst ? 0.f : 8.f, 0.f, 0.f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 7.f, 12.f, 0.f)[ Dot(C.Primary, 14.f) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Which), CaptionPx, true, C.Ink, 1.1f) ]
+				];
+				bFirst = false;
+			}
+		}
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ HardwareDiagram(HighlightMask, Scale) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)[ Captions ];
+	}
+
+	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked, const FName& Tag)
 	{
 		const FKioskColors& C = KC();
 		return SNew(SKioskDashedBox)
@@ -139,18 +257,18 @@ namespace KioskUI
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::Card)
 				.Label(Label)
-				.ButtonTag(FName(*Label.ToString()))
+				.ButtonTag(Tag.IsNone() ? FName(*Label.ToString()) : Tag)
 				.Padding(FMargin(16.f, 10.f))
 				.OnClicked(OnClicked)
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 10.f, 0.f)
 					[
-						Icon(EKioskIcon::ArrowRight, 18.f, C.SimInk, 2.5f)
+						Icon(EKioskIcon::ArrowRight, KioskType::Caption, C.SimInk, 2.5f)
 					]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 					[
-						Text(Label, 18.f, true, C.SimInk)
+						Text(Label, KioskType::Caption, true, C.SimInk)
 					]
 				]
 			];
