@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:Search|type:harbor frnt|shot:typo_results|click:Station HarbourFront|shot:selected|click:Confirm destination|shot:review|dump

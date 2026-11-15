@@ -25,7 +25,8 @@ The kiosk UI is hosted by `AKioskGameMode`, which is the project's default game 
 
 ## QA hooks
 - `-KioskScreen=<Name>` opens a screen with sample state (for example `PayMethod`, `CardOptions`).
-- `-KioskCaptureAll=<absolute dir>` saves a PNG of every screen and state, then quits.
+- `-KioskCaptureAll=<absolute dir>` saves a PNG of every screen and state (including destination: empty, search "garden",
+  typo "harbor frnt", "Did you mean", place selected, 中文 and தமிழ்), then quits.
   `powershell -File Tools/capture.ps1` runs it into `Saved/Captures`.
 
 ## Scripted journeys (no editor, no PIE)
@@ -43,9 +44,9 @@ Steps are separated by `|`:
 | Step | What it does |
 |---|---|
 | `click:<label>` | Touch-clicks the visible, enabled widget whose accessible name or label matches (exact match first, then case-insensitive contains). Fails with a reason if not found, disabled, or covered. A screenshot `NN_after_click_<label>.png` is taken automatically. |
-| `type:<text>` | Presses the on-screen keyboard or keypad keys one by one (`type:har`, `type:25`). Open the keyboard first (click `Search field`) or choose `Amount More` for the keypad. |
+| `type:<text>` | Presses the on-screen keyboard or keypad keys one by one (`type:har`, `type:25`). Open the keyboard first (click `Search`) or choose `Amount More` for the keypad. |
 | `drag:<label>:<dx>,<dy>` | Touch-drags from the widget centre by design pixels, for example `drag:Map:-250,-120` (zoom in first). |
-| `scroll:<label>:<dy>` | Mouse-wheel scrolls the named list by roughly `dy` design pixels (positive = down). Long station lists are named `Station list`: `scroll:Station list:600`, then click the station. Rows scrolled out of view fail with a "not hittable" reason. |
+| `scroll:<label>:<dy>` | Mouse-wheel scrolls the named list by roughly `dy` design pixels (positive = down). Result lists with more than five rows are named `Station list`: `scroll:Station list:300`, then click the row. Rows scrolled out of view fail with a "not hittable" reason. |
 | `wait:<seconds>` | Lets real time pass; timers run normally in script mode. |
 | `shot:<name>` | Saves `NN_<name>.png`. |
 | `lang:<en\|zh\|ms\|ta>` | Clicks the language pill. |
@@ -54,12 +55,25 @@ Steps are separated by `|`:
 A failed step (not found, disabled, covered, or a click that changed nothing) logs `FAIL`, saves a `NN_failure.png`, and aborts the run with an `ABORT` line so later steps do not cascade. Pass `-KioskScriptKeepGoing` to the game (not the wrapper) to continue instead. Matching is exact first; if an exact match exists but is covered or disabled the step fails rather than falling back to a looser match.
 
 Outputs go to `-Out`: `log.txt` (one line per step, `OK`/`FAIL`/`WARN`, then `DONE`), the PNGs and the trees.
-Useful names: `Buy a ticket`, `Choose One-way`, `Station <name>`, `Confirm selected ticket`, `Add Adult|Child|Senior`,
-`Go to payment`, `Pay with card|cash`, `Insert $2`, `Search field`, `Key H`, `Keypad 5`, `Amount More`,
-`SIMULATE: tap card on reader`, `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
+Useful names: `Buy a ticket`, `Choose One-way`, `Search`, `Place <name>` (for example `Place Gardens by the Bay`),
+`Station <name>`, `Change destination`, `Confirm destination`, `See it on the map`, `Filter NS|EW|NE|CC|DT|TE` (map only),
+`Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Insert $2`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
+`Keypad 5`, `Amount More`, `SIMULATE: tap card on reader`, `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
+Names stay in English whatever language is active. The language pills live in the footer, so switch language after the first
+screen (`click:Buy a ticket|lang:zh`), not on Home.
 
-Examples of verified journeys: cash ticket with riders, card top-up with the custom keypad, and help call
-with the purchase restored afterwards (outputs under `Saved/Journeys/`, which is git-ignored).
+### Journey scripts
+`Tools/journeys/*.txt` hold one script per file; `powershell -File Tools/run_journeys.ps1` runs them all (or `-Name a,b`)
+and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (git-ignored).
+
+| File | Journey |
+|---|---|
+| `a_tourist_gardens` | types "gardens by the bay", picks the place, Confirm, Review, pays by card, receipt |
+| `b_typo_harbourfront` | types the typo "harbor frnt" and still finds HarbourFront |
+| `c_chinese_search` | switches to 中文, finds Chinatown by the pinyin alias "niuchesui" |
+| `d_daypass_skips_destination` | Day pass goes straight to Review |
+| `j1_cash_ticket`, `j2_topup_keypad`, `j3_help_restore` | cash ticket with a child rider, card top-up with the keypad, help call and restore |
+| `j4_map_drag_search`, `j5_scroll_results` | map with line highlight, zoom, drag and search; scrolling a long result list |
 
 ## Layout
 - `Source/MetroKiosk/Public` - session model, style tokens, data, localisation, game mode
@@ -69,7 +83,15 @@ with the purchase restored afterwards (outputs under `Saved/Journeys/`, which is
 - `Tools/` - build, launch, capture, journey and MCP helper scripts
 
 ## Notes for future sessions
-- Non-English languages cover chrome and main headings only (table in `Private/KioskLoc.cpp`, keyed by the English text).
+- Non-English languages cover chrome, headings and the destination screen (table in `Private/KioskLoc.cpp`, keyed by the English text,
+  including format patterns such as `{0} min · direct`). Station and place names are not in that table: they live in
+  `Private/KioskPlaces.cpp` (`GNames`), shown as the English name with the local-script name beneath.
+- Destination data: `KioskPlaces.*` (about 60 places mapped to stations, aliases and pinyin), `KioskSearch.*` (normalisation,
+  exact/prefix/alias/fuzzy ranking, "Did you mean"), `KioskRoutes.*` (Dijkstra from City Hall over the line paths: 1 min per
+  22 map units per hop, min 2, +5 min per change; and the fare rule). The fare rule: 128c up to 3.2 km, +6c per extra km, capped
+  at 257c; child/senior `(c*7+5)/10`; round trip 2x less 30%; day pass $8.00. Never hard-code a fare or time in a widget.
+- The on-screen keyboard is Latin only, so Chinese, Malay and Tamil readers search with English names, aliases or pinyin
+  (for example `niuchesui`); the matcher also accepts typed Chinese/Tamil text if a physical keyboard is ever attached.
 - The harness enables Slate input while the app is not the active OS window (`SetHandleDeviceInputWhenApplicationNotActive`).
   Without that, Slate refuses pointer capture for a background-launched window and every click is silently dropped.
   `Tools/journey.ps1 -StealFocusForTest` opens Notepad over the game to prove journeys pass while the game is inactive.

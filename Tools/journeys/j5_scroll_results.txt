@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:Search|type:mall|shot:mall_results|scroll:Station list:300|shot:scrolled|dump

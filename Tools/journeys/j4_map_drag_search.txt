@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:See it on the map|click:Filter CC|shot:line_highlight|click:Zoom in|click:Zoom in|shot:zoomed|drag:Map:-250,-120|click:Search|type:har|shot:search_from_map|click:Hide keyboard|dump

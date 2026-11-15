@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose Day pass|shot:daypass_review|dump

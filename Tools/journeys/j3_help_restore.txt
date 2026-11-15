@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:Station HarbourFront|shot:before_help|click:Help|wait:2|shot:in_call|click:Back to my purchase|shot:restored|dump
