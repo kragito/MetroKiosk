@@ -80,37 +80,24 @@ namespace
 		{ TEXT("Marine Parade"), TE, 740, 497 },
 		{ TEXT("Marine Terrace"), TE, 810, 462 },
 		{ TEXT("Bayshore"), TE, 880, 430 },
+		{ TEXT("Bayfront"), CC | DT, 628, 490 },
+		{ TEXT("Kent Ridge"), CC, 270, 490 },
+		{ TEXT("Khatib"), NS, 338, 165 },
+		{ TEXT("Novena"), NS, 372, 305 },
+		{ TEXT("Clarke Quay"), NE, 452, 455 },
+		{ TEXT("Esplanade"), CC, 515, 435 },
 	};
 
 	TArray<FKioskStation> BuildStations()
 	{
 		TArray<FKioskStation> Result;
-		const FVector2f CityHallPos(485.f, 465.f);
 		for (const FStationRow& Row : GRows)
 		{
 			FKioskStation Station;
 			Station.Name = Row.Name;
 			Station.LineMask = Row.Lines;
 			Station.MapPos = FVector2f(Row.X, Row.Y);
-			const float Distance = FVector2f::Distance(Station.MapPos, CityHallPos);
-			Station.Minutes = FMath::Max(3, 4 + FMath::RoundToInt(Distance / 26.f));
-			Station.Changes = (Row.Lines & (Row.Lines - 1)) ? 0 : ((Station.Minutes / 7) % 3);
-			Station.FareCents = FMath::Clamp(118 + (Station.Minutes / 4) * 10, 118, 238);
 			Result.Add(Station);
-		}
-		// Pin the fares and times quoted in the design.
-		const TCHAR* const PopularNames[] = { TEXT("HarbourFront"), TEXT("Hume"), TEXT("Dhoby Ghaut"), TEXT("Marina South Pier") };
-		for (const TCHAR* Popular : PopularNames)
-		{
-			for (FKioskStation& Station : Result)
-			{
-				if (Station.Name == Popular)
-				{
-					Station.Minutes = 13;
-					Station.Changes = 1;
-					Station.FareCents = 168;
-				}
-			}
 		}
 		return Result;
 	}
@@ -133,21 +120,21 @@ namespace
 		switch (LineIndex)
 		{
 		case 0:
-			Result.Add(Path({ TEXT("Marsiling"), TEXT("Woodlands"), TEXT("Yishun"), TEXT("Ang Mo Kio"), TEXT("Bishan"), TEXT("Newton"), TEXT("Orchard"), TEXT("Dhoby Ghaut"), TEXT("City Hall"), TEXT("Raffles Place"), TEXT("Marina Bay"), TEXT("Marina South Pier") }));
+			Result.Add(Path({ TEXT("Marsiling"), TEXT("Woodlands"), TEXT("Yishun"), TEXT("Khatib"), TEXT("Ang Mo Kio"), TEXT("Bishan"), TEXT("Novena"), TEXT("Newton"), TEXT("Orchard"), TEXT("Dhoby Ghaut"), TEXT("City Hall"), TEXT("Raffles Place"), TEXT("Marina Bay"), TEXT("Marina South Pier") }));
 			break;
 		case 1:
 			Result.Add(Path({ TEXT("Boon Lay"), TEXT("Jurong East"), TEXT("Buona Vista"), TEXT("Outram Park"), TEXT("Raffles Place"), TEXT("City Hall"), TEXT("Bugis"), TEXT("Paya Lebar"), TEXT("Tanah Merah"), TEXT("Tampines"), TEXT("Pasir Ris") }));
 			Result.Add(Path({ TEXT("Tanah Merah"), TEXT("Expo"), TEXT("Changi Airport") }));
 			break;
 		case 2:
-			Result.Add(Path({ TEXT("HarbourFront"), TEXT("Outram Park"), TEXT("Chinatown"), TEXT("Dhoby Ghaut"), TEXT("Little India"), TEXT("Serangoon"), TEXT("Sengkang"), TEXT("Punggol") }));
+			Result.Add(Path({ TEXT("HarbourFront"), TEXT("Outram Park"), TEXT("Chinatown"), TEXT("Clarke Quay"), TEXT("Dhoby Ghaut"), TEXT("Little India"), TEXT("Serangoon"), TEXT("Sengkang"), TEXT("Punggol") }));
 			break;
 		case 3:
-			Result.Add(Path({ TEXT("Marina Bay"), TEXT("Promenade"), TEXT("MacPherson"), TEXT("Paya Lebar"), TEXT("Serangoon"), TEXT("Bishan"), TEXT("Marymount"), TEXT("Caldecott"), TEXT("Botanic Gardens"), TEXT("Buona Vista"), TEXT("HarbourFront"), TEXT("Marina Bay") }));
-			Result.Add(Path({ TEXT("Promenade"), TEXT("Dhoby Ghaut") }));
+			Result.Add(Path({ TEXT("Marina Bay"), TEXT("Bayfront"), TEXT("Promenade"), TEXT("MacPherson"), TEXT("Paya Lebar"), TEXT("Serangoon"), TEXT("Bishan"), TEXT("Marymount"), TEXT("Caldecott"), TEXT("Botanic Gardens"), TEXT("Buona Vista"), TEXT("Kent Ridge"), TEXT("HarbourFront"), TEXT("Marina Bay") }));
+			Result.Add(Path({ TEXT("Promenade"), TEXT("Esplanade"), TEXT("Dhoby Ghaut") }));
 			break;
 		case 4:
-			Result.Add(Path({ TEXT("Bukit Panjang"), TEXT("Hume"), TEXT("Beauty World"), TEXT("Botanic Gardens"), TEXT("Newton"), TEXT("Little India"), TEXT("Bugis"), TEXT("Promenade"), TEXT("Chinatown") }));
+			Result.Add(Path({ TEXT("Bukit Panjang"), TEXT("Hume"), TEXT("Beauty World"), TEXT("Botanic Gardens"), TEXT("Newton"), TEXT("Little India"), TEXT("Bugis"), TEXT("Promenade"), TEXT("Bayfront"), TEXT("Chinatown") }));
 			break;
 		default:
 			Result.Add(Path({ TEXT("Woodlands North"), TEXT("Woodlands"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Marina Bay"), TEXT("Gardens by the Bay"), TEXT("Marine Parade"), TEXT("Marine Terrace"), TEXT("Bayshore") }));
@@ -186,8 +173,8 @@ int32 FKioskData::CityHallIndex()
 const TArray<int32>& FKioskData::PopularStations()
 {
 	static const TArray<int32> Data = {
-		FindStation(TEXT("HarbourFront")), FindStation(TEXT("Hume")),
-		FindStation(TEXT("Dhoby Ghaut")), FindStation(TEXT("Marina South Pier")) };
+		FindStation(TEXT("HarbourFront")), FindStation(TEXT("Bayfront")), FindStation(TEXT("Changi Airport")),
+		FindStation(TEXT("Orchard")), FindStation(TEXT("Chinatown")) };
 	return Data;
 }
 

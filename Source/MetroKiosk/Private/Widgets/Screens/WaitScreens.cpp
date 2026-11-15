@@ -2,6 +2,7 @@
 #include "KioskScreens.h"
 
 #include "KioskLoc.h"
+#include "KioskRoutes.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Components/SKioskDashedBox.h"
@@ -341,6 +342,11 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 		? KT("All lines")
 		: FText::Format(LOCTEXT("TripArrow", "City Hall → {0}"), Session->DestinationLabel());
 
+	const FKioskRoute& Route = FKioskRoutes::FromCityHall(State.Destination);
+	const FText RouteNote = (State.Ticket == ETicketType::DayPass || !Route.bValid)
+		? FText::GetEmpty()
+		: FText::Format(LOCTEXT("ReceiptRoute", "{0} · {1}"), FKioskRoutes::Detail(Route), FKioskRoutes::Summary(Route));
+
 	TSharedRef<SWidget> ReceiptButtons = SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 18.f)
 		[
@@ -407,6 +413,10 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 						+ SHorizontalBox::Slot().AutoWidth()[ Text(FKioskSession::DateShortText(), 15.f, false, C.Muted) ]
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ Text(Trip, 40.f, true, C.Ink) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+					[
+						TextWrap(RouteNote, 18.f, false, C.Muted, 1.2f)
+					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)
 					[
 						SNew(SHorizontalBox)

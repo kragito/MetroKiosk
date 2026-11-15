@@ -2,6 +2,7 @@
 #include "KioskScreens.h"
 
 #include "KioskLoc.h"
+#include "KioskRoutes.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Components/SKioskChrome.h"
@@ -70,11 +71,11 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
-				Pill(FText::Format(INVTEXT("{0} · $1.68"), KT("One-way")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 54.f, 14.f))
+				Pill(FText::Format(FKioskLoc::Tr(LOCTEXT("OneWayFrom", "{0} · from {1}")), KT("One-way"), FKioskSession::Money(FKioskFares::MinOneWayCents())), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 54.f, 14.f))
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
-				Pill(FText::Format(INVTEXT("{0} · $8.00"), KT("Day pass")), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 38.f, 14.f))
+				Pill(FText::Format(INVTEXT("{0} · {1}"), KT("Day pass"), FKioskSession::Money(FKioskFares::DayPassCents)), C.PrimaryChip, C.Ink, 22.f, true, C.Transparent, FMargin(22.f, 14.f, 38.f, 14.f))
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
@@ -333,19 +334,22 @@ void STicketTypeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::OneWay, EKioskIcon::ArrowRight, KT("One-way"),
-						FKioskLoc::Tr(LOCTEXT("OneWayBody", "One trip from here to one station.\nValid for 2 hours.")), FText::GetEmpty(), FText::FromString(TEXT("$1.68")), false)
+						FKioskLoc::Tr(LOCTEXT("OneWayBody", "One trip from here to one station.\nValid for 2 hours.")), FText::GetEmpty(),
+						FText::Format(FKioskLoc::Tr(LOCTEXT("PriceFrom", "from {0}")), FKioskSession::Money(FKioskFares::MinOneWayCents())), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 18.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::RoundTrip, EKioskIcon::Swap, KT("Round trip"),
 						FKioskLoc::Tr(LOCTEXT("RoundTripBody", "There and back between two stations.\nReturn valid until 12:00 a.m. today.\n30% discount.")),
-						FText::FromString(TEXT("$2.56 - $5.14")), FText::FromString(TEXT("$1.79 - $3.60")), false)
+						FText::Format(INVTEXT("{0} - {1}"), FKioskSession::Money(FKioskFares::MinOneWayCents() * 2), FKioskSession::Money(FKioskFares::MaxOneWayCents() * 2)),
+						FText::Format(INVTEXT("{0} - {1}"), FKioskSession::Money(FKioskFares::RoundTripFromOneWay(FKioskFares::MinOneWayCents())),
+							FKioskSession::Money(FKioskFares::RoundTripFromOneWay(FKioskFares::MaxOneWayCents()))), false)
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(18.f, 0.f, 0.f, 0.f)
 				[
 					TicketCardWidget(Session, ETicketType::DayPass, EKioskIcon::Clock, KT("Day pass"),
 						KT("Unlimited rides on every line until 12:00 a.m. tonight. No destination needed."),
-						FText::GetEmpty(), FText::FromString(TEXT("$8.00")), true)
+						FText::GetEmpty(), FKioskSession::Money(FKioskFares::DayPassCents), true)
 				]
 			]
 		]

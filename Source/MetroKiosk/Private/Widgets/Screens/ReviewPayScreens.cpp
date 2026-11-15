@@ -3,6 +3,8 @@
 
 #include "KioskData.h"
 #include "KioskLoc.h"
+#include "KioskPlaces.h"
+#include "KioskRoutes.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Components/SKioskDashedBox.h"
@@ -66,7 +68,8 @@ namespace
 		];
 	}
 
-	TSharedRef<SWidget> PlaceRow(const FText& Label, const FText& Place, uint8 Mask)
+	/** A "From"/"To" row: the station, its line badges, and (optionally) the place or local name under it. */
+	TSharedRef<SWidget> PlaceRow(const FText& Label, const FText& Place, uint8 Mask, const FText& Detail = FText::GetEmpty())
 	{
 		const FKioskColors& C = KC();
 		return SNew(SVerticalBox)
@@ -76,6 +79,10 @@ namespace
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(Place, 48.f, true, C.Ink) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16.f, 6.f, 0.f, 0.f)[ LineBadges(Mask, 30.f, 8.f) ]
+			]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)
+			[
+				Detail.IsEmpty() ? StaticCastSharedRef<SWidget>(SNew(SSpacer)) : StaticCastSharedRef<SWidget>(Text(Detail, 21.f, false, C.Muted))
 			];
 	}
 }
@@ -86,10 +93,10 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
 	const bool bHasDestination = Stations.IsValidIndex(Session->State.Destination);
 
-	const int32 Minutes = bHasDestination ? Stations[Session->State.Destination].Minutes + 1 : 0;
+	const FKioskRoute& Route = FKioskRoutes::FromCityHall(Session->State.Destination);
 	const FText Note = bHasDestination
-		? FText::Format(LOCTEXT("ValidNote", "Valid for 2 hours after purchase. About {0} min on the {1}."),
-			FText::AsNumber(Minutes), FText::FromString(FKioskData::Line(Stations[Session->State.Destination].FirstLine()).FullName))
+		? FText::Format(FKioskLoc::Tr(LOCTEXT("ValidNote", "Valid for 2 hours after purchase. {0}. {1}.")),
+			FKioskRoutes::Detail(Route), FKioskRoutes::Summary(Route))
 		: LOCTEXT("ValidDay", "Unlimited rides on every line until 12:00 a.m. tonight.");
 
 	TSharedRef<SVerticalBox> Trip = SNew(SVerticalBox);
@@ -115,7 +122,17 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 	if (bHasDestination)
 	{
 		const FKioskStation& Station = Stations[Session->State.Destination];
-		Trip->AddSlot().AutoHeight().Padding(8.f, 14.f, 0.f, 0.f)[ PlaceRow(LOCTEXT("To", "To"), FText::FromString(Station.Name), Station.LineMask) ];
+		const TArray<FKioskPlace>& Places = FKioskPlaces::All();
+		FText Detail;
+		if (Places.IsValidIndex(Session->State.DestinationPlace))
+		{
+			Detail = FText::FromString(Places[Session->State.DestinationPlace].Name);
+		}
+		else
+		{
+			Detail = FText::FromString(FKioskPlaces::LocalName(Station.Name));
+		}
+		Trip->AddSlot().AutoHeight().Padding(8.f, 14.f, 0.f, 0.f)[ PlaceRow(LOCTEXT("To", "To"), FText::FromString(Station.Name), Station.LineMask, Detail) ];
 	}
 	Trip->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
 	Trip->AddSlot().AutoHeight()

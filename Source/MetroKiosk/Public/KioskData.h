@@ -16,9 +16,6 @@ struct FKioskStation
 	FString Name;
 	uint8 LineMask = 0;
 	FVector2f MapPos = FVector2f::ZeroVector; // schematic map space, 0..1000 x 0..600
-	int32 Minutes = 0;
-	int32 Changes = 0;
-	int32 FareCents = 168;
 
 	bool OnLine(int32 LineIndex) const { return (LineMask & (1 << LineIndex)) != 0; }
 	int32 FirstLine() const;
