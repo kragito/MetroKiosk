@@ -71,7 +71,7 @@ namespace
 		{ TEXT("Singapore General Hospital"), C::Hospital, TEXT("Outram Park"), TEXT("sgh,general hospital,national cancer centre,national dental centre") },
 		{ TEXT("Tan Tock Seng Hospital"), C::Hospital, TEXT("Novena"), TEXT("ttsh,tan tock seng,novena hospital") },
 		{ TEXT("National University Hospital"), C::Hospital, TEXT("Kent Ridge"), TEXT("nuh,nus hospital") },
-		{ TEXT("Changi General Hospital"), C::Hospital, TEXT("Tanah Merah"), TEXT("cgh,changi hospital") },
+		{ TEXT("Changi General Hospital"), C::Hospital, TEXT("Simei"), TEXT("cgh,changi hospital") },
 		{ TEXT("KK Women's and Children's Hospital"), C::Hospital, TEXT("Little India"), TEXT("kkh,kk hospital,women and children,children hospital") },
 		{ TEXT("Khoo Teck Puat Hospital"), C::Hospital, TEXT("Yishun"), TEXT("ktph,yishun hospital") },
 		{ TEXT("Mount Elizabeth Hospital"), C::Hospital, TEXT("Orchard"), TEXT("mount e,mt elizabeth") },
@@ -185,7 +185,7 @@ namespace
 		{ TEXT("Ang Mo Kio"), TEXT("宏茂桥"), TEXT(""), TEXT("ஆங் மோ கியோ") },
 		{ TEXT("Bishan"), TEXT("碧山"), TEXT(""), TEXT("பிஷான்") },
 		{ TEXT("Marymount"), TEXT("玛丽蒙"), TEXT(""), TEXT("மேரிமவுண்ட்") },
-		{ TEXT("Caldecott"), TEXT("加里谷"), TEXT(""), TEXT("கால்டிகாட்") },
+		{ TEXT("Caldecott"), TEXT("加利谷"), TEXT(""), TEXT("கால்டிகாட்") },
 		{ TEXT("Botanic Gardens"), TEXT("植物园"), TEXT("Taman Botani"), TEXT("பொட்டானிக் கார்டன்ஸ்") },
 		{ TEXT("Newton"), TEXT("纽顿"), TEXT(""), TEXT("நியூட்டன்") },
 		{ TEXT("Orchard"), TEXT("乌节"), TEXT(""), TEXT("ஆர்ச்சர்ட்") },
@@ -200,7 +200,7 @@ namespace
 		{ TEXT("Outram Park"), TEXT("欧南园"), TEXT(""), TEXT("அவுட்ரம் பார்க்") },
 		{ TEXT("Chinatown"), TEXT("牛车水"), TEXT(""), TEXT("சைனாடவுன்") },
 		{ TEXT("HarbourFront"), TEXT("港湾"), TEXT(""), TEXT("ஹார்பர்ஃப்ரண்ட்") },
-		{ TEXT("Hume"), TEXT("休闲"), TEXT(""), TEXT("ஹியூம்") },
+		{ TEXT("Hume"), TEXT("休姆"), TEXT(""), TEXT("ஹியூம்") },
 		{ TEXT("Beauty World"), TEXT("美世界"), TEXT(""), TEXT("பியூட்டி வேர்ல்ட்") },
 		{ TEXT("Bukit Panjang"), TEXT("武吉班让"), TEXT(""), TEXT("புக்கிட் பாஞ்சாங்") },
 		{ TEXT("Buona Vista"), TEXT("波那维斯达"), TEXT(""), TEXT("புவானா விஸ்டா") },
@@ -219,13 +219,14 @@ namespace
 		{ TEXT("Gardens by the Bay"), TEXT("滨海湾花园"), TEXT(""), TEXT("கார்டன்ஸ் பை தி பே") },
 		{ TEXT("Marine Parade"), TEXT("马林百列"), TEXT(""), TEXT("மரின் பரேட்") },
 		{ TEXT("Marine Terrace"), TEXT("马林台"), TEXT(""), TEXT("மரின் டெரஸ்") },
-		{ TEXT("Bayshore"), TEXT("海岸"), TEXT(""), TEXT("பேஷோர்") },
+		{ TEXT("Bayshore"), TEXT("碧湾"), TEXT(""), TEXT("பேஷோர்") },
 		{ TEXT("Bayfront"), TEXT("海湾舫"), TEXT(""), TEXT("பேஃப்ரண்ட்") },
 		{ TEXT("Kent Ridge"), TEXT("肯特岗"), TEXT(""), TEXT("கெண்ட் ரிட்ஜ்") },
 		{ TEXT("Khatib"), TEXT("卡迪"), TEXT(""), TEXT("காத்திப்") },
 		{ TEXT("Novena"), TEXT("诺维娜"), TEXT(""), TEXT("நோவீனா") },
 		{ TEXT("Clarke Quay"), TEXT("克拉码头"), TEXT(""), TEXT("கிளார்க் கீ") },
-		{ TEXT("Esplanade"), TEXT("滨海艺术中心"), TEXT(""), TEXT("எஸ்பிளனேட்") },
+		{ TEXT("Esplanade"), TEXT("滨海中心"), TEXT(""), TEXT("எஸ்பிளனேட்") },
+		{ TEXT("Simei"), TEXT("四美"), TEXT(""), TEXT("சிமே") },
 		// Places
 		{ TEXT("Marina Bay Sands"), TEXT("滨海湾金沙"), TEXT(""), TEXT("மரினா பே சேண்ட்ஸ்") },
 		{ TEXT("Merlion"), TEXT("鱼尾狮"), TEXT(""), TEXT("மெர்லயன்") },
@@ -376,6 +377,23 @@ FString FKioskPlaces::LocalName(const FString& EnglishName)
 	case EKioskLanguage::Tamil: return LocalNameIn(EnglishName, 2);
 	default: return FString();
 	}
+}
+
+FText FKioskPlaces::Note(const FKioskPlace& Place)
+{
+	if (Place.Name == TEXT("Singapore Zoo"))
+	{
+		return FKioskLoc::Tr(LOCTEXT("ZooNote", "shuttle bus from Khatib"));
+	}
+	return FText::GetEmpty();
+}
+
+FText FKioskPlaces::NearLine(const FKioskPlace& Place)
+{
+	const FText Near = FText::Format(FKioskLoc::Tr(LOCTEXT("NearStation", "near {0}")),
+		StationLabel(FKioskData::Stations()[Place.Station].Name));
+	const FText Extra = Note(Place);
+	return Extra.IsEmpty() ? Near : FText::Format(LOCTEXT("NearWithNote", "{0} · {1}"), Near, Extra);
 }
 
 FText FKioskPlaces::StationLabel(const FString& EnglishName)

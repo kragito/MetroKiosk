@@ -60,7 +60,7 @@ namespace
 			Out.Title = FText::FromString(Place.Name);
 			Out.Local = FKioskPlaces::LocalName(Place.Name);
 			Out.Icon = FKioskPlaces::CategoryIcon(Place.Category);
-			Out.Subtitle = FText::Format(FKioskLoc::Tr(LOCTEXT("NearStation", "near {0}")), FKioskPlaces::StationLabel(Station.Name));
+			Out.Subtitle = FKioskPlaces::NearLine(Place);
 		}
 		else
 		{
@@ -142,7 +142,7 @@ namespace KioskDest
 		FTileArgs Args;
 		Args.Title = FText::FromString(Place.Name);
 		Args.LocalTitle = FKioskPlaces::LocalName(Place.Name);
-		Args.Subtitle = FText::Format(FKioskLoc::Tr(LOCTEXT("NearStation", "near {0}")), FKioskPlaces::StationLabel(Station.Name));
+		Args.Subtitle = FKioskPlaces::NearLine(Place);
 		Args.Icon = FKioskPlaces::CategoryIcon(Place.Category);
 		Args.LineMask = Station.LineMask;
 		Args.Detail = TripLine(Session, Place.Station);
@@ -291,10 +291,10 @@ namespace KioskDest
 							[
 								SNew(SKioskButton)
 								.Kind(EKioskButtonKind::KeyMuted)
-								.Label(LOCTEXT("ClearSearch", "Clear search"))
+								.Label(KT("Clear search"))
 								.ButtonTag(TEXT("Clear search"))
 								.Padding(FMargin(0.f))
-								.OnClicked_Lambda([Session]() { Session->State.SearchText.Reset(); Session->OpenKeyboard(false); return FReply::Handled(); })
+								.OnClicked_Lambda([Session]() { Session->SetSearchText(FString()); Session->OpenKeyboard(false); return FReply::Handled(); })
 								[
 									Icon(EKioskIcon::Close, 22.f, C.Ink, 3.f)
 								]
@@ -339,7 +339,7 @@ namespace KioskDest
 				[
 					SNew(SKioskButton)
 					.Kind(EKioskButtonKind::KeyMuted)
-					.Label(LOCTEXT("Backspace", "Backspace"))
+					.Label(KT("Backspace"))
 					.ButtonTag(TEXT("Key Backspace"))
 					.Width(KeyW + 14.f).Height(KeyH)
 					.Padding(FMargin(0.f))
@@ -359,17 +359,17 @@ namespace KioskDest
 			[
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::KeyMuted)
-				.Label(LOCTEXT("ClearKey", "Clear"))
+				.Label(KT("Clear"))
 				.ButtonTag(TEXT("Key Clear"))
 				.FontPx(22.f).Bold(false)
 				.Width(136.f).Height(KeyH)
-				.OnClicked_Lambda([Session]() { Session->State.SearchText.Reset(); Session->OpenKeyboard(false); return FReply::Handled(); })
+				.OnClicked_Lambda([Session]() { Session->SetSearchText(FString()); return FReply::Handled(); })
 			]
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(Gap, 0.f, 0.f, 0.f)
 			[
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::Key)
-				.Label(LOCTEXT("SpaceKey", "Space"))
+				.Label(KT("Space"))
 				.ButtonTag(TEXT("Key Space"))
 				.FontPx(22.f).Bold(false)
 				.Height(KeyH)

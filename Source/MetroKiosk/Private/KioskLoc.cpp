@@ -135,8 +135,8 @@ namespace
 		{ TEXT("Confirm destination"), TEXT("确认目的地"), TEXT("Sahkan destinasi"), TEXT("சேருமிடத்தை உறுதிசெய்க") },
 		{ TEXT("Change"), TEXT("更改"), TEXT("Tukar"), TEXT("மாற்று") },
 		{ TEXT("See it on the map"), TEXT("在地图上查看"), TEXT("Lihat di peta"), TEXT("வரைபடத்தில் பார்க்க") },
-		{ TEXT("Type a place or station, e.g. Gardens by the Bay"), TEXT("输入地点或车站，例如：滨海湾花园"), TEXT("Taip tempat atau stesen, cth. Gardens by the Bay"), TEXT("இடம் அல்லது நிலையத்தை உள்ளிடுங்கள், எ.கா. கார்டன்ஸ் பை தி பே") },
-		{ TEXT("Spelling does not need to be perfect. Places like VivoCity or the Zoo work too."), TEXT("拼写不必完全正确。也可输入怡丰城、动物园等地点。"), TEXT("Ejaan tidak perlu sempurna. Tempat seperti VivoCity atau Zoo juga boleh."), TEXT("எழுத்துப்பிழை இருந்தாலும் பரவாயில்லை. விவோசிட்டி, மிருகக்காட்சிசாலை போன்ற இடங்களையும் தேடலாம்.") },
+		{ TEXT("Type a place or station, e.g. Gardens by the Bay"), TEXT("输入英文名或拼音，例如 Gardens 或 niuchesui"), TEXT("Taip tempat atau stesen, cth. Gardens by the Bay"), TEXT("ஆங்கிலப் பெயரை உள்ளிடுங்கள், எ.கா. Gardens by the Bay") },
+		{ TEXT("Spelling does not need to be perfect. Places like VivoCity or the Zoo work too."), TEXT("拼写不必完全正确。也可输入 VivoCity、Zoo 等地点。"), TEXT("Ejaan tidak perlu sempurna. Tempat seperti VivoCity atau Zoo juga boleh."), TEXT("எழுத்துப்பிழை இருந்தாலும் பரவாயில்லை. VivoCity, Zoo போன்ற இடங்களையும் தேடலாம்.") },
 		{ TEXT("Pick a place or station, or type where you want to go. We show the route and fare before you confirm."), TEXT("选择地点或车站，或输入目的地。确认前会显示路线和票价。"), TEXT("Pilih tempat atau stesen, atau taip ke mana anda mahu pergi. Kami tunjukkan laluan dan tambang sebelum anda sahkan."), TEXT("இடம் அல்லது நிலையத்தைத் தேர்ந்தெடுங்கள், அல்லது செல்ல விரும்பும் இடத்தை உள்ளிடுங்கள். உறுதிசெய்யும் முன் வழியும் கட்டணமும் காட்டப்படும்.") },
 		{ TEXT("Results for “{0}”"), TEXT("“{0}”的搜索结果"), TEXT("Hasil untuk “{0}”"), TEXT("“{0}” க்கான முடிவுகள்") },
 		{ TEXT("No exact match for “{0}”. Did you mean…"), TEXT("没有找到“{0}”。您是不是想找…"), TEXT("Tiada padanan tepat untuk “{0}”. Adakah anda maksudkan…"), TEXT("“{0}” க்குச் சரியான பொருத்தம் இல்லை. நீங்கள் குறிப்பிடுவது…") },
@@ -158,6 +158,12 @@ namespace
 		{ TEXT("from {0}"), TEXT("起价 {0}"), TEXT("dari {0}"), TEXT("{0} முதல்") },
 		{ TEXT("Highlight one line (optional)"), TEXT("高亮显示某条线路（可选）"), TEXT("Serlahkan satu laluan (pilihan)"), TEXT("ஒரு வழித்தடத்தை முன்னிலைப்படுத்து (விருப்பம்)") },
 		{ TEXT("Search for a place or station"), TEXT("搜索地点或车站"), TEXT("Cari tempat atau stesen"), TEXT("இடம் அல்லது நிலையத்தைத் தேடுங்கள்") },
+		{ TEXT("{0} (to {1})"), TEXT("{0}（往{1}）"), TEXT("{0} (ke {1})"), TEXT("{0} ({1} நோக்கி)") },
+		{ TEXT("shuttle bus from Khatib"), TEXT("卡迪有接驳巴士"), TEXT("bas ulang-alik dari Khatib"), TEXT("காத்திப்பிலிருந்து இணைப்புப் பேருந்து") },
+		{ TEXT("Clear"), TEXT("清除"), TEXT("Kosongkan"), TEXT("அழி") },
+		{ TEXT("Space"), TEXT("空格"), TEXT("Ruang"), TEXT("இடைவெளி") },
+		{ TEXT("Backspace"), TEXT("退格"), TEXT("Undur"), TEXT("பின்நீக்கு") },
+		{ TEXT("Clear search"), TEXT("清除搜索"), TEXT("Kosongkan carian"), TEXT("தேடலை அழி") },
 	};
 }
 

@@ -7,7 +7,6 @@ struct FKioskLineInfo
 {
 	const TCHAR* Code;
 	const TCHAR* Name;      // short name used on filter pills, e.g. "North–South"
-	const TCHAR* FullName;  // e.g. "North-South Line"
 	const TCHAR* ColorName; // e.g. "Red"
 };
 
@@ -43,5 +42,7 @@ public:
 	static const TArray<int32>& PopularStations();
 	/** Poly-line segments (station indices) used to draw a line on the schematic map. */
 	static const TArray<TArray<int32>>& LinePaths(int32 LineIndex);
+	/** Trains do not run through between services of one line (the East-West Changi branch needs a change at Tanah Merah). */
+	static int32 PathService(int32 LineIndex, int32 PathIndex);
 	static const TArray<FKioskConcession>& Concessions();
 };

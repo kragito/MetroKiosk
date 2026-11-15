@@ -91,7 +91,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
   22 map units per hop, min 2, +5 min per change; and the fare rule). The fare rule: 128c up to 3.2 km, +6c per extra km, capped
   at 257c; child/senior `(c*7+5)/10`; round trip 2x less 30%; day pass $8.00. Never hard-code a fare or time in a widget.
 - The on-screen keyboard is Latin only, so Chinese, Malay and Tamil readers search with English names, aliases or pinyin
-  (for example `niuchesui`); the matcher also accepts typed Chinese/Tamil text if a physical keyboard is ever attached.
+  (for example `niuchesui`); the search hint says so; the matcher also accepts typed Chinese/Tamil text if a physical keyboard is ever attached.
 - The harness enables Slate input while the app is not the active OS window (`SetHandleDeviceInputWhenApplicationNotActive`).
   Without that, Slate refuses pointer capture for a background-launched window and every click is silently dropped.
   `Tools/journey.ps1 -StealFocusForTest` opens Notepad over the game to prove journeys pass while the game is inactive.

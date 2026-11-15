@@ -109,7 +109,7 @@ Fares come from one source of truth (`KioskRoutes.*`): the fastest route from Ci
 
 - **Adult one-way** = 128c for the first 3.2 km, plus 6c per further km (rounded up), capped at 257c.
   Range **$1.28 - $2.57**. Examples from City Hall: Orchard 5 min, direct, $1.46; Bayfront 12 min, 1 change, $1.64;
-  HarbourFront 16 min, 1 change, $1.82; Changi Airport 23 min, direct, $2.54.
+  HarbourFront 16 min, 1 change, $1.82; Changi Airport 28 min, 1 change (East-West, change at Tanah Merah), $2.54.
 - **Child and senior** = 70% of the adult fare, integer cents `(c*7+5)/10` (Bayfront $1.64 -> $1.15).
 - **Round trip** = 2 x one-way less 30%, `(c*2*7+5)/10` (range $1.79 - $3.60).
 - **Day pass** $8.00 (child/senior $5.60), no destination.

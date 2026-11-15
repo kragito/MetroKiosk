@@ -16,7 +16,7 @@ namespace KioskDest
 		FText Title;               // English place or station name
 		FString LocalTitle;        // name in the active language, shown beneath the English one
 		FText Subtitle;            // "near Bayfront", "VivoCity · Sentosa"
-		EKioskIcon Icon;
+		EKioskIcon Icon = static_cast<EKioskIcon>(0); // EKioskIcon::None
 		uint8 LineMask = 0;
 		FText Detail;              // "13 min · 1 change · $1.50"
 		bool bSelected = false;

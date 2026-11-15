@@ -47,6 +47,10 @@ public:
 	static FString LocalNameIn(const FString& EnglishName, int32 LanguageIndex);
 	/** "Bayfront" in English, "Bayfront (海湾舫)" in other languages. */
 	static FText StationLabel(const FString& EnglishName);
+	/** Extra travel advice for a place ("shuttle bus from Khatib"), or empty text. */
+	static FText Note(const FKioskPlace& Place);
+	/** "near Bayfront" plus the note, translated; the subtitle of a place. */
+	static FText NearLine(const FKioskPlace& Place);
 	/** What is at a popular station ("VivoCity · Sentosa", translated), or empty text. */
 	static FText Blurb(int32 StationIndex);
 };

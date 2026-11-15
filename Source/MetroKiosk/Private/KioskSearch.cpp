@@ -232,25 +232,31 @@ int32 FKioskSearch::EditDistance(const FString& A, const FString& B)
 {
 	const int32 N = A.Len();
 	const int32 M = B.Len();
-	TArray<int32> Table;
-	Table.SetNumZeroed((N + 1) * (M + 1));
-	auto At = [&Table, M](int32 I, int32 J) -> int32& { return Table[I * (M + 1) + J]; };
-	for (int32 I = 0; I <= N; ++I) { At(I, 0) = I; }
-	for (int32 J = 0; J <= M; ++J) { At(0, J) = J; }
+	// Three rolling rows (current, previous, and the one before for adjacent swaps) instead of a full table.
+	TArray<int32, TInlineAllocator<64>> Rows[3];
+	for (TArray<int32, TInlineAllocator<64>>& Row : Rows)
+	{
+		Row.SetNumZeroed(M + 1);
+	}
+	for (int32 J = 0; J <= M; ++J) { Rows[1][J] = J; }
 	for (int32 I = 1; I <= N; ++I)
 	{
+		TArray<int32, TInlineAllocator<64>>& Cur = Rows[I % 3];
+		const TArray<int32, TInlineAllocator<64>>& Prev = Rows[(I + 2) % 3];
+		const TArray<int32, TInlineAllocator<64>>& Prev2 = Rows[(I + 1) % 3];
+		Cur[0] = I;
 		for (int32 J = 1; J <= M; ++J)
 		{
 			const int32 Cost = A[I - 1] == B[J - 1] ? 0 : 1;
-			int32 Best = FMath::Min3(At(I - 1, J) + 1, At(I, J - 1) + 1, At(I - 1, J - 1) + Cost);
+			int32 Best = FMath::Min3(Prev[J] + 1, Cur[J - 1] + 1, Prev[J - 1] + Cost);
 			if (I > 1 && J > 1 && A[I - 1] == B[J - 2] && A[I - 2] == B[J - 1])
 			{
-				Best = FMath::Min(Best, At(I - 2, J - 2) + 1);
+				Best = FMath::Min(Best, Prev2[J - 2] + 1);
 			}
-			At(I, J) = Best;
+			Cur[J] = Best;
 		}
 	}
-	return At(N, M);
+	return Rows[N % 3][M];
 }
 
 FKioskSearchResult FKioskSearch::Run(const FString& Query)
@@ -328,7 +334,7 @@ FKioskSearchResult FKioskSearch::Run(const FString& Query)
 		return A.Entry->Name < B.Entry->Name;
 	});
 
-	Result.bClose = !Candidates.IsEmpty() && Candidates[0].Ratio <= 0.5f;
+	Result.bClose = Normalized.Len() >= 3 && !Candidates.IsEmpty() && Candidates[0].Ratio <= 0.5f;
 	if (Result.bClose)
 	{
 		for (int32 Index = 0; Index < FMath::Min(MaxSuggestions, Candidates.Num()) && Candidates[Index].Ratio <= 0.55f; ++Index)

@@ -214,7 +214,7 @@ void FKioskSession::OpenKeyboard(bool bOpen)
 	State.bKeyboardOpen = bOpen;
 	if (bOpen)
 	{
-		State.LineFilter = INDEX_NONE; // the filter pills are hidden while typing, so never filter silently
+		State.LineFilter = INDEX_NONE; // opening search clears the optional map line highlight so results are never silently narrowed
 	}
 	NotifyChanged();
 }

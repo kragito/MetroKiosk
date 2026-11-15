@@ -15,12 +15,12 @@ int32 FKioskStation::FirstLine() const
 const FKioskLineInfo& FKioskData::Line(int32 LineIndex)
 {
 	static const FKioskLineInfo Lines[NumLines] = {
-		{ TEXT("NS"), TEXT("North–South"), TEXT("North-South Line"), TEXT("Red") },
-		{ TEXT("EW"), TEXT("East–West"), TEXT("East-West Line"), TEXT("Green") },
-		{ TEXT("NE"), TEXT("North East"), TEXT("North East Line"), TEXT("Purple") },
-		{ TEXT("CC"), TEXT("Circle"), TEXT("Circle Line"), TEXT("Orange") },
-		{ TEXT("DT"), TEXT("Downtown"), TEXT("Downtown Line"), TEXT("Blue") },
-		{ TEXT("TE"), TEXT("Thomson"), TEXT("Thomson-East Coast Line"), TEXT("Brown") },
+		{ TEXT("NS"), TEXT("North–South"), TEXT("Red") },
+		{ TEXT("EW"), TEXT("East–West"), TEXT("Green") },
+		{ TEXT("NE"), TEXT("North East"), TEXT("Purple") },
+		{ TEXT("CC"), TEXT("Circle"), TEXT("Orange") },
+		{ TEXT("DT"), TEXT("Downtown"), TEXT("Blue") },
+		{ TEXT("TE"), TEXT("Thomson"), TEXT("Brown") },
 	};
 	return Lines[FMath::Clamp(LineIndex, 0, NumLines - 1)];
 }
@@ -55,7 +55,7 @@ namespace
 		{ TEXT("City Hall"), NS | EW, 485, 465 },
 		{ TEXT("Raffles Place"), NS | EW, 520, 495 },
 		{ TEXT("Marina Bay"), NS | CC | TE, 560, 525 },
-		{ TEXT("Marina South Pier"), NS | CC, 595, 555 },
+		{ TEXT("Marina South Pier"), NS, 595, 555 },
 		{ TEXT("Promenade"), CC | DT, 562, 458 },
 		{ TEXT("Outram Park"), EW | NE, 400, 512 },
 		{ TEXT("Chinatown"), NE | DT, 450, 488 },
@@ -64,7 +64,7 @@ namespace
 		{ TEXT("Beauty World"), DT, 235, 262 },
 		{ TEXT("Bukit Panjang"), DT, 190, 150 },
 		{ TEXT("Buona Vista"), EW | CC, 250, 442 },
-		{ TEXT("Jurong East"), NS | EW, 150, 412 },
+		{ TEXT("Jurong East"), EW, 150, 412 },
 		{ TEXT("Boon Lay"), EW, 60, 412 },
 		{ TEXT("Serangoon"), NE | CC, 600, 300 },
 		{ TEXT("Sengkang"), NE, 700, 215 },
@@ -86,6 +86,7 @@ namespace
 		{ TEXT("Novena"), NS, 372, 305 },
 		{ TEXT("Clarke Quay"), NE, 452, 455 },
 		{ TEXT("Esplanade"), CC, 515, 435 },
+		{ TEXT("Simei"), EW, 800, 262 },
 	};
 
 	TArray<FKioskStation> BuildStations()
@@ -123,14 +124,14 @@ namespace
 			Result.Add(Path({ TEXT("Marsiling"), TEXT("Woodlands"), TEXT("Yishun"), TEXT("Khatib"), TEXT("Ang Mo Kio"), TEXT("Bishan"), TEXT("Novena"), TEXT("Newton"), TEXT("Orchard"), TEXT("Dhoby Ghaut"), TEXT("City Hall"), TEXT("Raffles Place"), TEXT("Marina Bay"), TEXT("Marina South Pier") }));
 			break;
 		case 1:
-			Result.Add(Path({ TEXT("Boon Lay"), TEXT("Jurong East"), TEXT("Buona Vista"), TEXT("Outram Park"), TEXT("Raffles Place"), TEXT("City Hall"), TEXT("Bugis"), TEXT("Paya Lebar"), TEXT("Tanah Merah"), TEXT("Tampines"), TEXT("Pasir Ris") }));
+			Result.Add(Path({ TEXT("Boon Lay"), TEXT("Jurong East"), TEXT("Buona Vista"), TEXT("Outram Park"), TEXT("Raffles Place"), TEXT("City Hall"), TEXT("Bugis"), TEXT("Paya Lebar"), TEXT("Tanah Merah"), TEXT("Simei"), TEXT("Tampines"), TEXT("Pasir Ris") }));
 			Result.Add(Path({ TEXT("Tanah Merah"), TEXT("Expo"), TEXT("Changi Airport") }));
 			break;
 		case 2:
 			Result.Add(Path({ TEXT("HarbourFront"), TEXT("Outram Park"), TEXT("Chinatown"), TEXT("Clarke Quay"), TEXT("Dhoby Ghaut"), TEXT("Little India"), TEXT("Serangoon"), TEXT("Sengkang"), TEXT("Punggol") }));
 			break;
 		case 3:
-			Result.Add(Path({ TEXT("Marina Bay"), TEXT("Bayfront"), TEXT("Promenade"), TEXT("MacPherson"), TEXT("Paya Lebar"), TEXT("Serangoon"), TEXT("Bishan"), TEXT("Marymount"), TEXT("Caldecott"), TEXT("Botanic Gardens"), TEXT("Buona Vista"), TEXT("Kent Ridge"), TEXT("HarbourFront"), TEXT("Marina Bay") }));
+			Result.Add(Path({ TEXT("Marina Bay"), TEXT("Bayfront"), TEXT("Promenade"), TEXT("Paya Lebar"), TEXT("MacPherson"), TEXT("Serangoon"), TEXT("Bishan"), TEXT("Marymount"), TEXT("Caldecott"), TEXT("Botanic Gardens"), TEXT("Buona Vista"), TEXT("Kent Ridge"), TEXT("HarbourFront"), TEXT("Marina Bay") }));
 			Result.Add(Path({ TEXT("Promenade"), TEXT("Esplanade"), TEXT("Dhoby Ghaut") }));
 			break;
 		case 4:
@@ -176,6 +177,12 @@ const TArray<int32>& FKioskData::PopularStations()
 		FindStation(TEXT("HarbourFront")), FindStation(TEXT("Bayfront")), FindStation(TEXT("Changi Airport")),
 		FindStation(TEXT("Orchard")), FindStation(TEXT("Chinatown")) };
 	return Data;
+}
+
+int32 FKioskData::PathService(int32 LineIndex, int32 PathIndex)
+{
+	// The Circle Line's Promenade - Esplanade - Dhoby Ghaut spur is part of the same service as the loop.
+	return (LineIndex == 3) ? 0 : PathIndex;
 }
 
 const TArray<TArray<int32>>& FKioskData::LinePaths(int32 LineIndex)

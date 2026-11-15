@@ -22,26 +22,34 @@ namespace
 		return FMath::Max(2, FMath::RoundToInt(MapDistance / 22.f));
 	}
 
-	void BuildLegs(FKioskRoute& Route, const TArray<int32>& Nodes, int32 NumLines)
+	constexpr int32 MaxServices = 2; // separately-running services per line (East-West has the Changi branch)
+
+	// A node is one station on one service: (Station * NumLines + Line) * MaxServices + Service.
+	int32 NodeOf(int32 Station, int32 Line, int32 Service) { return (Station * FKioskData::NumLines + Line) * MaxServices + Service; }
+	int32 StationOf(int32 Node) { return Node / (FKioskData::NumLines * MaxServices); }
+	int32 LineOf(int32 Node) { return (Node / MaxServices) % FKioskData::NumLines; }
+
+	void BuildLegs(FKioskRoute& Route, const TArray<int32>& Nodes)
 	{
-		for (int32 Index = 0; Index < Nodes.Num(); ++Index)
+		int32 LastNode = INDEX_NONE;
+		for (int32 Node : Nodes)
 		{
-			const int32 Station = Nodes[Index] / NumLines;
-			const int32 Line = Nodes[Index] % NumLines;
-			if (Route.Legs.Num() > 0 && Route.Legs.Last().Line == Line)
+			// Same line and service as the previous node: the ride continues.
+			if (!Route.Legs.IsEmpty() && LastNode != INDEX_NONE && (LastNode % (FKioskData::NumLines * MaxServices)) == (Node % (FKioskData::NumLines * MaxServices)))
 			{
-				Route.Legs.Last().ToStation = Station;
+				Route.Legs.Last().ToStation = StationOf(Node);
 			}
 			else
 			{
 				FKioskRouteLeg Leg;
-				Leg.Line = Line;
-				Leg.FromStation = Station;
-				Leg.ToStation = Station;
+				Leg.Line = LineOf(Node);
+				Leg.FromStation = StationOf(Node);
+				Leg.ToStation = StationOf(Node);
 				Route.Legs.Add(Leg);
 			}
+			LastNode = Node;
 		}
-		// A line switch on the origin platform before riding leaves an empty first leg.
+		// A switch on the origin platform before riding leaves an empty first leg.
 		Route.Legs.RemoveAll([](const FKioskRouteLeg& Leg) { return Leg.FromStation == Leg.ToStation; });
 		Route.Changes = FMath::Max(0, Route.Legs.Num() - 1);
 	}
@@ -51,28 +59,36 @@ namespace
 		const TArray<FKioskStation>& Stations = FKioskData::Stations();
 		const int32 NumStations = Stations.Num();
 		const int32 NumLines = FKioskData::NumLines;
+		const int32 NumNodes = NumStations * NumLines * MaxServices;
 
-		// Adjacency[Station * NumLines + Line] lists the hops along that line.
 		TArray<TArray<FEdge>> Adjacency;
-		Adjacency.SetNum(NumStations * NumLines);
+		Adjacency.SetNum(NumNodes);
+		TArray<bool> Serves; // does the service stop at the station?
+		Serves.Init(false, NumNodes);
 		for (int32 Line = 0; Line < NumLines; ++Line)
 		{
-			for (const TArray<int32>& Path : FKioskData::LinePaths(Line))
+			const TArray<TArray<int32>>& Paths = FKioskData::LinePaths(Line);
+			for (int32 PathIndex = 0; PathIndex < Paths.Num(); ++PathIndex)
 			{
-				for (int32 Index = 0; Index + 1 < Path.Num(); ++Index)
+				const TArray<int32>& Path = Paths[PathIndex];
+				const int32 Service = FKioskData::PathService(Line, PathIndex);
+				for (int32 Index = 0; Index < Path.Num(); ++Index)
 				{
-					const int32 A = Path[Index];
-					const int32 B = Path[Index + 1];
-					const float Distance = FVector2f::Distance(Stations[A].MapPos, Stations[B].MapPos);
-					const int32 Minutes = HopMinutes(Distance);
-					const float Km = Distance * FKioskRoutes::KmPerMapUnit;
-					Adjacency[A * NumLines + Line].Add({ B, Minutes, Km });
-					Adjacency[B * NumLines + Line].Add({ A, Minutes, Km });
+					Serves[NodeOf(Path[Index], Line, Service)] = true;
+					if (Index + 1 < Path.Num())
+					{
+						const int32 A = Path[Index];
+						const int32 B = Path[Index + 1];
+						const float Distance = FVector2f::Distance(Stations[A].MapPos, Stations[B].MapPos);
+						const int32 Minutes = HopMinutes(Distance);
+						const float Km = Distance * FKioskRoutes::KmPerMapUnit;
+						Adjacency[NodeOf(A, Line, Service)].Add({ NodeOf(B, Line, Service), Minutes, Km });
+						Adjacency[NodeOf(B, Line, Service)].Add({ NodeOf(A, Line, Service), Minutes, Km });
+					}
 				}
 			}
 		}
 
-		const int32 NumNodes = NumStations * NumLines;
 		TArray<int32> Cost;
 		TArray<float> Km;
 		TArray<int32> Prev;
@@ -83,15 +99,15 @@ namespace
 		Done.Init(false, NumNodes);
 
 		const int32 Origin = FKioskData::CityHallIndex();
-		for (int32 Line = 0; Line < NumLines; ++Line)
+		for (int32 Node = Origin * NumLines * MaxServices; Node < (Origin + 1) * NumLines * MaxServices; ++Node)
 		{
-			if (Stations[Origin].OnLine(Line))
+			if (Serves[Node])
 			{
-				Cost[Origin * NumLines + Line] = 0;
+				Cost[Node] = 0;
 			}
 		}
 
-		// Small graph (about 50 stations x 6 lines): a linear scan for the cheapest open node is plenty.
+		// Small graph (about 50 stations x 6 lines x 2): a linear scan for the cheapest open node is plenty.
 		for (;;)
 		{
 			int32 Best = INDEX_NONE;
@@ -107,27 +123,25 @@ namespace
 				break;
 			}
 			Done[Best] = true;
-			const int32 Station = Best / NumLines;
-			const int32 Line = Best % NumLines;
 
 			for (const FEdge& Edge : Adjacency[Best])
 			{
-				const int32 Next = Edge.To * NumLines + Line;
-				if (Cost[Best] + Edge.Minutes < Cost[Next])
+				if (Cost[Best] + Edge.Minutes < Cost[Edge.To])
 				{
-					Cost[Next] = Cost[Best] + Edge.Minutes;
-					Km[Next] = Km[Best] + Edge.Km;
-					Prev[Next] = Best;
+					Cost[Edge.To] = Cost[Best] + Edge.Minutes;
+					Km[Edge.To] = Km[Best] + Edge.Km;
+					Prev[Edge.To] = Best;
 				}
 			}
-			for (int32 Other = 0; Other < NumLines; ++Other)
+			// Changing to any other service at this station (another line, or another branch of the same line).
+			const int32 Station = StationOf(Best);
+			for (int32 Other = NodeOf(Station, 0, 0); Other < NodeOf(Station + 1, 0, 0); ++Other)
 			{
-				const int32 Next = Station * NumLines + Other;
-				if (Other != Line && Stations[Station].OnLine(Other) && Cost[Best] + FKioskRoutes::TransferMinutes < Cost[Next])
+				if (Other != Best && Serves[Other] && Cost[Best] + FKioskRoutes::TransferMinutes < Cost[Other])
 				{
-					Cost[Next] = Cost[Best] + FKioskRoutes::TransferMinutes;
-					Km[Next] = Km[Best];
-					Prev[Next] = Best;
+					Cost[Other] = Cost[Best] + FKioskRoutes::TransferMinutes;
+					Km[Other] = Km[Best];
+					Prev[Other] = Best;
 				}
 			}
 		}
@@ -137,9 +151,8 @@ namespace
 		for (int32 Station = 0; Station < NumStations; ++Station)
 		{
 			int32 Best = INDEX_NONE;
-			for (int32 Line = 0; Line < NumLines; ++Line)
+			for (int32 Node = NodeOf(Station, 0, 0); Node < NodeOf(Station + 1, 0, 0); ++Node)
 			{
-				const int32 Node = Station * NumLines + Line;
 				if (Cost[Node] != MAX_int32 && (Best == INDEX_NONE || Cost[Node] < Cost[Best]))
 				{
 					Best = Node;
@@ -160,7 +173,7 @@ namespace
 			{
 				Nodes.Insert(Node, 0);
 			}
-			BuildLegs(Route, Nodes, NumLines);
+			BuildLegs(Route, Nodes);
 		}
 		return Result;
 	}
@@ -197,8 +210,15 @@ FText FKioskRoutes::Summary(const FKioskRoute& Route)
 	for (int32 Index = 1; Index < Route.Legs.Num(); ++Index)
 	{
 		const FKioskStation& Change = Stations[Route.Legs[Index].FromStation];
+		FText NextLine = LineName(Route.Legs[Index].Line);
+		if (Route.Legs[Index].Line == Route.Legs[Index - 1].Line)
+		{
+			// Same line, different branch: say which way it goes ("East-West Line (to Changi Airport)").
+			NextLine = FText::Format(FKioskLoc::Tr(LOCTEXT("LineTo", "{0} (to {1})")),
+				NextLine, FKioskPlaces::StationLabel(Stations[Route.Legs[Index].ToStation].Name));
+		}
 		Text = FText::Format(FKioskLoc::Tr(LOCTEXT("ThenChange", "{0} → change at {1} → {2}")),
-			Text, FKioskPlaces::StationLabel(Change.Name), LineName(Route.Legs[Index].Line));
+			Text, FKioskPlaces::StationLabel(Change.Name), NextLine);
 	}
 	return Text;
 }

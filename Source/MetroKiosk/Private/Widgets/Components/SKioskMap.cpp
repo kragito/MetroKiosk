@@ -90,11 +90,15 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		const bool bDim = Filter != INDEX_NONE && !bOnFilter && !bSelected && !bHere;
 		const float Radius = (bSelected ? 17.f : (bInterchange ? 11.f : 7.f)) * FMath::Sqrt(Zoom);
 
+		// When the line highlighter is on, dim every part of a station that is not on that line (fill and ring).
+		const float Fade = bDim ? 0.25f : 1.f;
+		FLinearColor Ring = bInterchange ? C.Ink : C.Line[Station.FirstLine()];
+		Ring.A *= Fade;
 		const FSlateBrush* Dot = bSelected
 			? Style.Round(C.Primary, Radius, C.White, 4.f)
 			: bHere
 				? Style.Round(C.Help, Radius * 1.3f, C.White, 4.f)
-				: Style.Round(C.White, Radius, bInterchange ? C.Ink : C.Line[Station.FirstLine()], bInterchange ? 4.f : 3.f);
+				: Style.Round(C.White, Radius, Ring, bInterchange ? 4.f : 3.f);
 		const float Draw = (bHere && !bSelected) ? Radius * 1.3f : Radius;
 		FLinearColor DotTint = FKioskStyle::BrushTint(Dot);
 		DotTint.A *= bDim ? 0.25f : 1.f;
