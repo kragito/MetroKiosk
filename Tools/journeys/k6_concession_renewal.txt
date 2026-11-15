@@ -1,0 +1,1 @@
+click:Concession|click:SIMULATE: tap card on reader|expect:Your current pass|shot:renewal_preselected|click:check dates|expect:November 2026|expect:December 2026|shot:pass_dates|click:Go to payment|click:Pay with card|click:SIMULATE: tap card on reader|wait:4|expect:Don't forget your card|expect:Print receipt|shot:concession_done|dump

@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|wait:92|expect:Are you still there?|shot:idle_prompt|click:Continue|absent:Are you still there?|expect:Where are you going?|shot:after_continue|dump

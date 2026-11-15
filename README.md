@@ -47,6 +47,7 @@ Steps are separated by `|`:
 | `type:<text>` | Presses the on-screen keyboard or keypad keys one by one (`type:har`, `type:25`). Open the keyboard first (click `Search`) or choose `Amount More` for the keypad. |
 | `drag:<label>:<dx>,<dy>` | Touch-drags from the widget centre by design pixels, for example `drag:Map:-250,-120` (zoom in first). |
 | `scroll:<label>:<dy>` | Mouse-wheel scrolls the named list by roughly `dy` design pixels (positive = down). Result lists with more than five rows are named `Station list`: `scroll:Station list:300`, then click the row. Rows scrolled out of view fail with a "not hittable" reason. |
+| `expect:<text>` / `absent:<text>` | Passes if some visible text on screen contains (or no visible text contains) `<text>`, case-insensitive. Use it to assert countdowns, messages and screens. |
 | `wait:<seconds>` | Lets real time pass; timers run normally in script mode. |
 | `shot:<name>` | Saves `NN_<name>.png`. |
 | `lang:<en\|zh\|ms\|ta>` | Clicks the language pill. |
@@ -74,6 +75,24 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `d_daypass_skips_destination` | Day pass goes straight to Review |
 | `j1_cash_ticket`, `j2_topup_keypad`, `j3_help_restore` | cash ticket with a child rider, card top-up with the keypad, help call and restore |
 | `j4_map_drag_search`, `j5_scroll_results` | map with line highlight, zoom, drag and search; scrolling a long result list |
+| `k2_zh_topup_cash` | 中文 top-up paid with cash |
+| `k3_help_during_cash` | help call during cash payment: "Your $1.00 is safe", countdown paused in the call and in picture-in-picture, then resumes |
+| `k4_receipt_more_time` | receipt "I need more time" adds 30 s |
+| `k5_idle_prompt` | 90 s idle shows "Are you still there?", Continue dismisses it (takes about 2 minutes) |
+| `k6_concession_renewal` | renewal with the current pass pre-selected, two-month dates check, done screen with receipt buttons |
+| `k7_map_back_to_list` | Back from the map returns to the list; leftover search text is cleared |
+
+## Automation tests
+```powershell
+powershell -File Tools/build.ps1
+powershell -File Tools/run_tests.ps1            # MetroKiosk.Search.*, MetroKiosk.Loc.Coverage, MetroKiosk.Session.Rules
+```
+`MetroKiosk.Loc.Coverage` scans every `KT("...")` in the sources and builds every screen in 中文, Melayu and தமிழ் to catch
+missing translations, placeholder mismatches and English mixed into Chinese or Tamil. Close the editor first.
+
+QA switches: `-KioskFakeTime=HH:MM` freezes the kiosk clock start (Tools/capture.ps1 uses 10:30; samples `TicketTypeLate`
+and `IdlePrompt` show the late-night warning and the idle overlay). Captures cover every screen in English and the key screens
+in 中文, Melayu and தமிழ் (`-KioskScreen=<Screen>_Chinese|_Malay|_Tamil` works too).
 
 ## Layout
 - `Source/MetroKiosk/Public` - session model, style tokens, data, localisation, game mode
@@ -83,7 +102,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 - `Tools/` - build, launch, capture, journey and MCP helper scripts
 
 ## Notes for future sessions
-- Non-English languages cover chrome, headings and the destination screen (table in `Private/KioskLoc.cpp`, keyed by the English text,
+- Non-English languages cover every user-facing string (table in `Private/KioskLocTable.inl`, keyed by the English text,
   including format patterns such as `{0} min · direct`). Station and place names are not in that table: they live in
   `Private/KioskPlaces.cpp` (`GNames`), shown as the English name with the local-script name beneath.
 - Destination data: `KioskPlaces.*` (about 60 places mapped to stations, aliases and pinyin), `KioskSearch.*` (normalisation,
@@ -100,4 +119,4 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 - PIE window placement on the author's machine is unreliable (the saved `NewWindowPosition` can be off-screen),
   which also breaks SlateInspector clicks. Prefer the scripted harness for UX runs.
 - Editing source: `Tools/build.ps1` closes the editor; relaunch with `Tools/launch_editor.ps1`.
-- Review items still open: tile and label layouts were only checked at 1917x1105; no automated tests beyond the journeys.
+- Review items still open: layouts were only checked at 1917x1105.

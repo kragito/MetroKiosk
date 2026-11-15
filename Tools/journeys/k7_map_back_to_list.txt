@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:See it on the map|expect:Highlight one line|click:Back|expect:Popular from City Hall|click:See it on the map|click:Open station list view|expect:Popular from City Hall|click:Search|type:gar|click:Station Botanic Gardens|click:Search|expect:Type a place or station|dump

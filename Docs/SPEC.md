@@ -225,3 +225,52 @@ Card: Student card •••• 4821, balance $3.20, Bus + Train pass ends 14 No
   - `python Tools/ue_mcp.py call EditorToolset.EditorAppToolset StopPIE '{}'`
 - Give interactive widgets meaningful `.Tag()` / `ToolTipText` / accessible text so the Slate
   inspector snapshot shows readable names (for example the button's label).
+
+## Revision 2: product decisions (these override any earlier row or sentence above)
+
+**Physical layout (single source of truth; one shared diagram, `KioskUI::HardwareDiagram`/`HardwareHint`).**
+Metro card reader: below the screen, left (card rests on it for top-up/concession; forgotten-card detection).
+Contactless payment reader (bank cards, phones): right of the screen, top. Chip/NETS slot and PIN pad: right, middle.
+Note and coin slots: right, lower. Collection tray: below the screen, centre. The Home banner, ScanCard, CardOptions
+("Keep your card on the reader") and DoneLiftCard point at the Metro card reader; card-payment screens point at the
+contactless reader (tap) or chip slot (chip); cash points at the note/coin slots and the tray. Wording and arrows agree.
+
+**Cash.** Notes $2, $5, $10, $50 ("Notes up to $50"); coins 10c, 20c, 50c, $1. Same wording on PayMethod and the cash screen.
+The cash screen also shows the 10-minute countdown.
+
+**Validity (same sentence on ticket type, Review, Pay, Receipt).** One-way: valid for 2 hours after purchase. Round trip:
+return valid until end of service tonight (12:00 a.m.). Day pass: unlimited rides until end of service tonight (12:00 a.m.).
+The receipt computes the real time and never shows a time after end of service. From 9:00 p.m. the Day pass card shows
+"Only N h of service left today. A one-way may be cheaper." and loses "Best for 3+ rides". QA: `-KioskFakeTime=HH:MM`.
+
+**Step bar.** Ticket flow: Ticket, Destination, Review, Pay (PayMethod, waits and Processing are step 4; a day pass reads
+"All lines" for the skipped step). Card flow: Tap card, What to do?, Amount (top-up) or Pass (concession, including the dates
+check), Pay.
+
+**Help call.** With cash inserted: "Your $X.XX is safe. Nothing more will be charged. You can continue or get it back."
+otherwise "Nothing has been charged." All countdowns and auto-returns pause while any call is open (full screen or
+picture-in-picture); only the 2 s "Processing" step of a payment already under way still finishes. Footnote: "Or visit the
+staffed office at Gate B, or use the Help button on the front of the kiosk." (no phone numbers).
+
+**Timeouts.** Receipt and done screens return Home after 30 s with a visible countdown and an "I need more time" button (+30 s).
+Idle: 90 s without touches on a purchase screen (not Home, not hardware waits with their own countdown, not during a call)
+shows "Are you still there?" with a 20 s countdown, "Continue" and "Start over"; on expiry the kiosk returns any cash (existing
+banner) and goes Home.
+
+**Home.** No right-edge arrows. Ticket, Top up and Concession tiles share one form: icon, title, description, full-width navy
+bottom action button ("Buy a ticket", "Top up", "Buy or renew" with an arrow). The "One-way · from $1.28" and "Day pass · $8.00"
+lines are plain text, not pills. **Receipt.** Never "MIXED": "One-way · 1 adult, 1 child". Top-up and concession done screens
+also offer Print / Email receipt. **Concession renewal.** The current pass (Bus + Train) is pre-selected and labelled "Your
+current pass"; the dates check shows both months (Nov and Dec) as flat, non-interactive calendars. **Footers.** CardOptions and
+ScanCard have Back + Start over (CardOptions keeps "Buy a ticket instead"). **Destination.** Tapping the search field with
+leftover text clears it; Back from the map returns to the list. **Processing.** Back/Start over are visibly disabled (flat grey).
+The Bus pass uses a bus icon.
+
+**Design system (P4).** Type scale in `KioskType` (Display 52, H1 42, H2 32, H3 26, Body 22, Caption 18, map label 16, nothing
+else below 18). Button roles with fixed minimum heights: primary green 104, navy choose / outlined secondary / help 88, compact
+(Change) 60, pills 72, keys 76; labels are centred and wrap to two lines instead of clipping, so no control has a fixed width.
+One card radius/padding, one "Change" control, equal-width language pills shared by footer and Home, one line-badge size.
+
+**Localisation.** Every string goes through `KT()`; `Private/KioskLocTable.inl` holds 中文, Melayu and தமிழ் for all of them
+(header date/time, rider labels, "each", totals, SIMULATE hints, overlays). `MetroKiosk.Loc.Coverage` fails on any missing entry,
+placeholder mismatch, or English mixed into Chinese/Tamil. Station and place names stay English with the local name beneath.

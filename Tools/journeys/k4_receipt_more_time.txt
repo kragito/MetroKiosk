@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose Day pass|click:Go to payment|click:Pay with card|click:SIMULATE: tap card on reader|wait:4|expect:Payment approved|expect:Returning to start in 2|wait:3|click:I need more time|expect:Returning to start in 5|shot:more_time|dump
