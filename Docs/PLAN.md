@@ -83,3 +83,16 @@ Commit locally after each approved item; push only when you say so.
 2. **Assignment brief**: is there a list of "required interactions" for the video? If so, where is it?
    P6 currently uses our own list.
 3. **Docs format**: is the documentation edited in Figma, Word or Google Docs? P5 currently produces paste-ready text only.
+
+## 5. Status (2026-11-16)
+| Item | Status |
+|---|---|
+| P1 Destination redesign | Done (ccc6d14…0d2686f). Code-reviewed and approved; UX evaluation rated the instructor's criterion "Resolved". |
+| P2 Fare single source | Done, approved. |
+| P3 Home card arrows | Done in batch 2 (9e0a836): unified tiles with full-width action buttons. |
+| P4 Consistency pass | Done in batch 2 (9e0a836) plus the UX-evaluation fixes (e3b1c5b…9f185b7). Verified with build, 3 automation tests and 16 journeys; the formal review and a UX re-test were cut short at the user's request. |
+| P5 Documentation text | Done: `Docs/TDP_Part2_Revised_Text.md` (paste-ready). |
+| P6 Video storyboard | Done: `Docs/VIDEO_STORYBOARD.md` (scenes mapped to journey scripts + interactions checklist). |
+
+Remaining for the team: native-speaker check of the Tamil/Malay strings (`Source/MetroKiosk/Private/KioskLocTable.inl`),
+paste the revised text into the document, and record the video from the storyboard.

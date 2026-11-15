@@ -126,16 +126,22 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 	{
 		const FKioskStation& Station = Stations[Session->State.Destination];
 		const TArray<FKioskPlace>& Places = FKioskPlaces::All();
-		FText Detail;
+		// Title in the active language (matching "From"), with the English signage name and the chosen place beneath.
+		const FString LocalStation = FKioskPlaces::LocalName(Station.Name);
+		TArray<FString> DetailParts;
+		if (!LocalStation.IsEmpty())
+		{
+			DetailParts.Add(Station.Name);
+		}
 		if (Places.IsValidIndex(Session->State.DestinationPlace))
 		{
-			Detail = FText::FromString(Places[Session->State.DestinationPlace].Name);
+			const FString& PlaceName = Places[Session->State.DestinationPlace].Name;
+			const FString LocalPlace = FKioskPlaces::LocalName(PlaceName);
+			DetailParts.Add(LocalPlace.IsEmpty() ? PlaceName : LocalPlace);
 		}
-		else
-		{
-			Detail = FText::FromString(FKioskPlaces::LocalName(Station.Name));
-		}
-		Trip->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ PlaceRow(KT("To"), FText::FromString(Station.Name), Station.LineMask, Detail) ];
+		const FText Title = FText::FromString(LocalStation.IsEmpty() ? Station.Name : LocalStation);
+		const FText Detail = FText::FromString(FString::Join(DetailParts, TEXT(" · ")));
+		Trip->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ PlaceRow(KT("To"), Title, Station.LineMask, Detail) ];
 	}
 	else
 	{
