@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:Search|type:island|shot:island_results|dump

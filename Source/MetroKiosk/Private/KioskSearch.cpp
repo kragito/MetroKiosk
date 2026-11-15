@@ -238,7 +238,7 @@ int32 FKioskSearch::EditDistance(const FString& A, const FString& B)
 	{
 		Row.SetNumZeroed(M + 1);
 	}
-	for (int32 J = 0; J <= M; ++J) { Rows[1][J] = J; }
+	for (int32 J = 0; J <= M; ++J) { Rows[0][J] = J; } // row 0: distance from the empty prefix of A
 	for (int32 I = 1; I <= N; ++I)
 	{
 		TArray<int32, TInlineAllocator<64>>& Cur = Rows[I % 3];
@@ -352,3 +352,42 @@ FKioskSearchResult FKioskSearch::Run(const FString& Query)
 	}
 	return Result;
 }
+
+#if WITH_DEV_AUTOMATION_TESTS
+#include "Misc/AutomationTest.h"
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FKioskSearchTest, "MetroKiosk.Search.EditDistance",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+
+bool FKioskSearchTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("kitten/sitting"), FKioskSearch::EditDistance(TEXT("kitten"), TEXT("sitting")), 3);
+	TestEqual(TEXT("ab/ba swap"), FKioskSearch::EditDistance(TEXT("ab"), TEXT("ba")), 1);
+	TestEqual(TEXT("bay/marinabay"), FKioskSearch::EditDistance(TEXT("bay"), TEXT("marinabay")), 6);
+	TestEqual(TEXT("empty/abc"), FKioskSearch::EditDistance(TEXT(""), TEXT("abc")), 3);
+	TestEqual(TEXT("abc/empty"), FKioskSearch::EditDistance(TEXT("abc"), TEXT("")), 3);
+	TestEqual(TEXT("same"), FKioskSearch::EditDistance(TEXT("front"), TEXT("front")), 0);
+
+	auto Names = [](const FString& Query)
+	{
+		TSet<FString> Out;
+		for (const FKioskSearchHit& Hit : FKioskSearch::Run(Query).Hits)
+		{
+			Out.Add(Hit.bPlace ? FKioskPlaces::All()[Hit.Index].Name : FKioskData::Stations()[Hit.Index].Name);
+		}
+		return Out;
+	};
+	const TSet<FString> Island = Names(TEXT("island"));
+	TestTrue(TEXT("island finds Sentosa"), Island.Contains(TEXT("Sentosa")));
+	TestFalse(TEXT("island not Bishan"), Island.Contains(TEXT("Bishan")));
+	TestFalse(TEXT("island not Woodlands"), Island.Contains(TEXT("Woodlands")));
+	TestFalse(TEXT("island not Junction 8"), Island.Contains(TEXT("Junction 8")));
+	const TSet<FString> City = Names(TEXT("city"));
+	TestFalse(TEXT("city not Science Centre"), City.Contains(TEXT("Science Centre Singapore")));
+	TestFalse(TEXT("city not NTU"), City.Contains(TEXT("Nanyang Technological University")));
+	TestFalse(TEXT("sands not Woodlands"), Names(TEXT("sands")).Contains(TEXT("Woodlands")));
+	TestTrue(TEXT("sands finds Marina Bay Sands"), Names(TEXT("sands")).Contains(TEXT("Marina Bay Sands")));
+	TestTrue(TEXT("typo finds HarbourFront"), Names(TEXT("harbor frnt")).Contains(TEXT("HarbourFront")));
+	return true;
+}
+#endif

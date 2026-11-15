@@ -72,6 +72,7 @@ namespace
 			{
 				const TArray<int32>& Path = Paths[PathIndex];
 				const int32 Service = FKioskData::PathService(Line, PathIndex);
+				check(Service >= 0 && Service < MaxServices);
 				for (int32 Index = 0; Index < Path.Num(); ++Index)
 				{
 					Serves[NodeOf(Path[Index], Line, Service)] = true;

@@ -46,7 +46,7 @@ namespace
 		{ TEXT("Kent Ridge Park"), C::Attraction, TEXT("Kent Ridge"), TEXT("hort park,southern ridges,henderson waves") },
 		{ TEXT("Pasir Ris Park"), C::Attraction, TEXT("Pasir Ris"), TEXT("pasir ris beach,park,mangrove") },
 		{ TEXT("Bishan-AMK Park"), C::Attraction, TEXT("Bishan"), TEXT("bishan park,park") },
-		{ TEXT("Science Centre Singapore"), C::Attraction, TEXT("Jurong East"), TEXT("science centre,snow city,science museum") },
+		{ TEXT("Science Centre Singapore"), C::Attraction, TEXT("Jurong East"), TEXT("science centre,science museum") },
 		{ TEXT("Woodlands Checkpoint"), C::Area, TEXT("Woodlands"), TEXT("causeway,johor,malaysia,jb,border,customs") },
 		// Shopping
 		{ TEXT("ION Orchard"), C::Shopping, TEXT("Orchard"), TEXT("ion,orchard shopping") },
@@ -227,6 +227,8 @@ namespace
 		{ TEXT("Clarke Quay"), TEXT("克拉码头"), TEXT(""), TEXT("கிளார்க் கீ") },
 		{ TEXT("Esplanade"), TEXT("滨海中心"), TEXT(""), TEXT("எஸ்பிளனேட்") },
 		{ TEXT("Simei"), TEXT("四美"), TEXT(""), TEXT("சிமே") },
+		{ TEXT("Bukit Batok"), TEXT("武吉巴督"), TEXT(""), TEXT("புக்கிட் பாத்தோக்") },
+		{ TEXT("Choa Chu Kang"), TEXT("蔡厝港"), TEXT(""), TEXT("சுவா சூ காங்") },
 		// Places
 		{ TEXT("Marina Bay Sands"), TEXT("滨海湾金沙"), TEXT(""), TEXT("மரினா பே சேண்ட்ஸ்") },
 		{ TEXT("Merlion"), TEXT("鱼尾狮"), TEXT(""), TEXT("மெர்லயன்") },

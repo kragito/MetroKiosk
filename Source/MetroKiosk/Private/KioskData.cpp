@@ -64,13 +64,13 @@ namespace
 		{ TEXT("Beauty World"), DT, 235, 262 },
 		{ TEXT("Bukit Panjang"), DT, 190, 150 },
 		{ TEXT("Buona Vista"), EW | CC, 250, 442 },
-		{ TEXT("Jurong East"), EW, 150, 412 },
+		{ TEXT("Jurong East"), NS | EW, 150, 412 },
 		{ TEXT("Boon Lay"), EW, 60, 412 },
 		{ TEXT("Serangoon"), NE | CC, 600, 300 },
 		{ TEXT("Sengkang"), NE, 700, 215 },
 		{ TEXT("Punggol"), NE, 750, 150 },
 		{ TEXT("Paya Lebar"), EW | CC, 670, 360 },
-		{ TEXT("MacPherson"), CC, 620, 402 },
+		{ TEXT("MacPherson"), CC, 640, 330 },
 		{ TEXT("Tanah Merah"), EW, 780, 290 },
 		{ TEXT("Tampines"), EW, 820, 235 },
 		{ TEXT("Pasir Ris"), EW, 860, 175 },
@@ -87,6 +87,8 @@ namespace
 		{ TEXT("Clarke Quay"), NE, 452, 455 },
 		{ TEXT("Esplanade"), CC, 515, 435 },
 		{ TEXT("Simei"), EW, 800, 262 },
+		{ TEXT("Bukit Batok"), NS, 125, 335 },
+		{ TEXT("Choa Chu Kang"), NS, 150, 225 },
 	};
 
 	TArray<FKioskStation> BuildStations()
@@ -121,7 +123,7 @@ namespace
 		switch (LineIndex)
 		{
 		case 0:
-			Result.Add(Path({ TEXT("Marsiling"), TEXT("Woodlands"), TEXT("Yishun"), TEXT("Khatib"), TEXT("Ang Mo Kio"), TEXT("Bishan"), TEXT("Novena"), TEXT("Newton"), TEXT("Orchard"), TEXT("Dhoby Ghaut"), TEXT("City Hall"), TEXT("Raffles Place"), TEXT("Marina Bay"), TEXT("Marina South Pier") }));
+			Result.Add(Path({ TEXT("Jurong East"), TEXT("Bukit Batok"), TEXT("Choa Chu Kang"), TEXT("Marsiling"), TEXT("Woodlands"), TEXT("Yishun"), TEXT("Khatib"), TEXT("Ang Mo Kio"), TEXT("Bishan"), TEXT("Novena"), TEXT("Newton"), TEXT("Orchard"), TEXT("Dhoby Ghaut"), TEXT("City Hall"), TEXT("Raffles Place"), TEXT("Marina Bay"), TEXT("Marina South Pier") }));
 			break;
 		case 1:
 			Result.Add(Path({ TEXT("Boon Lay"), TEXT("Jurong East"), TEXT("Buona Vista"), TEXT("Outram Park"), TEXT("Raffles Place"), TEXT("City Hall"), TEXT("Bugis"), TEXT("Paya Lebar"), TEXT("Tanah Merah"), TEXT("Simei"), TEXT("Tampines"), TEXT("Pasir Ris") }));
