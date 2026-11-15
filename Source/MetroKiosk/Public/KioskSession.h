@@ -58,6 +58,8 @@ public:
 	// --- actions ----------------------------------------------------------------------------
 	void ChooseTicket(ETicketType Type);
 	void SelectDestination(int32 StationIndex);
+	void SelectPlace(int32 PlaceIndex);
+	void ClearDestination();
 	void SetLineFilter(int32 LineIndex);
 	void SetSearchText(const FString& Text);
 	void OpenKeyboard(bool bOpen);
@@ -82,6 +84,8 @@ public:
 	// --- derived data -----------------------------------------------------------------------
 	int32 RiderCount() const { return State.Adults + State.Children + State.Seniors; }
 	int32 AdultFareCents() const;
+	/** Adult fare for the current ticket type to any station (what a destination tile shows). */
+	int32 AdultFareTo(int32 StationIndex) const;
 	int32 ReducedFareCents() const;
 	int32 TicketTotalCents() const;
 	int32 TotalCents() const;
@@ -93,7 +97,7 @@ public:
 	int32 NewBalanceCents() const { return CardBalance + State.TopUpCents; }
 	FText TicketLabel() const;
 	FText DestinationLabel() const;
-	FText PaymentTail() const;      // "· one-way to HarbourFront" (follows "Paying $1.68")
+	FText PaymentTail() const;      // "· one-way to HarbourFront" (follows "Paying $1.50")
 	FText RiderSummary() const;     // "1 adult, 2 children"
 	FText OrderSummary() const;     // "One-way · City Hall → HarbourFront · 1 adult"
 	FKioskStepInfo StepInfo() const;

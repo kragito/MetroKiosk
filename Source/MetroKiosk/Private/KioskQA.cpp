@@ -53,12 +53,12 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 		Session->bFreezeTimers = true;
 
 		Steps = {
-			TEXT("Home"), TEXT("TicketType"), TEXT("Destination"), TEXT("DestinationSearch"), TEXT("DestinationMap"),
+			TEXT("Home"), TEXT("TicketType"), TEXT("Destination"), TEXT("DestinationSearch"), TEXT("DestinationTypo"), TEXT("DestinationNoMatch"), TEXT("DestinationMap"),
 			TEXT("DestinationSelected"), TEXT("Review"), TEXT("PayMethod"), TEXT("WaitTapCard"), TEXT("WaitChipCard"),
 			TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
 			TEXT("HelpCall"), TEXT("HelpPip"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"), TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"),
 			TEXT("Concession"), TEXT("ConcessionSelected"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
-			TEXT("Home_Chinese"), TEXT("Home_Tamil"), TEXT("Home_Malay") };
+			TEXT("Home_Chinese"), TEXT("Home_Tamil"), TEXT("Home_Malay"), TEXT("Destination_Chinese"), TEXT("Destination_Tamil") };
 
 		StepIndex = 0;
 		FrameCounter = 0;

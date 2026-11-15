@@ -36,7 +36,8 @@ struct FKioskState
 {
 	EKioskFlow Flow = EKioskFlow::Ticket;
 	ETicketType Ticket = ETicketType::OneWay;
-	int32 Destination = INDEX_NONE;
+	int32 Destination = INDEX_NONE;      // station index
+	int32 DestinationPlace = INDEX_NONE; // place the customer picked (index into FKioskPlaces::All()), if any
 	int32 Adults = 1;
 	int32 Children = 0;
 	int32 Seniors = 0;

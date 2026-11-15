@@ -57,6 +57,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	const FPaintGeometry Paint = AllottedGeometry.ToPaintGeometry();
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
 	const float LineWidth = 7.f * FMath::Sqrt(Zoom);
+	const int32 Filter = Session.IsValid() ? Session->State.LineFilter : INDEX_NONE;
 
 	// Lines
 	for (int32 Line = 0; Line < FKioskData::NumLines; ++Line)
@@ -68,7 +69,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			{
 				Points.Add(ToLocal(Stations[StationIndex].MapPos, Size));
 			}
-			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, Paint, Points, ESlateDrawEffect::None, C.Line[Line], true, LineWidth);
+			FLinearColor LineColor = C.Line[Line];
+			LineColor.A = (Filter != INDEX_NONE && Filter != Line) ? 0.18f : 1.f; // optional highlighter dims the other lines
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId, Paint, Points, ESlateDrawEffect::None, LineColor, true, LineWidth);
 		}
 	}
 
@@ -83,6 +86,8 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		const bool bInterchange = FMath::CountBits(Station.LineMask) > 1;
 		const bool bSelected = Index == SelectedStation;
 		const bool bHere = Index == FKioskData::CityHallIndex();
+		const bool bOnFilter = Filter != INDEX_NONE && Station.OnLine(Filter);
+		const bool bDim = Filter != INDEX_NONE && !bOnFilter && !bSelected && !bHere;
 		const float Radius = (bSelected ? 17.f : (bInterchange ? 11.f : 7.f)) * FMath::Sqrt(Zoom);
 
 		const FSlateBrush* Dot = bSelected
@@ -91,9 +96,11 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				? Style.Round(C.Help, Radius * 1.3f, C.White, 4.f)
 				: Style.Round(C.White, Radius, bInterchange ? C.Ink : C.Line[Station.FirstLine()], bInterchange ? 4.f : 3.f);
 		const float Draw = (bHere && !bSelected) ? Radius * 1.3f : Radius;
+		FLinearColor DotTint = FKioskStyle::BrushTint(Dot);
+		DotTint.A *= bDim ? 0.25f : 1.f;
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 3,
 			AllottedGeometry.ToPaintGeometry(FVector2f(Draw * 2.f, Draw * 2.f), FSlateLayoutTransform(Pos - FVector2f(Draw, Draw))), Dot,
-			ESlateDrawEffect::None, FKioskStyle::BrushTint(Dot));
+			ESlateDrawEffect::None, DotTint);
 
 		// City Hall shows the "You are here" marker instead of a plain label.
 		if (bHere)
@@ -110,7 +117,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 4.f))),
 				Text, MarkerFont, ESlateDrawEffect::None, C.White);
 		}
-		else if (bSelected || bInterchange || Zoom > 1.2f)
+		else if (!bDim && (bSelected || bInterchange || bOnFilter || Zoom > 1.2f))
 		{
 			// Crowded stations put their label on the left; every label sits on a soft white pill so lines never cut through it.
 			static const TSet<FString> LeftLabels = { TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),

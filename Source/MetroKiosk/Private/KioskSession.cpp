@@ -2,6 +2,8 @@
 
 #include "KioskData.h"
 #include "KioskLoc.h"
+#include "KioskPlaces.h"
+#include "KioskRoutes.h"
 #include "Misc/DateTime.h"
 
 #define LOCTEXT_NAMESPACE "KioskSession"
@@ -161,6 +163,7 @@ void FKioskSession::ChooseTicket(ETicketType Type)
 	if (Type == ETicketType::DayPass)
 	{
 		State.Destination = INDEX_NONE;
+		State.DestinationPlace = INDEX_NONE;
 		GoTo(EKioskScreen::Review);
 	}
 	else
@@ -171,7 +174,26 @@ void FKioskSession::ChooseTicket(ETicketType Type)
 
 void FKioskSession::SelectDestination(int32 StationIndex)
 {
-	State.Destination = (State.Destination == StationIndex) ? INDEX_NONE : StationIndex;
+	State.Destination = StationIndex;
+	State.DestinationPlace = INDEX_NONE;
+	NotifyChanged();
+}
+
+void FKioskSession::SelectPlace(int32 PlaceIndex)
+{
+	const TArray<FKioskPlace>& Places = FKioskPlaces::All();
+	if (Places.IsValidIndex(PlaceIndex))
+	{
+		State.Destination = Places[PlaceIndex].Station;
+		State.DestinationPlace = PlaceIndex;
+		NotifyChanged();
+	}
+}
+
+void FKioskSession::ClearDestination()
+{
+	State.Destination = INDEX_NONE;
+	State.DestinationPlace = INDEX_NONE;
 	NotifyChanged();
 }
 
@@ -359,22 +381,17 @@ void FKioskSession::GoToPayment()
 
 int32 FKioskSession::AdultFareCents() const
 {
-	if (State.Ticket == ETicketType::DayPass)
-	{
-		return 800;
-	}
-	const TArray<FKioskStation>& Stations = FKioskData::Stations();
-	const int32 OneWay = Stations.IsValidIndex(State.Destination) ? Stations[State.Destination].FareCents : 168;
-	return State.Ticket == ETicketType::RoundTrip ? (OneWay * 2 * 7 + 5) / 10 : OneWay;
+	return AdultFareTo(State.Destination);
+}
+
+int32 FKioskSession::AdultFareTo(int32 StationIndex) const
+{
+	return FKioskFares::AdultCents(State.Ticket, StationIndex);
 }
 
 int32 FKioskSession::ReducedFareCents() const
 {
-	if (State.Ticket == ETicketType::DayPass)
-	{
-		return 560;
-	}
-	return (AdultFareCents() * 7 + 5) / 10;
+	return State.Ticket == ETicketType::DayPass ? FKioskFares::DayPassReducedCents : FKioskFares::ReducedCents(AdultFareCents());
 }
 
 int32 FKioskSession::TicketTotalCents() const
@@ -647,7 +664,7 @@ void FKioskSession::SeedTicketSample()
 {
 	State.Flow = EKioskFlow::Ticket;
 	State.Ticket = ETicketType::OneWay;
-	State.Destination = FKioskData::FindStation(TEXT("HarbourFront"));
+	SelectPlace(FKioskPlaces::FindPlace(TEXT("Gardens by the Bay")));
 }
 
 bool FKioskSession::ApplySample(const FString& Name)
@@ -673,10 +690,16 @@ bool FKioskSession::ApplySample(const FString& Name)
 	else if (Name == TEXT("Home_Tamil")) { SetLanguage(EKioskLanguage::Tamil); }
 	else if (Name == TEXT("TicketType")) { Place(S::TicketType, { S::Home }); }
 	else if (Name == TEXT("Destination")) { State.Ticket = ETicketType::OneWay; Place(S::Destination, { S::Home, S::TicketType }); }
-	else if (Name == TEXT("DestinationSearch"))
+	else if (Name == TEXT("DestinationSearch") || Name == TEXT("DestinationTypo") || Name == TEXT("DestinationNoMatch"))
 	{
-		State.SearchText = TEXT("Har");
+		State.SearchText = Name == TEXT("DestinationSearch") ? TEXT("garden") : (Name == TEXT("DestinationTypo") ? TEXT("harbor frnt") : TEXT("hrbrfrnt"));
 		State.bKeyboardOpen = true;
+		Place(S::Destination, { S::Home, S::TicketType });
+	}
+	else if (Name == TEXT("Destination_Chinese") || Name == TEXT("Destination_Tamil"))
+	{
+		SetLanguage(Name == TEXT("Destination_Chinese") ? EKioskLanguage::Chinese : EKioskLanguage::Tamil);
+		SeedTicketSample();
 		Place(S::Destination, { S::Home, S::TicketType });
 	}
 	else if (Name == TEXT("DestinationMap")) { Place(S::DestinationMap, { S::Home, S::TicketType }); }
