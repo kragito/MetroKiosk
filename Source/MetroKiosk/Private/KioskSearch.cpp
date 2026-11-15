@@ -388,6 +388,17 @@ bool FKioskSearchTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("sands not Woodlands"), Names(TEXT("sands")).Contains(TEXT("Woodlands")));
 	TestTrue(TEXT("sands finds Marina Bay Sands"), Names(TEXT("sands")).Contains(TEXT("Marina Bay Sands")));
 	TestTrue(TEXT("typo finds HarbourFront"), Names(TEXT("harbor frnt")).Contains(TEXT("HarbourFront")));
+	{
+		// Ordering: the best match must come first, not merely be somewhere in the list.
+		const FKioskSearchResult Typo = FKioskSearch::Run(TEXT("harbor frnt"));
+		TestTrue(TEXT("harbor frnt has hits"), Typo.Hits.Num() > 0);
+		if (Typo.Hits.Num() > 0)
+		{
+			const FKioskSearchHit& First = Typo.Hits[0];
+			const FString FirstName = First.bPlace ? FKioskPlaces::All()[First.Index].Name : FKioskData::Stations()[First.Index].Name;
+			TestEqual(TEXT("first hit for \"harbor frnt\" is HarbourFront"), FirstName, FString(TEXT("HarbourFront")));
+		}
+	}
 	return true;
 }
 #endif
