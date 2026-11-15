@@ -5,8 +5,6 @@
 #include "KioskPlaces.h"
 #include "KioskSession.h"
 
-#define LOCTEXT_NAMESPACE "KioskRoutes"
-
 namespace
 {
 	struct FEdge
@@ -207,7 +205,7 @@ FText FKioskRoutes::Summary(const FKioskRoute& Route)
 	{
 		return FText::GetEmpty();
 	}
-	FText Text = FText::Format(FKioskLoc::Tr(LOCTEXT("TakeLine", "Take {0}")), LineName(Route.Legs[0].Line));
+	FText Text = FText::Format(KT("Take {0}"), LineName(Route.Legs[0].Line));
 	for (int32 Index = 1; Index < Route.Legs.Num(); ++Index)
 	{
 		const FKioskStation& Change = Stations[Route.Legs[Index].FromStation];
@@ -215,10 +213,10 @@ FText FKioskRoutes::Summary(const FKioskRoute& Route)
 		if (Route.Legs[Index].Line == Route.Legs[Index - 1].Line)
 		{
 			// Same line, different branch: say which way it goes ("East-West Line (to Changi Airport)").
-			NextLine = FText::Format(FKioskLoc::Tr(LOCTEXT("LineTo", "{0} (to {1})")),
+			NextLine = FText::Format(KT("{0} (to {1})"),
 				NextLine, FKioskPlaces::StationLabel(Stations[Route.Legs[Index].ToStation].Name));
 		}
-		Text = FText::Format(FKioskLoc::Tr(LOCTEXT("ThenChange", "{0} → change at {1} → {2}")),
+		Text = FText::Format(KT("{0} → change at {1} → {2}"),
 			Text, FKioskPlaces::StationLabel(Change.Name), NextLine);
 	}
 	return Text;
@@ -228,9 +226,9 @@ FText FKioskRoutes::Detail(const FKioskRoute& Route)
 {
 	if (Route.Changes == 0)
 	{
-		return FText::Format(FKioskLoc::Tr(LOCTEXT("DetailDirect", "{0} min · direct")), FText::AsNumber(Route.Minutes));
+		return FText::Format(KT("{0} min · direct"), FText::AsNumber(Route.Minutes));
 	}
-	return FText::Format(FKioskLoc::Tr(LOCTEXT("DetailChanges", "{0} min · {1} {1}|plural(one=change,other=changes)")),
+	return FText::Format(KT("{0} min · {1} {1}|plural(one=change,other=changes)"),
 		FText::AsNumber(Route.Minutes), FText::AsNumber(Route.Changes));
 }
 
@@ -291,4 +289,3 @@ int32 FKioskFares::MaxOneWayCents()
 	return Value;
 }
 
-#undef LOCTEXT_NAMESPACE

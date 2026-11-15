@@ -16,8 +16,10 @@ public:
 	// Tunables (seconds)
 	static constexpr float ProcessingSeconds = 2.0f;
 	static constexpr float PayTimeoutSeconds = 600.f;
-	static constexpr float ReceiptReturnSeconds = 10.f;
-	static constexpr float DoneReturnSeconds = 20.f;
+	static constexpr float ReturnSeconds = 30.f;        // receipt / done screens go Home after this long
+	static constexpr float ExtendSeconds = 30.f;        // "I need more time" adds this much
+	static constexpr float IdleLimitSeconds = 90.f;     // no touches on a purchase screen for this long -> "Are you still there?"
+	static constexpr float IdlePromptSeconds = 20.f;    // ...and this long to answer before the kiosk resets
 
 	FKioskState State;
 
@@ -57,6 +59,11 @@ public:
 
 	// --- actions ----------------------------------------------------------------------------
 	void ChooseTicket(ETicketType Type);
+	/** Tapping the search field: text left over from an earlier choice starts a fresh search. */
+	void OpenSearchField();
+	/** Back from the map lands on the list; from anywhere else it navigates to it. */
+	void ShowDestinationList();
+	void ShowDestinationMap();
 	void SelectDestination(int32 StationIndex);
 	void SelectPlace(int32 PlaceIndex);
 	void ClearDestination();
@@ -95,22 +102,46 @@ public:
 	static constexpr double ReturnedCashSeconds = 10.0;
 	int32 CardBalanceCents() const { return CardBalance; }
 	int32 NewBalanceCents() const { return CardBalance + State.TopUpCents; }
+	/** Index of the pass the card holder already has (pre-selected when renewing). */
+	static constexpr int32 CurrentPassIndex = 2;
 	FText TicketLabel() const;
 	FText DestinationLabel() const;
 	FText PaymentTail() const;      // "· one-way to HarbourFront" (follows "Paying $1.50")
 	FText RiderSummary() const;     // "1 adult, 2 children"
 	FText OrderSummary() const;     // "One-way · City Hall → HarbourFront · 1 adult"
 	FKioskStepInfo StepInfo() const;
+	/** Receipt headline, e.g. "One-way · 1 adult, 1 child" (never "mixed"). */
+	FText ReceiptKind() const;
+	/** The validity rule for a ticket type, worded the same on every screen. */
+	static FText ValidityRule(ETicketType Type);
+	/** Ticket type the receipt's "Valid until" line is computed for. */
+	FText ReceiptValidText() const;
+	/** The kiosk clock (real time, or the -KioskFakeTime QA time). */
+	static FDateTime Now();
+	/** QA only: freeze the clock at a time of day (minutes after midnight); a negative value releases it. */
+	static void SetFixedClockMinutes(int32 Minutes);
+	/** Whole hours of service left today, or INDEX_NONE before 9:00 p.m. (day pass warning). */
+	static int32 LateServiceHours();
+	static FText DayPassWarning();
+	/** Help call body: says whether cash is safe or nothing has been charged. */
+	FText HelpPausedBody() const;
 	static FText Money(int32 Cents);
 	static FText ClockText();
-	static FText ValidUntilText();
 	static FText DateShortText();
+	static FText TimeOfDayText(const FDateTime& Time);
 
 	// --- timers -----------------------------------------------------------------------------
 	void Tick(float DeltaSeconds);
 	float ScreenTime() const { return ScreenSeconds; }
 	int32 PaySecondsLeft() const;
-	int32 ReceiptSecondsLeft() const;
+	/** Seconds until the receipt / done screen returns Home, and the fraction of the allowance still left. */
+	int32 ReturnSecondsLeft() const;
+	float ReturnFractionLeft() const;
+	void ExtendReturn();
+	bool IsIdlePrompt() const { return bIdlePrompt; }
+	int32 IdlePromptSecondsLeft() const { return FMath::Max(0, FMath::CeilToInt(IdlePromptLeft)); }
+	void NoteActivity();
+	void DismissIdlePrompt();
 	bool IsProcessing() const { return CurrentScreen == EKioskScreen::Processing; }
 	/** QA: stop automatic transitions so a screen can be captured. */
 	bool bFreezeTimers = false;
@@ -134,6 +165,10 @@ private:
 	EKioskScreen CurrentScreen = EKioskScreen::Home;
 	TArray<EKioskScreen> History;
 	float ScreenSeconds = 0.f;
+	float ReturnLimit = ReturnSeconds;
+	float IdleSeconds = 0.f;
+	float IdlePromptLeft = 0.f;
+	bool bIdlePrompt = false;
 	float CallTime = 0.f;
 	bool bCallActive = false;
 	bool bHelpFullscreen = false;

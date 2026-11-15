@@ -18,7 +18,7 @@ public:
 	void Shutdown();
 
 private:
-	enum class EStepKind : uint8 { Click, Drag, Scroll, Wait, Shot, Dump };
+	enum class EStepKind : uint8 { Click, Drag, Scroll, Wait, Shot, Dump, Expect, Absent };
 	struct FStep
 	{
 		EStepKind Kind = EStepKind::Click;
@@ -42,6 +42,9 @@ private:
 	void ParseScript(const FString& Script);
 	void RunStep(const FStep& Step);
 	void CollectEntries(TArray<FEntry>& Out) const;
+	/** True when any visible text on screen contains Needle (case-insensitive). */
+	bool VisibleTextContains(const FString& Needle) const;
+	static bool TextRecursive(const TSharedRef<SWidget>& Widget, const FString& Needle);
 	void CollectRecursive(const TSharedRef<SWidget>& Widget, TArray<FEntry>& Out) const;
 	bool FindEntry(const FString& Label, FEntry& OutEntry, FString& OutWhy) const;
 	bool IsHittable(const FEntry& Entry, FVector2D& OutScreenPos, FString& OutWhy) const;

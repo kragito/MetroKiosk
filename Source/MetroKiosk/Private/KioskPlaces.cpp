@@ -4,8 +4,6 @@
 #include "KioskLoc.h"
 #include "Widgets/Components/SKioskIcon.h"
 
-#define LOCTEXT_NAMESPACE "KioskPlaces"
-
 namespace
 {
 	using C = EKioskPlaceCategory;
@@ -385,17 +383,17 @@ FText FKioskPlaces::Note(const FKioskPlace& Place)
 {
 	if (Place.Name == TEXT("Singapore Zoo"))
 	{
-		return FKioskLoc::Tr(LOCTEXT("ZooNote", "shuttle bus from Khatib"));
+		return KT("shuttle bus from Khatib");
 	}
 	return FText::GetEmpty();
 }
 
 FText FKioskPlaces::NearLine(const FKioskPlace& Place)
 {
-	const FText Near = FText::Format(FKioskLoc::Tr(LOCTEXT("NearStation", "near {0}")),
+	const FText Near = FText::Format(KT("near {0}"),
 		StationLabel(FKioskData::Stations()[Place.Station].Name));
 	const FText Extra = Note(Place);
-	return Extra.IsEmpty() ? Near : FText::Format(LOCTEXT("NearWithNote", "{0} · {1}"), Near, Extra);
+	return Extra.IsEmpty() ? Near : FText::Format(KT("{0} · {1}"), Near, Extra);
 }
 
 FText FKioskPlaces::StationLabel(const FString& EnglishName)
@@ -412,12 +410,11 @@ FText FKioskPlaces::Blurb(int32 StationIndex)
 		return FText::GetEmpty();
 	}
 	const FString& Name = Stations[StationIndex].Name;
-	if (Name == TEXT("HarbourFront")) return FKioskLoc::Tr(LOCTEXT("BlurbHarbourFront", "VivoCity · Sentosa"));
-	if (Name == TEXT("Bayfront")) return FKioskLoc::Tr(LOCTEXT("BlurbBayfront", "Gardens by the Bay · Marina Bay Sands"));
-	if (Name == TEXT("Changi Airport")) return FKioskLoc::Tr(LOCTEXT("BlurbChangi", "Flights · Jewel"));
-	if (Name == TEXT("Orchard")) return FKioskLoc::Tr(LOCTEXT("BlurbOrchard", "Shopping · ION Orchard"));
-	if (Name == TEXT("Chinatown")) return FKioskLoc::Tr(LOCTEXT("BlurbChinatown", "Heritage · food · Chinatown Point"));
+	if (Name == TEXT("HarbourFront")) return KT("VivoCity · Sentosa");
+	if (Name == TEXT("Bayfront")) return KT("Gardens by the Bay · Marina Bay Sands");
+	if (Name == TEXT("Changi Airport")) return KT("Flights · Jewel");
+	if (Name == TEXT("Orchard")) return KT("Shopping · ION Orchard");
+	if (Name == TEXT("Chinatown")) return KT("Heritage · food · Chinatown Point");
 	return FText::GetEmpty();
 }
 
-#undef LOCTEXT_NAMESPACE

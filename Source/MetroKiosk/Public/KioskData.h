@@ -45,4 +45,7 @@ public:
 	/** Trains do not run through between services of one line (the East-West Changi branch needs a change at Tanah Merah). */
 	static int32 PathService(int32 LineIndex, int32 PathIndex);
 	static const TArray<FKioskConcession>& Concessions();
+	/** Pass name and description in the active language. */
+	static FText ConcessionName(int32 Index);
+	static FText ConcessionDescription(int32 Index);
 };

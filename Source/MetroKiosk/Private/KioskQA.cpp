@@ -53,12 +53,24 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 		Session->bFreezeTimers = true;
 
 		Steps = {
-			TEXT("Home"), TEXT("TicketType"), TEXT("Destination"), TEXT("DestinationSearch"), TEXT("DestinationTypo"), TEXT("DestinationNoMatch"), TEXT("DestinationMap"),
-			TEXT("DestinationSelected"), TEXT("Review"), TEXT("PayMethod"), TEXT("WaitTapCard"), TEXT("WaitChipCard"),
-			TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
-			TEXT("HelpCall"), TEXT("HelpPip"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"), TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"),
-			TEXT("Concession"), TEXT("ConcessionSelected"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
-			TEXT("Home_Chinese"), TEXT("Home_Tamil"), TEXT("Home_Malay"), TEXT("Destination_Chinese"), TEXT("Destination_Tamil") };
+			TEXT("Home"), TEXT("TicketType"), TEXT("TicketTypeLate"), TEXT("Destination"), TEXT("DestinationSearch"), TEXT("DestinationTypo"), TEXT("DestinationNoMatch"),
+			TEXT("DestinationMap"), TEXT("DestinationSelected"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"), TEXT("PayMethod"), TEXT("PayMethodTopUp"),
+			TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
+			TEXT("HelpCall"), TEXT("HelpCallCash"), TEXT("HelpPip"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"),
+			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession") };
+		// The same screens in the other three languages (the ones where text is longest or hardware is pointed at).
+		static const TCHAR* const Localised[] = {
+			TEXT("Home"), TEXT("TicketType"), TEXT("TicketTypeLate"), TEXT("DestinationSelected"), TEXT("DestinationMap"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"),
+			TEXT("PayMethod"), TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("Receipt"), TEXT("HelpCall"),
+			TEXT("HelpCallCash"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"),
+			TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession") };
+		for (const TCHAR* Suffix : { TEXT("_Chinese"), TEXT("_Tamil"), TEXT("_Malay") })
+		{
+			for (const TCHAR* Name : Localised)
+			{
+				Steps.Add(FString(Name) + Suffix);
+			}
+		}
 
 		StepIndex = 0;
 		FrameCounter = 0;

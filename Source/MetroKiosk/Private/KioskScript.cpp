@@ -1,4 +1,5 @@
 #include "KioskScript.h"
+#include "Widgets/Text/STextBlock.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -188,6 +189,12 @@ void FKioskScriptRunner::ParseScript(const FString& Script)
 			Step.Text = Arg.IsEmpty() ? FString(TEXT("shot")) : Arg;
 			Steps.Add(Step);
 		}
+		else if (Verb == TEXT("expect") || Verb == TEXT("absent"))
+		{
+			Step.Kind = Verb == TEXT("expect") ? EStepKind::Expect : EStepKind::Absent;
+			Step.Text = Arg;
+			Steps.Add(Step);
+		}
 		else if (Verb == TEXT("dump"))
 		{
 			Step.Kind = EStepKind::Dump;
@@ -228,6 +235,35 @@ void FKioskScriptRunner::CollectRecursive(const TSharedRef<SWidget>& Widget, TAr
 			CollectRecursive(Child.AsShared(), Out);
 		});
 	}
+}
+
+bool FKioskScriptRunner::TextRecursive(const TSharedRef<SWidget>& Widget, const FString& Needle)
+{
+	if (!Widget->GetVisibility().IsVisible())
+	{
+		return false;
+	}
+	if (Widget->GetType() == FName(TEXT("STextBlock")))
+	{
+		if (StaticCastSharedRef<STextBlock>(Widget)->GetText().ToString().Contains(Needle, ESearchCase::IgnoreCase))
+		{
+			return true;
+		}
+	}
+	bool bFound = false;
+	if (FChildren* Children = Widget->GetChildren())
+	{
+		Children->ForEachWidget([&bFound, &Needle](SWidget& Child)
+		{
+			bFound = bFound || TextRecursive(Child.AsShared(), Needle);
+		});
+	}
+	return bFound;
+}
+
+bool FKioskScriptRunner::VisibleTextContains(const FString& Needle) const
+{
+	return Root.IsValid() && TextRecursive(Root.ToSharedRef(), Needle);
 }
 
 void FKioskScriptRunner::CollectEntries(TArray<FEntry>& Out) const
@@ -496,6 +532,14 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 		return;
 	case EStepKind::Dump:
 		DoDump();
+		break;
+	case EStepKind::Expect:
+		bOk = VisibleTextContains(Step.Text);
+		Why = FString::Printf(TEXT("no visible text contains '%s'"), *Step.Text);
+		break;
+	case EStepKind::Absent:
+		bOk = !VisibleTextContains(Step.Text);
+		Why = FString::Printf(TEXT("visible text still contains '%s'"), *Step.Text);
 		break;
 	}
 

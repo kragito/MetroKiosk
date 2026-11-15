@@ -1,4 +1,5 @@
 #include "KioskData.h"
+#include "KioskLoc.h"
 
 int32 FKioskStation::FirstLine() const
 {
@@ -62,7 +63,7 @@ namespace
 		{ TEXT("HarbourFront"), NE | CC, 330, 538 },
 		{ TEXT("Hume"), DT, 215, 205 },
 		{ TEXT("Beauty World"), DT, 235, 262 },
-		{ TEXT("Bukit Panjang"), DT, 190, 150 },
+		{ TEXT("Bukit Panjang"), DT, 205, 150 },
 		{ TEXT("Buona Vista"), EW | CC, 250, 442 },
 		{ TEXT("Jurong East"), NS | EW, 150, 412 },
 		{ TEXT("Boon Lay"), EW, 60, 412 },
@@ -88,7 +89,7 @@ namespace
 		{ TEXT("Esplanade"), CC, 515, 435 },
 		{ TEXT("Simei"), EW, 800, 262 },
 		{ TEXT("Bukit Batok"), NS, 125, 335 },
-		{ TEXT("Choa Chu Kang"), NS, 150, 225 },
+		{ TEXT("Choa Chu Kang"), NS, 128, 225 },
 	};
 
 	TArray<FKioskStation> BuildStations()
@@ -208,4 +209,24 @@ const TArray<FKioskConcession>& FKioskData::Concessions()
 		{ TEXT("Bus + Train"), TEXT("Every bus and train"), 5500, 12800, true, true },
 	};
 	return Data;
+}
+
+FText FKioskData::ConcessionName(int32 Index)
+{
+	switch (Index)
+	{
+	case 0: return KT("Bus");
+	case 1: return KT("Train");
+	default: return KT("Bus + Train");
+	}
+}
+
+FText FKioskData::ConcessionDescription(int32 Index)
+{
+	switch (Index)
+	{
+	case 0: return KT("All bus services");
+	case 1: return KT("All MRT and LRT lines");
+	default: return KT("Every bus and train");
+	}
 }

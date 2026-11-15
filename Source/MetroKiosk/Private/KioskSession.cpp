@@ -4,9 +4,9 @@
 #include "KioskLoc.h"
 #include "KioskPlaces.h"
 #include "KioskRoutes.h"
+#include "Misc/CommandLine.h"
 #include "Misc/DateTime.h"
-
-#define LOCTEXT_NAMESPACE "KioskSession"
+#include "Misc/Parse.h"
 
 namespace
 {
@@ -14,6 +14,31 @@ namespace
 	{
 		return Screen == EKioskScreen::WaitTapCard || Screen == EKioskScreen::WaitChipCard || Screen == EKioskScreen::WaitCash;
 	}
+
+	/** Purchase screens where a customer who walked away should be reset (not Home, not hardware waits with their own countdown). */
+	bool IsIdleScreen(EKioskScreen Screen)
+	{
+		switch (Screen)
+		{
+		case EKioskScreen::TicketType:
+		case EKioskScreen::Destination:
+		case EKioskScreen::DestinationMap:
+		case EKioskScreen::Review:
+		case EKioskScreen::PayMethod:
+		case EKioskScreen::ScanCard:
+		case EKioskScreen::CardOptions:
+		case EKioskScreen::TopUpAmount:
+		case EKioskScreen::Concession:
+		case EKioskScreen::PassDates:
+			return true;
+		default:
+			return false;
+		}
+	}
+
+	int32 GFixedClockMinutes = -1;  // QA sample override
+	int32 GCommandClockMinutes = -2; // -2 = not parsed yet, -1 = no -KioskFakeTime
+	double GCommandClockSetAt = 0.0;
 }
 
 // --- navigation ----------------------------------------------------------------------------
@@ -21,6 +46,9 @@ namespace
 void FKioskSession::ResetState()
 {
 	State = FKioskState();
+	ReturnLimit = ReturnSeconds;
+	IdleSeconds = 0.f;
+	bIdlePrompt = false;
 	MapZoom = 1.f;
 	MapPan = FVector2f::ZeroVector;
 	++NavCount;
@@ -50,8 +78,15 @@ void FKioskSession::EnterScreen(EKioskScreen Screen)
 	{
 		MapPan = FVector2f::ZeroVector;
 	}
+	if (Screen == EKioskScreen::Concession && State.Concession == INDEX_NONE)
+	{
+		State.Concession = CurrentPassIndex; // renewing: the card holder's current pass is already chosen
+	}
 	CurrentScreen = Screen;
 	ScreenSeconds = 0.f;
+	ReturnLimit = ReturnSeconds;
+	IdleSeconds = 0.f;
+	bIdlePrompt = false;
 	NotifyChanged();
 }
 
@@ -172,6 +207,32 @@ void FKioskSession::ChooseTicket(ETicketType Type)
 	}
 }
 
+void FKioskSession::OpenSearchField()
+{
+	if (!State.bKeyboardOpen && !State.SearchText.IsEmpty())
+	{
+		State.SearchText.Reset(); // leftovers from an earlier choice: start a fresh search
+	}
+	OpenKeyboard(true);
+}
+
+void FKioskSession::ShowDestinationList()
+{
+	if (CurrentScreen == EKioskScreen::DestinationMap && History.Num() > 0 && History.Last() == EKioskScreen::Destination)
+	{
+		Back();
+	}
+	else if (CurrentScreen != EKioskScreen::Destination)
+	{
+		GoTo(EKioskScreen::Destination);
+	}
+}
+
+void FKioskSession::ShowDestinationMap()
+{
+	GoTo(EKioskScreen::DestinationMap);
+}
+
 void FKioskSession::SelectDestination(int32 StationIndex)
 {
 	State.Destination = StationIndex;
@@ -290,7 +351,7 @@ void FKioskSession::SimulateCardTap()
 		GoTo(EKioskScreen::CardOptions);
 		break;
 	case EKioskScreen::ScanCard:
-		GoTo(State.Flow == EKioskFlow::Concession ? EKioskScreen::Concession : EKioskScreen::CardOptions);
+		Replace(State.Flow == EKioskFlow::Concession ? EKioskScreen::Concession : EKioskScreen::CardOptions);
 		break;
 	case EKioskScreen::WaitTapCard:
 	case EKioskScreen::WaitChipCard:
@@ -443,20 +504,65 @@ FText FKioskSession::DestinationLabel() const
 
 FText FKioskSession::RiderSummary() const
 {
-	TArray<FString> Parts;
+	TArray<FText> Parts;
 	if (State.Adults > 0)
 	{
-		Parts.Add(FString::Printf(TEXT("%d adult%s"), State.Adults, State.Adults == 1 ? TEXT("") : TEXT("s")));
+		Parts.Add(FText::Format(State.Adults == 1 ? KT("{0} adult") : KT("{0} adults"), FText::AsNumber(State.Adults)));
 	}
 	if (State.Children > 0)
 	{
-		Parts.Add(FString::Printf(TEXT("%d child%s"), State.Children, State.Children == 1 ? TEXT("") : TEXT("ren")));
+		Parts.Add(FText::Format(State.Children == 1 ? KT("{0} child") : KT("{0} children"), FText::AsNumber(State.Children)));
 	}
 	if (State.Seniors > 0)
 	{
-		Parts.Add(FString::Printf(TEXT("%d senior%s"), State.Seniors, State.Seniors == 1 ? TEXT("") : TEXT("s")));
+		Parts.Add(FText::Format(State.Seniors == 1 ? KT("{0} senior") : KT("{0} seniors"), FText::AsNumber(State.Seniors)));
 	}
-	return FText::FromString(FString::Join(Parts, TEXT(", ")));
+	FText Joined = Parts.Num() > 0 ? Parts[0] : FText::GetEmpty();
+	for (int32 Index = 1; Index < Parts.Num(); ++Index)
+	{
+		Joined = FText::Format(KT("{0}, {1}"), Joined, Parts[Index]);
+	}
+	return Joined;
+}
+
+FText FKioskSession::ReceiptKind() const
+{
+	return FText::Format(KT("{0} · {1}"), TicketLabel(), RiderSummary());
+}
+
+FText FKioskSession::ValidityRule(ETicketType Type)
+{
+	switch (Type)
+	{
+	case ETicketType::RoundTrip: return KT("Return valid until end of service tonight (12:00 a.m.).");
+	case ETicketType::DayPass: return KT("Unlimited rides until end of service tonight (12:00 a.m.).");
+	default: return KT("Valid for 2 hours after purchase.");
+	}
+}
+
+FText FKioskSession::ReceiptValidText() const
+{
+	const FDateTime Time = Now();
+	FText Until = KT("12:00 a.m. tonight");
+	if (State.Ticket == ETicketType::OneWay)
+	{
+		const FDateTime Later = Time + FTimespan::FromHours(2);
+		const FDateTime Midnight = FDateTime(Time.GetYear(), Time.GetMonth(), Time.GetDay()) + FTimespan::FromDays(1);
+		if (Later < Midnight)
+		{
+			Until = TimeOfDayText(Later);
+		}
+	}
+	return FText::Format(KT("Valid until {0}"), Until);
+}
+
+FText FKioskSession::HelpPausedBody() const
+{
+	if (State.CashInsertedCents > 0)
+	{
+		return FText::Format(KT("Your {0} is safe. Nothing more will be charged. You can continue or get it back."), Money(State.CashInsertedCents));
+	}
+	return KT("Nothing has been charged. You can pick up where you left off.");
 }
 
 FText FKioskSession::PaymentTail() const
@@ -464,22 +570,18 @@ FText FKioskSession::PaymentTail() const
 	switch (State.Flow)
 	{
 	case EKioskFlow::TopUp:
-		return LOCTEXT("TailTopUp", "· top-up for your Student card");
+		return KT("· top-up for your Student card");
 	case EKioskFlow::Concession:
-	{
-		const TArray<FKioskConcession>& Passes = FKioskData::Concessions();
-		return FText::Format(LOCTEXT("TailPass", "· {0} concession pass"),
-			FText::FromString(Passes.IsValidIndex(State.Concession) ? Passes[State.Concession].Name : TEXT("")));
-	}
+		return FText::Format(KT("· {0} concession pass"), FKioskData::ConcessionName(State.Concession));
 	default:
 		break;
 	}
 	const FText Lower = FText::FromString(TicketLabel().ToString().ToLower());
 	if (State.Ticket == ETicketType::DayPass)
 	{
-		return FText::Format(LOCTEXT("TailDay", "· {0}"), Lower);
+		return FText::Format(KT("· {0}"), Lower);
 	}
-	return FText::Format(LOCTEXT("TailTrip", "· {0} to {1}"), Lower, DestinationLabel());
+	return FText::Format(KT("· {0} to {1}"), Lower, DestinationLabel());
 }
 
 FText FKioskSession::OrderSummary() const
@@ -487,48 +589,134 @@ FText FKioskSession::OrderSummary() const
 	switch (State.Flow)
 	{
 	case EKioskFlow::TopUp:
-		return LOCTEXT("OrderTopUp", "Top up · Student card •••• 4821");
+		return KT("Top up · Student card •••• 4821");
 	case EKioskFlow::Concession:
-	{
-		const TArray<FKioskConcession>& Passes = FKioskData::Concessions();
-		return FText::Format(LOCTEXT("OrderPass", "{0} · Student pass · 30 days"),
-			FText::FromString(Passes.IsValidIndex(State.Concession) ? Passes[State.Concession].Name : TEXT("")));
-	}
+		return FText::Format(KT("{0} · Student pass · 30 days"), FKioskData::ConcessionName(State.Concession));
 	default:
 		break;
 	}
 	if (State.Ticket == ETicketType::DayPass)
 	{
-		return FText::Format(LOCTEXT("OrderDay", "{0} · All lines · {1}"), TicketLabel(), RiderSummary());
+		return FText::Format(KT("{0} · All lines · {1}"), TicketLabel(), RiderSummary());
 	}
-	return FText::Format(LOCTEXT("OrderTrip", "{0} · City Hall → {1} · {2}"), TicketLabel(), DestinationLabel(), RiderSummary());
+	return FText::Format(KT("{0} · City Hall → {1} · {2}"), TicketLabel(), DestinationLabel(), RiderSummary());
 }
 
-FText FKioskSession::ClockText()
+// --- clock ---------------------------------------------------------------------------------
+
+void FKioskSession::SetFixedClockMinutes(int32 Minutes)
 {
-	static const TCHAR* const Days[] = { TEXT("Mon"), TEXT("Tue"), TEXT("Wed"), TEXT("Thu"), TEXT("Fri"), TEXT("Sat"), TEXT("Sun") };
-	static const TCHAR* const Months[] = { TEXT("Jan"), TEXT("Feb"), TEXT("Mar"), TEXT("Apr"), TEXT("May"), TEXT("Jun"), TEXT("Jul"), TEXT("Aug"), TEXT("Sep"), TEXT("Oct"), TEXT("Nov"), TEXT("Dec") };
-	const FDateTime Now = FDateTime::Now();
-	const int32 Hour12 = (Now.GetHour() % 12 == 0) ? 12 : Now.GetHour() % 12;
-	return FText::FromString(FString::Printf(TEXT("%s %d %s · %d:%02d %s"),
-		Days[static_cast<int32>(Now.GetDayOfWeek())], Now.GetDay(), Months[Now.GetMonth() - 1],
-		Hour12, Now.GetMinute(), Now.GetHour() < 12 ? TEXT("am") : TEXT("pm")));
+	GFixedClockMinutes = Minutes;
 }
 
-FText FKioskSession::ValidUntilText()
+FDateTime FKioskSession::Now()
 {
-	const FDateTime Later = FDateTime::Now() + FTimespan::FromHours(2);
-	const int32 Hour12 = (Later.GetHour() % 12 == 0) ? 12 : Later.GetHour() % 12;
-	return FText::FromString(FString::Printf(TEXT("%d:%02d %s"), Hour12, Later.GetMinute(), Later.GetHour() < 12 ? TEXT("am") : TEXT("pm")));
+	const FDateTime Real = FDateTime::Now();
+	if (GFixedClockMinutes >= 0)
+	{
+		return FDateTime(Real.GetYear(), Real.GetMonth(), Real.GetDay(), GFixedClockMinutes / 60, GFixedClockMinutes % 60);
+	}
+	if (GCommandClockMinutes == -2)
+	{
+		FString Value;
+		GCommandClockMinutes = -1;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-KioskFakeTime="), Value))
+		{
+			FString Hour, Minute;
+			if (Value.TrimQuotes().Split(TEXT(":"), &Hour, &Minute))
+			{
+				GCommandClockMinutes = FMath::Clamp(FCString::Atoi(*Hour), 0, 23) * 60 + FMath::Clamp(FCString::Atoi(*Minute), 0, 59);
+				GCommandClockSetAt = FPlatformTime::Seconds();
+			}
+		}
+	}
+	if (GCommandClockMinutes >= 0)
+	{
+		const double Elapsed = FPlatformTime::Seconds() - GCommandClockSetAt;
+		return FDateTime(Real.GetYear(), Real.GetMonth(), Real.GetDay()) + FTimespan::FromMinutes(GCommandClockMinutes) + FTimespan::FromSeconds(Elapsed);
+	}
+	return Real;
+}
+
+int32 FKioskSession::LateServiceHours()
+{
+	const FDateTime Time = Now();
+	const int32 Minutes = Time.GetHour() * 60 + Time.GetMinute();
+	if (Minutes < 21 * 60)
+	{
+		return INDEX_NONE;
+	}
+	return FMath::Max(1, (24 * 60 - Minutes) / 60);
+}
+
+FText FKioskSession::DayPassWarning()
+{
+	const int32 Hours = LateServiceHours();
+	return Hours == INDEX_NONE ? FText::GetEmpty()
+		: FText::Format(KT("Only {0} h of service left today. A one-way may be cheaper."), FText::AsNumber(Hours));
+}
+
+namespace
+{
+	FText DayName(int32 Day)
+	{
+		switch (Day)
+		{
+		case 0: return KT("Mon");
+		case 1: return KT("Tue");
+		case 2: return KT("Wed");
+		case 3: return KT("Thu");
+		case 4: return KT("Fri");
+		case 5: return KT("Sat");
+		default: return KT("Sun");
+		}
+	}
+
+	FText MonthName(int32 Month)
+	{
+		switch (Month)
+		{
+		case 1: return KT("Jan");
+		case 2: return KT("Feb");
+		case 3: return KT("Mar");
+		case 4: return KT("Apr");
+		case 5: return KT("May");
+		case 6: return KT("Jun");
+		case 7: return KT("Jul");
+		case 8: return KT("Aug");
+		case 9: return KT("Sep");
+		case 10: return KT("Oct");
+		case 11: return KT("Nov");
+		default: return KT("Dec");
+		}
+	}
+}
+
+FText FKioskSession::TimeOfDayText(const FDateTime& Time)
+{
+	if (FKioskLoc::GetLanguage() == EKioskLanguage::English)
+	{
+		const int32 Hour12 = (Time.GetHour() % 12 == 0) ? 12 : Time.GetHour() % 12;
+		return FText::FromString(FString::Printf(TEXT("%d:%02d %s"), Hour12, Time.GetMinute(), Time.GetHour() < 12 ? TEXT("am") : TEXT("pm")));
+	}
+	return FText::FromString(FString::Printf(TEXT("%02d:%02d"), Time.GetHour(), Time.GetMinute()));
 }
 
 FText FKioskSession::DateShortText()
 {
-	static const TCHAR* const Days[] = { TEXT("MON"), TEXT("TUE"), TEXT("WED"), TEXT("THU"), TEXT("FRI"), TEXT("SAT"), TEXT("SUN") };
-	static const TCHAR* const Months[] = { TEXT("JAN"), TEXT("FEB"), TEXT("MAR"), TEXT("APR"), TEXT("MAY"), TEXT("JUN"), TEXT("JUL"), TEXT("AUG"), TEXT("SEP"), TEXT("OCT"), TEXT("NOV"), TEXT("DEC") };
-	const FDateTime Now = FDateTime::Now();
-	return FText::FromString(FString::Printf(TEXT("%s %d %s"), Days[static_cast<int32>(Now.GetDayOfWeek())], Now.GetDay(), Months[Now.GetMonth() - 1]));
+	const FDateTime Time = Now();
+	const FText Date = FText::Format(KT("{0} {1} {2}"), DayName(static_cast<int32>(Time.GetDayOfWeek())), FText::AsNumber(Time.GetDay()), MonthName(Time.GetMonth()));
+	return FText::FromString(Date.ToString().ToUpper());
 }
+
+FText FKioskSession::ClockText()
+{
+	const FDateTime Time = Now();
+	const FText Date = FText::Format(KT("{0} {1} {2}"), DayName(static_cast<int32>(Time.GetDayOfWeek())), FText::AsNumber(Time.GetDay()), MonthName(Time.GetMonth()));
+	return FText::Format(KT("{0} · {1}"), Date, TimeOfDayText(Time));
+}
+
+// --- steps ---------------------------------------------------------------------------------
 
 FKioskStepInfo FKioskSession::StepInfo() const
 {
@@ -539,7 +727,7 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		return Info;
 	}
 
-	const bool bWait = IsWaitScreen(Screen) || Screen == EKioskScreen::Processing;
+	const bool bPay = IsWaitScreen(Screen) || Screen == EKioskScreen::Processing || Screen == EKioskScreen::PayMethod;
 
 	if (State.Flow == EKioskFlow::Ticket)
 	{
@@ -548,19 +736,14 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		case EKioskScreen::TicketType: Info.Current = 1; break;
 		case EKioskScreen::Destination:
 		case EKioskScreen::DestinationMap: Info.Current = 2; break;
-		case EKioskScreen::Review:
-		case EKioskScreen::PayMethod: Info.Current = 3; break;
-		default: Info.Current = bWait ? 4 : 1; break;
+		case EKioskScreen::Review: Info.Current = 3; break;
+		default: Info.Current = bPay ? 4 : 1; break;
 		}
-		Info.Labels.Add(Info.Current > 1 ? TicketLabel() : KT("Ticket"));
-		if (Info.Current > 2)
-		{
-			Info.Labels.Add(State.Ticket == ETicketType::DayPass ? KT("All lines") : DestinationLabel());
-		}
-		else
-		{
-			Info.Labels.Add(KT("Destination"));
-		}
+		Info.Labels.Add(KT("Ticket"));
+		// A day pass has no destination: that step reads "All lines" once it has been passed.
+		Info.Labels.Add(State.Ticket == ETicketType::DayPass && Info.Current > 2 ? KT("All lines") : KT("Destination"));
+		Info.Labels.Add(KT("Review"));
+		Info.Labels.Add(KT("Pay"));
 	}
 	else
 	{
@@ -569,20 +752,13 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		case EKioskScreen::ScanCard: Info.Current = 1; break;
 		case EKioskScreen::CardOptions: Info.Current = 2; break;
 		case EKioskScreen::DoneLiftCard: Info.Current = 5; break;
-		default: Info.Current = bWait ? 4 : 3; break;
+		default: Info.Current = bPay ? 4 : 3; break;
 		}
 		Info.Labels.Add(KT("Tap card"));
-		if (Info.Current > 2)
-		{
-			Info.Labels.Add(State.Flow == EKioskFlow::TopUp ? KT("Top-up") : KT("Concession Pass"));
-		}
-		else
-		{
-			Info.Labels.Add(KT("What to do?"));
-		}
+		Info.Labels.Add(KT("What to do?"));
+		Info.Labels.Add(State.Flow == EKioskFlow::TopUp ? KT("Amount") : KT("Pass"));
+		Info.Labels.Add(KT("Pay"));
 	}
-	Info.Labels.Add(KT("Review"));
-	Info.Labels.Add(KT("Pay"));
 	return Info;
 }
 
@@ -593,9 +769,35 @@ int32 FKioskSession::PaySecondsLeft() const
 	return FMath::Max(0, FMath::CeilToInt(PayTimeoutSeconds - ScreenSeconds) - 1);
 }
 
-int32 FKioskSession::ReceiptSecondsLeft() const
+int32 FKioskSession::ReturnSecondsLeft() const
 {
-	return FMath::Max(0, FMath::CeilToInt(ReceiptReturnSeconds - ScreenSeconds));
+	return FMath::Max(0, FMath::CeilToInt(ReturnLimit - ScreenSeconds));
+}
+
+float FKioskSession::ReturnFractionLeft() const
+{
+	return FMath::Clamp((ReturnLimit - ScreenSeconds) / FMath::Max(1.f, ReturnLimit), 0.f, 1.f);
+}
+
+void FKioskSession::ExtendReturn()
+{
+	ReturnLimit = FMath::Min(ReturnLimit + ExtendSeconds, ScreenSeconds + 2.f * ReturnSeconds);
+	NotifyChanged();
+}
+
+void FKioskSession::NoteActivity()
+{
+	if (!bIdlePrompt)
+	{
+		IdleSeconds = 0.f;
+	}
+}
+
+void FKioskSession::DismissIdlePrompt()
+{
+	bIdlePrompt = false;
+	IdleSeconds = 0.f;
+	NotifyChanged();
 }
 
 void FKioskSession::Tick(float DeltaSeconds)
@@ -608,15 +810,45 @@ void FKioskSession::Tick(float DeltaSeconds)
 	if (bCallActive)
 	{
 		CallTime += DeltaSeconds;
-	}
-	if (bHelpFullscreen)
-	{
-		return; // the purchase is paused while on the call
+		// Every countdown and auto-return is paused for as long as a call is open, full screen or picture-in-picture.
+		// The short "Processing" step of a payment that is already underway is not a countdown: it finishes in picture-in-picture.
+		if (!(CurrentScreen == EKioskScreen::Processing && !bHelpFullscreen))
+		{
+			return;
+		}
 	}
 	ScreenSeconds += DeltaSeconds;
 	if (bFreezeTimers)
 	{
 		return;
+	}
+
+	if (IsIdleScreen(CurrentScreen))
+	{
+		if (bIdlePrompt)
+		{
+			IdlePromptLeft -= DeltaSeconds;
+			if (IdlePromptLeft <= 0.f)
+			{
+				ReturnHome(true);
+				return;
+			}
+		}
+		else
+		{
+			IdleSeconds += DeltaSeconds;
+			if (IdleSeconds >= IdleLimitSeconds)
+			{
+				bIdlePrompt = true;
+				IdlePromptLeft = IdlePromptSeconds;
+				NotifyChanged();
+			}
+		}
+	}
+	else
+	{
+		IdleSeconds = 0.f;
+		bIdlePrompt = false;
 	}
 
 	switch (CurrentScreen)
@@ -636,13 +868,8 @@ void FKioskSession::Tick(float DeltaSeconds)
 		}
 		break;
 	case EKioskScreen::Receipt:
-		if (ScreenSeconds >= ReceiptReturnSeconds)
-		{
-			ReturnHome(true);
-		}
-		break;
 	case EKioskScreen::DoneLiftCard:
-		if (ScreenSeconds >= DoneReturnSeconds)
+		if (ScreenSeconds >= ReturnLimit)
 		{
 			ReturnHome(true);
 		}
@@ -667,11 +894,20 @@ void FKioskSession::SeedTicketSample()
 	SelectPlace(FKioskPlaces::FindPlace(TEXT("Gardens by the Bay")));
 }
 
-bool FKioskSession::ApplySample(const FString& Name)
+bool FKioskSession::ApplySample(const FString& RawName)
 {
 	EndCall();
 	ResetState();
+	SetFixedClockMinutes(-1);
 	SetLanguage(EKioskLanguage::English);
+
+	// "<Screen>_Chinese|_Malay|_Tamil" shows the same state in another language.
+	FString Name = RawName;
+	EKioskLanguage Wanted = EKioskLanguage::English;
+	if (Name.EndsWith(TEXT("_Chinese"))) { Wanted = EKioskLanguage::Chinese; Name.LeftChopInline(8); }
+	else if (Name.EndsWith(TEXT("_Malay"))) { Wanted = EKioskLanguage::Malay; Name.LeftChopInline(6); }
+	else if (Name.EndsWith(TEXT("_Tamil"))) { Wanted = EKioskLanguage::Tamil; Name.LeftChopInline(6); }
+	SetLanguage(Wanted);
 
 	auto Place = [this](EKioskScreen Screen, std::initializer_list<EKioskScreen> Path)
 	{
@@ -685,10 +921,8 @@ bool FKioskSession::ApplySample(const FString& Name)
 	if (Name == TEXT("Home"))
 	{
 	}
-	else if (Name == TEXT("Home_Chinese")) { SetLanguage(EKioskLanguage::Chinese); }
-	else if (Name == TEXT("Home_Malay")) { SetLanguage(EKioskLanguage::Malay); }
-	else if (Name == TEXT("Home_Tamil")) { SetLanguage(EKioskLanguage::Tamil); }
 	else if (Name == TEXT("TicketType")) { Place(S::TicketType, { S::Home }); }
+	else if (Name == TEXT("TicketTypeLate")) { SetFixedClockMinutes(22 * 60 + 10); Place(S::TicketType, { S::Home }); }
 	else if (Name == TEXT("Destination")) { State.Ticket = ETicketType::OneWay; Place(S::Destination, { S::Home, S::TicketType }); }
 	else if (Name == TEXT("DestinationSearch") || Name == TEXT("DestinationTypo") || Name == TEXT("DestinationNoMatch"))
 	{
@@ -696,15 +930,11 @@ bool FKioskSession::ApplySample(const FString& Name)
 		State.bKeyboardOpen = true;
 		Place(S::Destination, { S::Home, S::TicketType });
 	}
-	else if (Name == TEXT("Destination_Chinese") || Name == TEXT("Destination_Tamil"))
-	{
-		SetLanguage(Name == TEXT("Destination_Chinese") ? EKioskLanguage::Chinese : EKioskLanguage::Tamil);
-		SeedTicketSample();
-		Place(S::Destination, { S::Home, S::TicketType });
-	}
-	else if (Name == TEXT("DestinationMap")) { Place(S::DestinationMap, { S::Home, S::TicketType }); }
+	else if (Name == TEXT("DestinationMap")) { Place(S::DestinationMap, { S::Home, S::TicketType, S::Destination }); }
 	else if (Name == TEXT("DestinationSelected")) { SeedTicketSample(); Place(S::Destination, { S::Home, S::TicketType }); }
 	else if (Name == TEXT("Review")) { SeedTicketSample(); Place(S::Review, { S::Home, S::TicketType, S::Destination }); }
+	else if (Name == TEXT("ReviewMixed")) { SeedTicketSample(); State.Children = 1; Place(S::Review, { S::Home, S::TicketType, S::Destination }); }
+	else if (Name == TEXT("ReviewDayPass")) { State.Ticket = ETicketType::DayPass; Place(S::Review, { S::Home, S::TicketType }); }
 	else if (Name == TEXT("PayMethod")) { SeedTicketSample(); Place(S::PayMethod, { S::Home, S::TicketType, S::Destination, S::Review }); }
 	else if (Name == TEXT("WaitTapCard")) { SeedTicketSample(); State.PayMethod = EPayMethod::Tap; Place(S::WaitTapCard, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod }); }
 	else if (Name == TEXT("WaitChipCard")) { SeedTicketSample(); State.PayMethod = EPayMethod::Chip; Place(S::WaitChipCard, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod }); }
@@ -712,11 +942,20 @@ bool FKioskSession::ApplySample(const FString& Name)
 	else if (Name == TEXT("WaitCashPartial")) { SeedTicketSample(); State.PayMethod = EPayMethod::Cash; State.CashInsertedCents = 100; Place(S::WaitCash, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod }); }
 	else if (Name == TEXT("Processing")) { SeedTicketSample(); State.PayMethod = EPayMethod::Tap; Place(S::Processing, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod }); }
 	else if (Name == TEXT("ProcessingCash")) { SeedTicketSample(); State.PayMethod = EPayMethod::Cash; State.CashInsertedCents = 200; Place(S::Processing, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod }); }
-	else if (Name == TEXT("Receipt")) { SeedTicketSample(); Place(S::Receipt, {}); }
+	else if (Name == TEXT("Receipt")) { SeedTicketSample(); State.Children = 1; State.PayMethod = EPayMethod::Cash; State.CashInsertedCents = 500; Place(S::Receipt, {}); }
 	else if (Name == TEXT("HelpCall"))
 	{
 		SeedTicketSample();
 		Place(S::Destination, { S::Home, S::TicketType });
+		StartCall();
+		CallTime = 24.f;
+	}
+	else if (Name == TEXT("HelpCallCash"))
+	{
+		SeedTicketSample();
+		State.PayMethod = EPayMethod::Cash;
+		State.CashInsertedCents = 200;
+		Place(S::WaitCash, { S::Home, S::TicketType, S::Destination, S::Review, S::PayMethod });
 		StartCall();
 		CallTime = 24.f;
 	}
@@ -728,20 +967,25 @@ bool FKioskSession::ApplySample(const FString& Name)
 		CallTime = 24.f;
 		ReturnToPurchase();
 	}
+	else if (Name == TEXT("IdlePrompt"))
+	{
+		SeedTicketSample();
+		Place(S::Review, { S::Home, S::TicketType, S::Destination });
+		bIdlePrompt = true;
+		IdlePromptLeft = 14.f;
+	}
 	else if (Name == TEXT("ScanCard")) { State.Flow = EKioskFlow::TopUp; Place(S::ScanCard, { S::Home }); }
-	else if (Name == TEXT("CardOptions")) { State.Flow = EKioskFlow::TopUp; Place(S::CardOptions, { S::Home, S::ScanCard }); }
-	else if (Name == TEXT("TopUpAmount")) { State.Flow = EKioskFlow::TopUp; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
-	else if (Name == TEXT("TopUpAmountSelected")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
-	else if (Name == TEXT("TopUpKeypad")) { State.Flow = EKioskFlow::TopUp; State.bTopUpKeypad = true; State.TopUpDigits = TEXT("25"); State.TopUpCents = 2500; Place(S::TopUpAmount, { S::Home, S::ScanCard, S::CardOptions }); }
-	else if (Name == TEXT("Concession")) { State.Flow = EKioskFlow::Concession; Place(S::Concession, { S::Home, S::ScanCard }); }
-	else if (Name == TEXT("ConcessionSelected")) { State.Flow = EKioskFlow::Concession; State.Concession = 2; Place(S::Concession, { S::Home, S::ScanCard }); }
-	else if (Name == TEXT("PassDates")) { State.Flow = EKioskFlow::Concession; State.Concession = 2; Place(S::PassDates, { S::Home, S::ScanCard, S::Concession }); }
+	else if (Name == TEXT("CardOptions")) { State.Flow = EKioskFlow::TopUp; Place(S::CardOptions, { S::Home }); }
+	else if (Name == TEXT("TopUpAmount")) { State.Flow = EKioskFlow::TopUp; Place(S::TopUpAmount, { S::Home, S::CardOptions }); }
+	else if (Name == TEXT("TopUpAmountSelected")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::TopUpAmount, { S::Home, S::CardOptions }); }
+	else if (Name == TEXT("TopUpKeypad")) { State.Flow = EKioskFlow::TopUp; State.bTopUpKeypad = true; State.TopUpDigits = TEXT("25"); State.TopUpCents = 2500; Place(S::TopUpAmount, { S::Home, S::CardOptions }); }
+	else if (Name == TEXT("Concession")) { State.Flow = EKioskFlow::Concession; State.Concession = CurrentPassIndex; Place(S::Concession, { S::Home }); }
+	else if (Name == TEXT("PassDates")) { State.Flow = EKioskFlow::Concession; State.Concession = CurrentPassIndex; Place(S::PassDates, { S::Home, S::Concession }); }
+	else if (Name == TEXT("PayMethodTopUp")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::PayMethod, { S::Home, S::CardOptions }); }
 	else if (Name == TEXT("DoneLiftCard")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::DoneLiftCard, {}); }
-	else if (Name == TEXT("DoneLiftCardConcession")) { State.Flow = EKioskFlow::Concession; State.Concession = 2; Place(S::DoneLiftCard, {}); }
+	else if (Name == TEXT("DoneLiftCardConcession")) { State.Flow = EKioskFlow::Concession; State.Concession = CurrentPassIndex; Place(S::DoneLiftCard, {}); }
 	else { bOk = false; }
 
 	NotifyChanged();
 	return bOk;
 }
-
-#undef LOCTEXT_NAMESPACE
