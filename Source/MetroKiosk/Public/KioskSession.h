@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "KioskData.h"
 #include "KioskTypes.h"
 
 struct FKioskStepInfo
@@ -76,6 +77,8 @@ public:
 	void InsertCash(int32 Cents);
 	void SimulateCardTap();   // reader / chip slot "hardware" input
 	void SimulateCardLift();
+	/** The Scan card SIMULATE controls: put a Student or an Adult Metro card on the reader. */
+	void SimulateMetroCardTap(EKioskCardType Type);
 	void BeginCardFlow(EKioskFlow Flow);
 	void SelectTopUp(int32 Cents);
 	void ContinueTopUp();
@@ -100,10 +103,21 @@ public:
 	/** Cash returned after leaving the cash screen, shown as a one-off banner on the next screen (0 = none). */
 	int32 ReturnedCashBanner() const { return (ReturnedCash > 0 && NavCount == ReturnedAtNav) ? ReturnedCash : 0; }
 	static constexpr double ReturnedCashSeconds = 10.0;
-	int32 CardBalanceCents() const { return CardBalance; }
-	int32 NewBalanceCents() const { return CardBalance + State.TopUpCents; }
-	/** Index of the pass the card holder already has (pre-selected when renewing). */
+	int32 CardBalanceCents() const;
+	int32 NewBalanceCents() const { return CardBalanceCents() + State.TopUpCents; }
+	/** Index of the student sample card's pass (pre-selected when renewing). The tapped card's own pass is CurrentPass(). */
 	static constexpr int32 CurrentPassIndex = 2;
+	/** The Metro card on the reader (State.CardType) and what is known about it. */
+	const FKioskCardInfo& CardInfo() const;
+	bool IsStudentCard() const { return State.CardType == EKioskCardType::Student; }
+	/** "Student card" / "Adult card". */
+	FText CardLabel() const;
+	/** Pass the tapped card already holds, or INDEX_NONE (an adult card has none). */
+	int32 CurrentPass() const;
+	/** Price of a concession pass for the tapped card: student concession price or the adult price. */
+	int32 PassPriceCents(int32 ConcessionIndex) const;
+	/** QA: which card the reader detects when no SIMULATE card is chosen (the -KioskCard=Student|Adult switch). */
+	static EKioskCardType DefaultCardType();
 	FText TicketLabel() const;
 	FText DestinationLabel() const;
 	FText PaymentTail() const;      // "· one-way to HarbourFront" (follows "Paying $1.50")
@@ -172,7 +186,6 @@ private:
 	float CallTime = 0.f;
 	bool bCallActive = false;
 	bool bHelpFullscreen = false;
-	int32 CardBalance = 320;
 	int32 ReturnedCash = 0;
 	int32 ReturnedAtNav = -1;
 	double ReturnedAtTime = 0.0;

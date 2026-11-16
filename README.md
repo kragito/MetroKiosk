@@ -63,7 +63,7 @@ Outputs go to `-Out`: `log.txt` (one line per step, `OK`/`FAIL`/`WARN`, then `DO
 Useful names: `Buy a ticket`, `Choose One-way`, `Search`, `Place <name>` (for example `Place Gardens by the Bay`),
 `Station <name>`, `Change destination` (map card), `Confirm selected ticket`, `Open metro map view`, `Filter NS|EW|NE|CC|DT|TE` (destination list and map),
 `Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Insert $2`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
-`Keypad 5`, `Amount More`, `SIMULATE: tap card on reader`, `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
+`Keypad 5`, `Amount More`, `SIMULATE: tap card on reader` (on Scan card this is the Student card; the Adult card is `SIMULATE: tap Adult card on reader`), `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
 Names stay in English whatever language is active. The language pills live in the footer, so switch language after the first
 screen (`click:Buy a ticket|lang:zh`), not on Home.
 
@@ -85,6 +85,8 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `k5_idle_prompt` | 90 s idle shows "Are you still there?", Continue dismisses it (takes about 2 minutes) |
 | `k6_concession_renewal` | renewal with the current pass pre-selected, two-month dates check, done screen with receipt buttons |
 | `k7_map_back_to_list` | Back from the map returns to the list; leftover search text is cleared |
+| `l5_adult_topup` | adult Metro card top-up: "Adult card", $18.50 balance, no low-balance banner or pass, +$20 to $38.50, done screen |
+| `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, pass starts today, done screen |
 
 ## Automation tests
 ```powershell
@@ -94,7 +96,10 @@ powershell -File Tools/run_tests.ps1            # MetroKiosk.Search.*, MetroKios
 `MetroKiosk.Loc.Coverage` scans every `KT("...")` in the sources and builds every screen in 中文, Melayu and தமிழ் to catch
 missing translations, placeholder mismatches and English mixed into Chinese or Tamil. Close the editor first.
 
-QA switches: `-KioskFakeTime=HH:MM` freezes the kiosk clock start (Tools/capture.ps1 uses 10:30; samples `TicketTypeLate`
+QA switches: `-KioskCard=Student|Adult` sets which Metro card the reader detects when no card is chosen (default Student; Scan card's
+SIMULATE buttons still pick either card explicitly). Sample names also take an `Adult` or `Student` prefix, for example
+`-KioskScreen=AdultCardOptions`, `AdultTopUpAmountSelected`, `AdultConcession`, `AdultPassDates`, `AdultDoneLiftCard`,
+`AdultDoneLiftCardConcession` (the capture run saves these last). `-KioskFakeTime=HH:MM` freezes the kiosk clock start (Tools/capture.ps1 uses 10:30; samples `TicketTypeLate`
 and `IdlePrompt` show the late-night warning and the idle overlay). Captures cover every screen in English and the key screens
 in 中文, Melayu and தமிழ் (`-KioskScreen=<Screen>_Chinese|_Malay|_Tamil` works too).
 

@@ -66,7 +66,7 @@ screen). Keep these clearly marked as simulation and not part of the real UI des
 | 3b | Search keyboard | 03b_search_keyboard | On-screen QWERTY keyboard with Space / Clear / Done. Results update live: places ("Gardens by the Bay · near Bayfront") and stations, ranked exact > prefix > alias > fuzzy; case, spaces and punctuation are ignored, typos are tolerated ("harbor frnt" finds HarbourFront), translated names and pinyin aliases match. With no good match the list says "Did you mean…" (or offers the popular places). Never an empty list. |
 | 3c | Map | 03c_map | A schematic metro map with tappable stations and a "You are here" marker at City Hall. Right: "Search for a place or station", the same summary card, an optional "Highlight one line" row (dims the other lines), "Open station list view", "Confirm destination". |
 | 3d | Destination selected | 03d_destination_selected | The summary card shows the place and its station ("Gardens by the Bay · near Bayfront"), "Take North-South Line → change at Marina Bay → Circle Line", "12 min · 1 change", "One-way: $1.64 per adult", a "Change" button, and the green "Confirm destination". |
-| 4 | Check your trip | 04_review | Left: ticket summary card ("One-way ticket" tag, Change link, From City Hall NS EW → To HarbourFront NE CC, dashed note "Valid for 2 hours after purchase. About 14 min on the Blue line."). Right: "Who is riding?" Adult $1.68 each, Child (5–17) $1.18 each · 30% off · under 5 ride free, Senior (65+) $1.18 each · 30% off, each with − count + steppers (− outlined, + navy). "Total · N rider(s)" with total amount, green "Go to payment →". Can't go below 0 riders total (at least 1 rider). |
+| 4 | Check your trip | 04_review | Left: ticket summary card ("One-way ticket" tag, Change link, From City Hall NS EW → To HarbourFront NE CC, dashed note "Valid for 2 hours after use. About 14 min on the Blue line."). Right: "Who is riding?" Adult $1.68 each, Child (5–17) $1.18 each · 30% off · under 5 ride free, Senior (65+) $1.18 each · 30% off, each with − count + steppers (− outlined, + navy). "Total · N rider(s)" with total amount, green "Go to payment →". Can't go below 0 riders total (at least 1 rider). |
 | 5 | Pay $X | 05_pay_method | 3 cards: "Tap card or phone" (Fastest tag, "Pay with card" navy), "Insert chip card" ("Pay with chip card/NETs"), "Pay with cash" ("Notes up to $50 and coins…", "Pay with cash"). Subtitle "Use any method below. The lit slot on the kiosk shows you where." and right-aligned summary "One-way · City Hall → Harbourfront · 1 adult". |
 | 6a | Wait for card | 06_wait_tap_card | Pill "Paying **$1.64** · one-way to Bayfront", "Hold your card or phone on the reader", explanation of where the reader is, status pill "● Waiting for your card · 9:59 left" (a real countdown), 3 tips (phone unlock / one card only / NETS reader below). Right: illustration of the reader with "Bank card". |
 | 6b | Wait for chip card | 06_wait_chip_card | "Insert your card, chip first" with the chip-slot illustration "Chip first, facing up", "Chip slot · middle right". |
@@ -185,14 +185,20 @@ contactless reader (tap) or chip slot (chip); cash points at the note/coin slots
 **Cash.** Notes $2, $5, $10, $50 ("Notes up to $50"); coins 10c, 20c, 50c, $1. Same wording on PayMethod and the cash screen.
 The cash screen also shows the 10-minute countdown.
 
-**Validity (same sentence on ticket type, Review, Pay, Receipt).** One-way: valid for 2 hours after purchase. Round trip:
-return valid until end of service tonight (12:00 a.m.). Day pass: unlimited rides until end of service tonight (12:00 a.m.).
-The receipt computes the real time and never shows a time after end of service. From 9:00 p.m. the Day pass card shows
+**Validity (same sentence on ticket type, Review, Pay, Receipt).** One-way: "Valid for 2 hours after use."
+Assumption (reversible): the two hours run from first use (tap-in), so the one-way receipt prints no clock time such as
+"Valid until 9:49 pm"; it shows the same sentence as the other screens. Round trip: return valid until end of service
+tonight (12:00 a.m.). Day pass: unlimited rides until end of service tonight (12:00 a.m.); their receipt keeps the
+"Valid until 12:00 a.m. tonight" line. From 9:00 p.m. the Day pass card shows
 "Only N h of service left today. A one-way may be cheaper." and loses "Best for 3+ rides". QA: `-KioskFakeTime=HH:MM`.
 
 **Step bar.** Ticket flow: Ticket, Destination, Review, Pay (PayMethod, waits and Processing are step 4; a day pass reads
 "All lines" for the skipped step). Card flow: Tap card, What to do?, Amount (top-up) or Pass (concession, including the dates
 check), Pay.
+Once a ticket step is passed it shows the rider's choice instead of the generic name: step 1 reads the ticket ("One-way",
+"Round trip", "Day pass") and step 2 the station name in the active language (local name, else English). The current and later
+steps keep the generic label, so Back restores it. Labels wrap within a capped width so later steps stay on the bar. The card-flow
+bar is unchanged.
 
 **Help call.** With cash inserted: "Your $X.XX is safe. Nothing more will be charged. You can continue or get it back."
 otherwise "Nothing has been charged." All countdowns and auto-returns pause while any call is open (full screen or
@@ -228,6 +234,20 @@ button (Search frames). The trip card shows time and changes only; the fare stay
 shares the same filter. Choices where the frames differ: the selected frame 78:7148 omits the filter and map button, but 78:2919
 (same state) keeps them, so they stay visible when a station is chosen; the hint is always the "A keyboard will popup" wording.
 
+**Metro card types (T-014).** The card flow reads the card type from the tapped card. Scan card's SIMULATE control offers a
+Student card and an Adult card (`FKioskState::CardType`, sample data in `FKioskData::Card`); the QA switch `-KioskCard=Student|Adult`
+sets the default card. Labels follow the card: "Student card" or "Adult card" on card options, top-up and done screens, and in the
+pay summaries. Student card: concession prices with the adult price struck through and the "Student card detected" banner (as
+before). Adult card: adult prices only, no strike-through and no banner. Assumptions (reversible): the sample student card
+(•••• 4821, $3.20, low-balance banner) keeps its active Bus + Train pass ending 14 Nov, so its renewal dates are unchanged;
+the sample adult card (•••• 7305, $18.50, no low-balance banner) has no active pass, so card options says "No active pass" and
+offers "Buy a concession pass", nothing is pre-selected on the concession screen, and the dates screen starts the 30-day pass today
+(start-date picking is T-011; the "has active pass" fields live on `FKioskCardInfo` for it to build on). "Pick an amount" and the top-up
+amounts are the same for both cards. Captures `AdultCardOptions`, `AdultTopUpAmountSelected`, `AdultConcession`, `AdultPassDates`,
+`AdultDoneLiftCard` and `AdultDoneLiftCardConcession` are appended to the end of the capture list.
+
+**Card options header (T-018, Figma 156:29687).** "Card options only ·" sits beside the "Buy a ticket instead" link; both wrap.
+
 **Design system (P4).** Type scale in `KioskType` (Display 52, H1 42, H2 32, H3 26, Body 22, Caption 18, map label 16, nothing
 else below 18). Button roles with fixed minimum heights: primary green 104, navy choose / outlined secondary / help 88, compact
 (Change) 60, pills 72, keys 76; labels are centred and wrap to two lines instead of clipping, so no control has a fixed width.
@@ -236,3 +256,5 @@ One card radius/padding, one "Change" control, equal-width language pills shared
 **Localisation.** Every string goes through `KT()`; `Private/KioskLocTable.inl` holds 中文, Melayu and தமிழ் for all of them
 (header date/time, rider labels, "each", totals, SIMULATE hints, overlays). `MetroKiosk.Loc.Coverage` fails on any missing entry,
 placeholder mismatch, or English mixed into Chinese/Tamil. Station and place names stay English with the local name beneath.
+
+**Map screen (T-016, T-017; Figma 101:8701, 140:15747, 101:8851).** The map screen has its own search field ("Find station on the map") that opens the same on-screen keyboard in place (it no longer jumps to the list). While text is typed, stations that match the text (places count for the station they are at; the line filter still applies; typo-guess suggestions do not count) stay at full strength with their name shown, every other station fades with the existing line-filter fade, and the map shows "N stations lit up · others greyed out" (plural by count, all four languages). If nothing matches the map is left as it is and says "No station matches · try fewer letters". Clearing the text restores the map. With nothing selected the right column says "No station selected" / "Tap a station on the map to see the route, or find it by name below."; with a station selected it shows From and To with line badges, "About N min · direct" or "About N min · N change(s)", the adult fare for the current ticket, and one row per leg with its line badge: "Take the East-West Line, 3 stops to Outram Park", then "Change at Outram Park to the North East Line, 1 stop to HarbourFront". Stop counts come from the route legs in `KioskRoutes`. The line highlighter moved from the right column onto the map panel (bottom left) to make room; the fare is kept on the card although the frames omit it.

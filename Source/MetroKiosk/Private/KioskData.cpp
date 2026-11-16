@@ -211,6 +211,13 @@ const TArray<FKioskConcession>& FKioskData::Concessions()
 	return Data;
 }
 
+const FKioskCardInfo& FKioskData::Card(EKioskCardType Type)
+{
+	static const FKioskCardInfo Student = { EKioskCardType::Student, TEXT("4821"), 320, true, true, 2, 14 };
+	static const FKioskCardInfo Adult = { EKioskCardType::Adult, TEXT("7305"), 1850, false, false, INDEX_NONE, 0 };
+	return Type == EKioskCardType::Adult ? Adult : Student;
+}
+
 FText FKioskData::ConcessionName(int32 Index)
 {
 	switch (Index)

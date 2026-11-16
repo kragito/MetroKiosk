@@ -58,7 +58,9 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 			TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
 			TEXT("HelpCall"), TEXT("HelpCallCash"), TEXT("HelpPip"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"),
 			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
-			TEXT("DestinationFiltered"), TEXT("DestinationSearchSelected") };
+			TEXT("DestinationFiltered"), TEXT("DestinationSearchSelected"),
+			// Adult Metro card (T-014): appended last so the numbers above stay put.
+			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession") };
 		// The same screens in the other three languages (the ones where text is longest or hardware is pointed at).
 		static const TCHAR* const Localised[] = {
 			TEXT("Home"), TEXT("TicketType"), TEXT("TicketTypeLate"), TEXT("DestinationSelected"), TEXT("DestinationMap"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"),
@@ -71,6 +73,13 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 			{
 				Steps.Add(FString(Name) + Suffix);
 			}
+		}
+
+		// Appended last so earlier capture numbers do not move: map with search text lit, and map with a route selected.
+		for (const TCHAR* Suffix : { TEXT(""), TEXT("_Chinese"), TEXT("_Tamil"), TEXT("_Malay") })
+		{
+			Steps.Add(FString(TEXT("DestinationMapSearch")) + Suffix);
+			Steps.Add(FString(TEXT("DestinationMapSelected")) + Suffix);
 		}
 
 		StepIndex = 0;

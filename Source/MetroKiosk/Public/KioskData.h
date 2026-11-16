@@ -2,6 +2,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "KioskTypes.h"
 
 struct FKioskLineInfo
 {
@@ -30,6 +31,18 @@ struct FKioskConcession
 	bool bTrain;
 };
 
+/** A sample Metro card the reader can "detect". Card flows read everything card-specific from here. */
+struct FKioskCardInfo
+{
+	EKioskCardType Type;
+	const TCHAR* Last4;
+	int32 BalanceCents;
+	bool bLowBalance;       // shows the "Low balance" banner on card options
+	bool bHasActivePass;    // false: no concession pass to renew (T-011 builds the start-date picking on this)
+	int32 ActivePassIndex;  // index into Concessions(), INDEX_NONE when there is no active pass
+	int32 PassEndDay;       // active pass end date (November 2026), 0 when there is none
+};
+
 class FKioskData
 {
 public:
@@ -45,6 +58,8 @@ public:
 	/** Trains do not run through between services of one line (the East-West Changi branch needs a change at Tanah Merah). */
 	static int32 PathService(int32 LineIndex, int32 PathIndex);
 	static const TArray<FKioskConcession>& Concessions();
+	/** The two sample cards: student (active Bus + Train pass, low balance) and adult (no active pass). */
+	static const FKioskCardInfo& Card(EKioskCardType Type);
 	/** Pass name and description in the active language. */
 	static FText ConcessionName(int32 Index);
 	static FText ConcessionDescription(int32 Index);

@@ -5,6 +5,7 @@
 #include "KioskData.h"
 #include "KioskLoc.h"
 #include "KioskPlaces.h"
+#include "KioskRoutes.h"
 #include "KioskSearch.h"
 #include "KioskSession.h"
 #include "Framework/Application/SlateApplication.h"
@@ -260,7 +261,9 @@ bool FKioskLocCoverageTest::RunTest(const FString& Parameters)
 			TEXT("DestinationMap"), TEXT("DestinationSelected"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"), TEXT("PayMethod"), TEXT("PayMethodTopUp"),
 			TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
 			TEXT("HelpCall"), TEXT("HelpCallCash"), TEXT("HelpPip"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"),
-			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession") };
+			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
+			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultTopUpKeypad"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession"),
+			TEXT("DestinationMapSearch"), TEXT("DestinationMapSelected") };
 		static const TCHAR* const Suffixes[] = { TEXT("_Chinese"), TEXT("_Malay"), TEXT("_Tamil") };
 
 		TSharedRef<FKioskSession> Session = MakeShared<FKioskSession>();
@@ -360,6 +363,30 @@ bool FKioskSessionRulesTest::RunTest(const FString& Parameters)
 	S->ApplySample(TEXT("PassDates"));
 	TestEqual(TEXT("PassDates step label"), S->StepInfo().Labels[2].ToString(), FString(TEXT("Pass")));
 
+	// Passed steps show the rider's choice; Back restores the generic label.
+	S->ApplySample(TEXT("Destination"));
+	TestEqual(TEXT("Destination screen: step 1 shows the ticket"), S->StepInfo().Labels[0].ToString(), FString(TEXT("One-way")));
+	TestEqual(TEXT("Destination screen: step 2 is still generic"), S->StepInfo().Labels[1].ToString(), FString(TEXT("Destination")));
+	S->ApplySample(TEXT("Review"));
+	{
+		const FKioskStepInfo Info = S->StepInfo();
+		const TArray<FKioskStation>& Stations = FKioskData::Stations();
+		TestTrue(TEXT("sample has a destination"), Stations.IsValidIndex(S->State.Destination));
+		TestEqual(TEXT("Review: step 1 shows the ticket"), Info.Labels[0].ToString(), FString(TEXT("One-way")));
+		TestEqual(TEXT("Review: step 2 shows the station"), Info.Labels[1].ToString(), Stations[S->State.Destination].Name);
+		FKioskLoc::SetLanguage(EKioskLanguage::Chinese);
+		const FString Local = FKioskPlaces::LocalName(Stations[S->State.Destination].Name);
+		TestEqual(TEXT("Review: step 2 uses the active language"), S->StepInfo().Labels[1].ToString(),
+			Local.IsEmpty() ? Stations[S->State.Destination].Name : Local);
+		FKioskLoc::SetLanguage(EKioskLanguage::English);
+	}
+	S->Back();
+	TestEqual(TEXT("Back to the destination list restores the generic label"), S->StepInfo().Labels[1].ToString(), FString(TEXT("Destination")));
+	S->ApplySample(TEXT("Review"));
+	S->State.Ticket = ETicketType::DayPass;
+	TestEqual(TEXT("day pass: step 1 shows Day pass"), S->StepInfo().Labels[0].ToString(), FString(TEXT("Day pass")));
+	TestEqual(TEXT("day pass: step 2 reads All lines"), S->StepInfo().Labels[1].ToString(), FString(TEXT("All lines")));
+
 	// Idle prompt: 90 s without touches, then 20 s to answer; it never runs during a call.
 	S->ApplySample(TEXT("Review"));
 	for (int32 Second = 0; Second < 89; ++Second) { S->Tick(1.f); }
@@ -409,20 +436,95 @@ bool FKioskSessionRulesTest::RunTest(const FString& Parameters)
 	S->Back();
 	TestTrue(TEXT("Back from the concession screen leaves the flow"), S->Current() == Screen::Home);
 
+	// Card type (T-014): the tapped card decides the label, the pass and the price.
+	S->ApplySample(TEXT("Home"));
+	S->BeginCardFlow(EKioskFlow::Concession);
+	S->SimulateMetroCardTap(EKioskCardType::Student);
+	TestTrue(TEXT("student card"), S->IsStudentCard());
+	TestEqual(TEXT("student card label"), S->CardLabel().ToString(), FString(TEXT("Student card")));
+	TestEqual(TEXT("student card keeps its pass pre-selected"), S->State.Concession, FKioskSession::CurrentPassIndex);
+	TestEqual(TEXT("student pays the student concession price"), S->TotalCents(), FKioskData::Concessions()[FKioskSession::CurrentPassIndex].StudentCents);
+	TestEqual(TEXT("student card balance"), S->CardBalanceCents(), FKioskData::Card(EKioskCardType::Student).BalanceCents);
+	S->ApplySample(TEXT("Home"));
+	S->BeginCardFlow(EKioskFlow::Concession);
+	S->SimulateMetroCardTap(EKioskCardType::Adult);
+	TestTrue(TEXT("adult concession screen"), S->Current() == Screen::Concession);
+	TestFalse(TEXT("adult card is not a student card"), S->IsStudentCard());
+	TestEqual(TEXT("adult card label"), S->CardLabel().ToString(), FString(TEXT("Adult card")));
+	TestEqual(TEXT("adult card has no pass to pre-select"), S->State.Concession, static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("adult card has no current pass"), S->CurrentPass(), static_cast<int32>(INDEX_NONE));
+	S->SelectConcession(FKioskSession::CurrentPassIndex);
+	TestEqual(TEXT("adult pays the adult pass price"), S->TotalCents(), FKioskData::Concessions()[FKioskSession::CurrentPassIndex].AdultCents);
+	TestTrue(TEXT("adult pass price differs from the student price"), S->TotalCents() != FKioskData::Concessions()[FKioskSession::CurrentPassIndex].StudentCents);
+	TestEqual(TEXT("adult card balance"), S->CardBalanceCents(), FKioskData::Card(EKioskCardType::Adult).BalanceCents);
+	TestTrue(TEXT("adult order summary names the adult card"), S->OrderSummary().ToString().Contains(TEXT("Adult")));
+	S->ApplySample(TEXT("AdultTopUpAmountSelected"));
+	TestEqual(TEXT("adult top-up sample label"), S->CardLabel().ToString(), FString(TEXT("Adult card")));
+	TestEqual(TEXT("adult top-up new balance"), S->NewBalanceCents(), FKioskData::Card(EKioskCardType::Adult).BalanceCents + 1000);
+	TestTrue(TEXT("adult top-up summary names the adult card"), S->OrderSummary().ToString().Contains(TEXT("Adult card")));
+	S->ApplySample(TEXT("TopUpAmountSelected"));
+	TestTrue(TEXT("existing samples stay on the student card"), S->State.CardType == FKioskSession::DefaultCardType());
+	S->ApplySample(TEXT("Home"));
+
 	// Validity: the same rule everywhere, never a time after end of service, late-night day pass warning.
 	FKioskSession::SetFixedClockMinutes(23 * 60 + 30);
 	S->ApplySample(TEXT("Receipt"));
 	FKioskSession::SetFixedClockMinutes(23 * 60 + 30);
 	S->State.Ticket = ETicketType::OneWay;
-	TestTrue(TEXT("one-way bought at 11:30 p.m. is valid until end of service"), S->ReceiptValidText().ToString().Replace(TEXT(" "), TEXT(" ")).Contains(TEXT("12:00 a.m.")));
+	TestEqual(TEXT("one-way receipt states 2 hours after use, no clock time (late)"), S->ReceiptValidText().ToString(), FString(TEXT("Valid for 2 hours after use.")));
 	FKioskSession::SetFixedClockMinutes(10 * 60);
-	TestTrue(TEXT("one-way bought at 10:00 a.m. is valid for two hours"), S->ReceiptValidText().ToString().Contains(TEXT("12:00 pm")));
+	TestEqual(TEXT("one-way receipt states 2 hours after use, no clock time (day)"), S->ReceiptValidText().ToString(), FString(TEXT("Valid for 2 hours after use.")));
+	TestEqual(TEXT("one-way rule is identical on every screen"), FKioskSession::ValidityRule(ETicketType::OneWay).ToString(), S->ReceiptValidText().ToString());
+	S->State.Ticket = ETicketType::RoundTrip;
+	TestTrue(TEXT("round trip receipt is valid until end of service"), S->ReceiptValidText().ToString().Contains(TEXT("12:00")));
+	S->State.Ticket = ETicketType::OneWay;
 	FKioskSession::SetFixedClockMinutes(20 * 60 + 59);
 	TestEqual(TEXT("no late warning at 8:59 p.m."), FKioskSession::LateServiceHours(), static_cast<int32>(INDEX_NONE));
 	FKioskSession::SetFixedClockMinutes(21 * 60);
 	TestEqual(TEXT("3 hours left at 9:00 p.m."), FKioskSession::LateServiceHours(), 3);
 	FKioskSession::SetFixedClockMinutes(-1);
 	S->ApplySample(TEXT("Home"));
+	return true;
+}
+
+// Route legs: stops are counted, legs chain end to start, and the last leg ends at the destination.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FKioskRouteLegsTest, "MetroKiosk.Routes.Legs",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+
+bool FKioskRouteLegsTest::RunTest(const FString& Parameters)
+{
+	int32 Checked = 0;
+	int32 WithChange = 0;
+	for (int32 Station = 0; Station < FKioskData::Stations().Num(); ++Station)
+	{
+		const FKioskRoute& Route = FKioskRoutes::FromCityHall(Station);
+		if (!Route.bValid)
+		{
+			continue;
+		}
+		++Checked;
+		WithChange += Route.Changes > 0 ? 1 : 0;
+		const FString Name = FKioskData::Stations()[Station].Name;
+		TestFalse(*FString::Printf(TEXT("%s has legs"), *Name), Route.Legs.IsEmpty());
+		TestEqual(*FString::Printf(TEXT("%s: changes = legs - 1"), *Name), Route.Changes, Route.Legs.Num() - 1);
+		if (Route.Legs.IsEmpty())
+		{
+			continue;
+		}
+		TestEqual(*FString::Printf(TEXT("%s: first leg starts at City Hall"), *Name), Route.Legs[0].FromStation, FKioskData::CityHallIndex());
+		TestEqual(*FString::Printf(TEXT("%s: last leg ends at the destination"), *Name), Route.Legs.Last().ToStation, Station);
+		for (int32 Index = 0; Index < Route.Legs.Num(); ++Index)
+		{
+			TestTrue(*FString::Printf(TEXT("%s: leg %d has at least one stop"), *Name, Index), Route.Legs[Index].Stops >= 1);
+			if (Index > 0)
+			{
+				TestEqual(*FString::Printf(TEXT("%s: leg %d starts where the previous one ended"), *Name, Index), Route.Legs[Index].FromStation, Route.Legs[Index - 1].ToStation);
+			}
+			TestFalse(*FString::Printf(TEXT("%s: leg %d has text"), *Name, Index), FKioskRoutes::LegText(Route, Index).IsEmpty());
+		}
+	}
+	TestTrue(TEXT("some destinations were checked"), Checked > 0);
+	TestTrue(TEXT("both direct and one-change routes exist"), WithChange > 0 && WithChange < Checked);
 	return true;
 }
 

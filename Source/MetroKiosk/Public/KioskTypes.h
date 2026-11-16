@@ -28,6 +28,8 @@ enum class EKioskScreen : uint8
 
 enum class EKioskFlow : uint8 { Ticket, TopUp, Concession };
 enum class ETicketType : uint8 { OneWay, RoundTrip, DayPass };
+/** Which kind of Metro card was tapped on the reader (card flows only). */
+enum class EKioskCardType : uint8 { Student, Adult };
 enum class EPayMethod : uint8 { Tap, Chip, Cash };
 enum class EKioskLanguage : uint8 { English, Chinese, Malay, Tamil };
 
@@ -45,6 +47,7 @@ struct FKioskState
 	int32 CashInsertedCents = 0;
 	int32 TopUpCents = 0;
 	int32 Concession = INDEX_NONE;
+	EKioskCardType CardType = EKioskCardType::Student; // the Metro card on the reader (card flows)
 	int32 LineFilter = INDEX_NONE;
 	FString SearchText;
 	bool bKeyboardOpen = false;
