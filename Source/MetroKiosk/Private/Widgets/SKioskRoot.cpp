@@ -266,7 +266,7 @@ TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()
 							.Label(KT("Start over"))
 							.LeftIcon(EKioskIcon::Restart)
 							.ButtonTag(TEXT("Start over"))
-							.MinHeight(KioskLayout::BtnPrimaryH)
+							.MinHeight(KioskLayout::BtnPairedH)
 							.OnClicked_Lambda([S]() { S->ReturnHome(true); return FReply::Handled(); })
 						]
 					],

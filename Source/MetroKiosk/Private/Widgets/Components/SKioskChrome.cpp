@@ -356,7 +356,7 @@ void SKioskHelpFooter::Construct(const FArguments& InArgs, const TSharedRef<FKio
 						.ButtonTag(TEXT("End call"))
 						.LeftIcon(EKioskIcon::Close)
 						.MinWidth(280.f).MaxWidth(420.f)
-						.MinHeight(KioskLayout::BtnPrimaryH)
+						.MinHeight(KioskLayout::BtnPairedH)
 						.OnClicked_Lambda([Session]() { Session->EndCall(); return FReply::Handled(); })
 					]
 				]

@@ -94,6 +94,9 @@ namespace KioskLayout
 	constexpr float CardPad = 34.f;
 	constexpr float BtnPrimaryH = 104.f; // green: proceed / pay
 	constexpr float BtnStdH = 88.f;      // navy choose, outlined secondary, help
+	// Rule: each button role has one height (KioskButtonRoleHeight). The one exception is a secondary button that shares a row
+	// with a Primary (idle dialog Start over, End call beside Back to my purchase): it takes the Primary's height so the pair is level.
+	constexpr float BtnPairedH = BtnPrimaryH;
 	constexpr float BtnCompactH = 60.f;  // Change, small controls
 	constexpr float PillH = 72.f;        // language pills
 	constexpr float PillW = 172.f;
