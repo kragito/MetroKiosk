@@ -2,7 +2,10 @@
 // Run: UnrealEditor-Cmd.exe MetroKiosk.uproject -ExecCmds="Automation RunTests MetroKiosk; Quit" -unattended -nullrhi -nosplash
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "KioskData.h"
 #include "KioskLoc.h"
+#include "KioskPlaces.h"
+#include "KioskSearch.h"
 #include "KioskSession.h"
 #include "Framework/Application/SlateApplication.h"
 #include "HAL/FileManager.h"
@@ -317,6 +320,29 @@ bool FKioskSessionRulesTest::RunTest(const FString& Parameters)
 	S->OpenSearchField();
 	TestTrue(TEXT("leftover search text cleared"), S->State.SearchText.IsEmpty());
 	TestTrue(TEXT("keyboard open"), S->State.bKeyboardOpen);
+
+	// Line filter: toggles, survives opening the keyboard, and narrows typed results to that line.
+	S->ApplySample(TEXT("Destination"));
+	S->SetLineFilter(0);
+	TestEqual(TEXT("line filter set"), S->State.LineFilter, 0);
+	S->SetLineFilter(0);
+	TestEqual(TEXT("tapping the active line clears the filter"), S->State.LineFilter, INDEX_NONE);
+	S->SetLineFilter(0);
+	S->OpenSearchField();
+	TestEqual(TEXT("opening the keyboard keeps the line filter"), S->State.LineFilter, 0);
+	{
+		const FKioskSearchResult Filtered = FKioskSearch::Run(TEXT("har"), 0);
+		TestFalse(TEXT("filtered search returns something"), Filtered.Hits.IsEmpty());
+		for (const FKioskSearchHit& Hit : Filtered.Hits)
+		{
+			const int32 Station = Hit.bPlace ? FKioskPlaces::All()[Hit.Index].Station : Hit.Index;
+			TestTrue(TEXT("every filtered hit is on the North-South line"), FKioskData::Stations()[Station].OnLine(0));
+		}
+		TestTrue(TEXT("unfiltered search still finds HarbourFront"), FKioskSearch::Run(TEXT("harbour")).Hits.ContainsByPredicate(
+			[](const FKioskSearchHit& Hit) { return !Hit.bPlace && FKioskData::Stations()[Hit.Index].Name == TEXT("HarbourFront"); }));
+	}
+	S->ApplySample(TEXT("DestinationFiltered"));
+	TestEqual(TEXT("filtered sample has the NS filter"), S->State.LineFilter, 0);
 
 	// The step bar always matches the screen.
 	S->ApplySample(TEXT("PayMethod"));

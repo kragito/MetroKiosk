@@ -12,8 +12,8 @@ It is landscape, 1917×1105 design px, touch-only, for the general public:
 tourists, elderly people, wheelchair users, and speakers of four languages
 (English, 中文, Melayu, தமிழ்). Design priorities from the file: large tap targets,
 plain language, always-visible Back / Start over / Help, a step indicator,
-and telling people **where on the physical kiosk** to act (reader top-right,
-chip slot middle-right, cash slots lower-right, collection tray bottom-right).
+and telling people **where on the physical kiosk** to act (right column: contactless reader top,
+chip slot middle, cash slots bottom; collection tray below the screen, left; Metro card reader below the screen, right of centre).
 
 ## Three entry flows (from the Home screen)
 
@@ -72,9 +72,9 @@ screen). Keep these clearly marked as simulation and not part of the real UI des
 | 6b | Wait for chip card | 06_wait_chip_card | "Insert your card, chip first" with the chip-slot illustration "Chip first, facing up", "Chip slot · middle right". |
 | 6c | Wait for cash | 06_wait_cash | Panel: To pay / Put in / Still to pay (navy), progress bar, Notes $2 $5 $10, Coins 10¢ 20¢ 50¢ $1 (tapping simulates inserting money), tray note. Change is shown when overpaying. |
 | 6d | Processing | (no ref) | Same as 6a/6b/6c but the status pill reads "Processing..." and inputs are disabled; it advances automatically after ~2 s. |
-| 7 | Payment approved | 09_receipt | Green check "Payment approved", "Your ticket is printing. **Take it from the collection tray, bottom right.**", ticket summary card (ONE-WAY · ADULT, WED 14 OCT, City Hall → HarbourFront, Valid until 9:49 pm, $1.68). Countdown bar "Returning to start in 9 s". Right card "Want a receipt?": Print receipt, Email receipt, green "No receipt · I'm done". Footer has "+ Buy another ticket" instead of Back. |
+| 7 | Payment approved | 09_receipt | Green check "Payment approved", "Your ticket is printing. **Take it from the collection tray.** (Tray is below the screen, left; see Revision 2 Physical layout.)", ticket summary card (ONE-WAY · ADULT, WED 14 OCT, City Hall → HarbourFront, Valid until 9:49 pm, $1.68). Countdown bar "Returning to start in 9 s". Right card "Want a receipt?": Print receipt, Email receipt, green "No receipt · I'm done". Footer has "+ Buy another ticket" instead of Back. |
 | 8 | Help call | 10_help_video_call | Blue header "Help · In call with staff". Dark video placeholder "[Staff video feed]" with "● Connected · 0:24" (counting up). LIVE CAPTIONS box. Right: "Your purchase is paused. Nothing has been charged. You can pick up where you left off.", "Mute microphone", "Ask staff to come here", "Captions are on" toggles, footnote about the staffed office at Gate B. Footer: green "‹ Back to my purchase" and red outlined "✕ End call". Returning restores the exact previous screen and state. |
-| 9 | Scan card | (no ref) | "Place your transit card on the reader", "The reader is to the right of the screen, at the top. It glows green when it's ready. Hold the card still until this screen changes.", "Waiting for your card…", "Not reading? Take the card out of your wallet or phone case, then try again.", Metro card illustration. Simulated tap advances. |
+| 9 | Scan card | (no ref) | "Place your transit card on the reader", "The Metro card reader is the curved bowl below the screen, right of centre. Rest the card on it. It glows green when it's ready. Hold the card still until this screen changes.", "Waiting for your card…", "Not reading? Take the card out of your wallet or phone case, then try again.", Metro card illustration. Simulated tap advances. |
 | 10 | Card options | 11_card_options | "Card found. What would you like to do?", right "Card options only · **Buy a ticket instead**". Left card panel: Student card •••• 4821, Balance $3.20, amber "Low balance · one trip left", Concession pass "Bus + Train · ends 14 Nov", "Keep your card on the reader". Quick top up (green tiles +$10 → New balance $13.20, +$20 → $23.20, +$50 → $53.20). "Other card options": Top up another amount ($30, $100 or any amount), Renew concession pass. |
 | 11 | Top-up amount | 12_topup_amount_selected | "How much would you like to add?", Adult card, Balance now $3.20, after selection "After top-up $13.20 · +$10 added", amount grid $10 $20 $30 $50 $100 More, "Continue →" (disabled until an amount is chosen). |
 | 12 | Choose a concession pass | 13_concession_selection | 3 option cards Bus / Train / Bus + Train with student prices and struck adult prices, selection state, "Every pass lasts 30 days with unlimited rides. Next, you'll see the exact dates it covers before you pay.", "Continue · check dates →". |
@@ -175,9 +175,10 @@ Card: Student card •••• 4821, balance $3.20, Bus + Train pass ends 14 No
 ## Revision 2: product decisions (these override any earlier row or sentence above)
 
 **Physical layout (single source of truth; one shared diagram, `KioskUI::HardwareDiagram`/`HardwareHint`).**
-Metro card reader: below the screen, left (card rests on it for top-up/concession; forgotten-card detection).
-Contactless payment reader (bank cards, phones): right of the screen, top. Chip/NETS slot and PIN pad: right, middle.
-Note and coin slots: right, lower. Collection tray: below the screen, centre. The Home banner, ScanCard, CardOptions
+Follows the Figma kiosk drawing (node 64:75), which overrides the earlier positions. Collection tray: below the screen,
+left. Metro card reader: below the screen, right of centre, a protruding bowl the card rests on (top-up/concession;
+forgotten-card detection). Right column, top to bottom: contactless reader (bank cards, phones), chip/NETS slot with PIN
+pad, note and coin slots. The Home banner, ScanCard, CardOptions
 ("Keep your card on the reader") and DoneLiftCard point at the Metro card reader; card-payment screens point at the
 contactless reader (tap) or chip slot (chip); cash points at the note/coin slots and the tray. Wording and arrows agree.
 
@@ -211,6 +212,21 @@ current pass"; the dates check shows both months (Nov and Dec) as flat, non-inte
 ScanCard have Back + Start over (CardOptions keeps "Buy a ticket instead"). **Destination.** Tapping the search field with
 leftover text clears it; Back from the map returns to the list. **Processing.** Back/Start over are visibly disabled (flat grey).
 The Bus pass uses a bus icon.
+
+**Destination layout (T-006, Figma nodes 71:2301, 101:5387, 78:1978, 78:2919, 78:7148, 101:2308, 101:5064).** Rebuilt to the
+Figma frames, keeping the app's place search (places and landmarks as well as stations, typo tolerance, "Did you mean").
+Left: "Where are you going?" and the list, headed "Popular from City Hall" (or "Results for ..." / "Did you mean" while typing).
+Right, top to bottom: a slim trip card ("Select a location", then "City Hall → HarbourFront · about 13 min · 1 change" once
+chosen; there is no Change button, the customer just picks another tile); "Somewhere else?" with the "Search all stations"
+field and the hint "A keyboard will popup. The list narrows with every letter you type."; "Filter by line" with six buttons
+(NS, EW, NE, CC, DT, TE: badge plus short name); "Open metro map view"; and "Confirm selected ticket" (grey until a station
+is chosen, then green). Tapping a line filters the left list to that line (nearest first, City Hall left out) and the heading
+becomes "Filtered by North-South Line" with the line badge; tapping the active line again clears it. The filter also narrows
+typed results (`FKioskSearch::Run(Query, LineFilter)`, "Did you mean" suggestions included) and is kept when the keyboard opens;
+if nothing on the line matches, the list says so. With the keyboard open, the keyboard replaces the hint, filter grid and map
+button (Search frames). The trip card shows time and changes only; the fare stays on each tile and on Review. The map screen keeps its own highlighter and
+shares the same filter. Choices where the frames differ: the selected frame 78:7148 omits the filter and map button, but 78:2919
+(same state) keeps them, so they stay visible when a station is chosen; the hint is always the "A keyboard will popup" wording.
 
 **Design system (P4).** Type scale in `KioskType` (Display 52, H1 42, H2 32, H3 26, Body 22, Caption 18, map label 16, nothing
 else below 18). Button roles with fixed minimum heights: primary green 104, navy choose / outlined secondary / help 88, compact

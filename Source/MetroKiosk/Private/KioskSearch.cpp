@@ -259,7 +259,7 @@ int32 FKioskSearch::EditDistance(const FString& A, const FString& B)
 	return Rows[N % 3][M];
 }
 
-FKioskSearchResult FKioskSearch::Run(const FString& Query)
+FKioskSearchResult FKioskSearch::Run(const FString& Query, int32 LineFilter)
 {
 	FKioskSearchResult Result;
 	const FString Normalized = Normalize(Query);
@@ -267,11 +267,25 @@ FKioskSearchResult FKioskSearch::Run(const FString& Query)
 	{
 		return Result;
 	}
+	// With a line filter, only stations on that line (and places whose station is on it) take part.
+	auto InLine = [LineFilter](bool bPlace, int32 Index)
+	{
+		if (LineFilter == INDEX_NONE)
+		{
+			return true;
+		}
+		const int32 Station = bPlace ? FKioskPlaces::All()[Index].Station : Index;
+		return FKioskData::Stations().IsValidIndex(Station) && FKioskData::Stations()[Station].OnLine(LineFilter);
+	};
 	const TArray<FString> Tokens = SplitWords(Query);
 	const TArray<FEntry>& All = Entries();
 
 	for (const FEntry& Entry : All)
 	{
+		if (!InLine(Entry.bPlace, Entry.Index))
+		{
+			continue;
+		}
 		int32 Best = 0;
 		for (const FSearchKey& Key : Entry.Keys)
 		{
@@ -314,6 +328,10 @@ FKioskSearchResult FKioskSearch::Run(const FString& Query)
 	TArray<FCandidate> Candidates;
 	for (const FEntry& Entry : All)
 	{
+		if (!InLine(Entry.bPlace, Entry.Index))
+		{
+			continue;
+		}
 		int32 Best = MAX_int32;
 		for (const FSearchKey& Key : Entry.Keys)
 		{

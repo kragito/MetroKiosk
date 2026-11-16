@@ -1,1 +1,1 @@
-click:Buy a ticket|click:Choose One-way|lang:zh|shot:zh_destination|click:Search|type:niuchesui|shot:zh_results|click:Station Chinatown|shot:zh_selected|click:Confirm destination|shot:zh_review|dump
+click:Buy a ticket|click:Choose One-way|lang:zh|shot:zh_destination|click:Search|type:niuchesui|shot:zh_results|click:Station Chinatown|shot:zh_selected|click:Confirm selected ticket|shot:zh_review|dump

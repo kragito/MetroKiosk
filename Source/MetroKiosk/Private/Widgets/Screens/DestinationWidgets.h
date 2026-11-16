@@ -35,6 +35,13 @@ namespace KioskDest
 	/** Route, time and fare for the chosen destination, or a prompt when nothing is chosen yet. */
 	TSharedRef<SWidget> SelectionCard(const TSharedRef<FKioskSession>& Session, bool bCompact);
 
+	/** Slim card at the top of the right column: "Select a location", or "City Hall -> X · about N min · N change". */
+	TSharedRef<SWidget> TripCard(const TSharedRef<FKioskSession>& Session);
+	/** "Filter by line": six line buttons (NS, EW, NE, CC, DT, TE); tapping the active one clears the filter. */
+	TSharedRef<SWidget> LineFilterGrid(const TSharedRef<FKioskSession>& Session);
+	/** Short line name in the active language ("North–South"). */
+	FText LineShortName(int32 LineIndex);
+
 	TSharedRef<SWidget> ConfirmButton(const TSharedRef<FKioskSession>& Session);
 	TSharedRef<SWidget> SearchField(const TSharedRef<FKioskSession>& Session);
 	TSharedRef<SWidget> KeyboardWidget(const TSharedRef<FKioskSession>& Session);

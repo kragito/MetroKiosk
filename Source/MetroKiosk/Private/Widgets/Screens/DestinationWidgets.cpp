@@ -7,6 +7,7 @@
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
 #include "Widgets/Layout/SSpacer.h"
+#include "Widgets/SNullWidget.h"
 
 using namespace KioskUI;
 
@@ -239,12 +240,91 @@ namespace KioskDest
 			C.Surface, KioskLayout::CardRadius, C.Ink, 3.f, FMargin(28.f, bCompact ? 20.f : 26.f));
 	}
 
+	FText LineShortName(int32 LineIndex)
+	{
+		switch (LineIndex)
+		{
+		case 0: return KT("North–South");
+		case 1: return KT("East–West");
+		case 2: return KT("North East");
+		case 3: return KT("Circle");
+		case 4: return KT("Downtown");
+		default: return KT("Thomson");
+		}
+	}
+
+	TSharedRef<SWidget> TripCard(const TSharedRef<FKioskSession>& Session)
+	{
+		const FKioskColors& C = KC();
+		const FKioskState& State = Session->State;
+		TSharedRef<SWidget> Body = SNullWidget::NullWidget;
+		if (!FKioskData::Stations().IsValidIndex(State.Destination))
+		{
+			Body = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(KT("Select a location"), KioskType::H3, true, C.Ink) ];
+		}
+		else
+		{
+			const FKioskRoute& Route = FKioskRoutes::FromCityHall(State.Destination);
+			const FDescribed Info = Describe(State);
+			const FText About = Route.Changes == 0
+				? FText::Format(KT("about {0} min · direct"), FText::AsNumber(Route.Minutes))
+				: FText::Format(KT("about {0} min · {1} {1}|plural(one=change,other=changes)"), FText::AsNumber(Route.Minutes), FText::AsNumber(Route.Changes));
+			Body = SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("City Hall"), KioskType::Body, false, C.Ink) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(18.f, 0.f)[ Icon(EKioskIcon::ArrowRight, 30.f, C.Ink, 3.f) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextWrap(Info.Title, KioskType::Body, true, C.Ink) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16.f, 0.f, 0.f, 0.f)[ Text(About, KioskType::Caption, false, C.Muted) ];
+		}
+		return SNew(SBox).MinDesiredHeight(76.f)
+		[
+			Panel(Body, C.Surface, KioskLayout::InnerRadius + 2.f, C.BorderStrong, 2.f, FMargin(24.f, 12.f))
+		];
+	}
+
+	TSharedRef<SWidget> LineFilterGrid(const TSharedRef<FKioskSession>& Session)
+	{
+		TSharedRef<SVerticalBox> Grid = SNew(SVerticalBox);
+		for (int32 Row = 0; Row < 2; ++Row)
+		{
+			TSharedRef<SHorizontalBox> Cells = SNew(SHorizontalBox);
+			for (int32 Column = 0; Column < 3; ++Column)
+			{
+				const int32 Line = Row * 3 + Column;
+				const bool bActive = Session->State.LineFilter == Line;
+				Cells->AddSlot().FillWidth(1.f).Padding(Column == 0 ? 0.f : 12.f, 0.f, 0.f, 0.f)
+				[
+					SNew(SBox).HeightOverride(64.f)
+					[
+						SNew(SKioskButton)
+						.Kind(bActive ? EKioskButtonKind::Tint : EKioskButtonKind::OutlineMuted)
+						.Label(FKioskRoutes::LineName(Line))
+						.ButtonTag(*FString::Printf(TEXT("Filter %s"), FKioskData::Line(Line).Code))
+						.Padding(FMargin(10.f, 0.f))
+						.OnClicked_Lambda([Session, Line]() { Session->SetLineFilter(Line); return FReply::Handled(); })
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot().FillWidth(1.f)
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ LineBadge(Line) ]
+							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(10.f, 0.f, 0.f, 0.f)
+							[
+								Text(LineShortName(Line), KioskType::Caption, bActive, KC().Ink)
+							]
+							+ SHorizontalBox::Slot().FillWidth(1.f)
+						]
+					]
+				];
+			}
+			Grid->AddSlot().AutoHeight().Padding(0.f, Row == 0 ? 0.f : 12.f, 0.f, 0.f)[ Cells ];
+		}
+		return Grid;
+	}
+
 	TSharedRef<SWidget> ConfirmButton(const TSharedRef<FKioskSession>& Session)
 	{
 		return SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Primary)
-			.Label(KT("Confirm destination"))
-			.ButtonTag(TEXT("Confirm destination"))
+			.Label(KT("Confirm selected ticket"))
+			.ButtonTag(TEXT("Confirm selected ticket"))
 			.RightIcon(EKioskIcon::ArrowRight)
 			.Enabled(Session->State.Destination != INDEX_NONE)
 			.OnClicked_Lambda([Session]() { Session->ConfirmDestination(); return FReply::Handled(); });
@@ -254,7 +334,7 @@ namespace KioskDest
 	{
 		const FKioskColors& C = KC();
 		const bool bHasText = !Session->State.SearchText.IsEmpty();
-		const FText Placeholder = KT("Type a place or station, e.g. Gardens by the Bay");
+		const FText Placeholder = KT("Search all stations");
 		return SNew(SBox).MinDesiredHeight(88.f)
 		[
 			Panel(

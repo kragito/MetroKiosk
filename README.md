@@ -61,7 +61,7 @@ A failed step (not found, disabled, covered, or a click that changed nothing) lo
 
 Outputs go to `-Out`: `log.txt` (one line per step, `OK`/`FAIL`/`WARN`, then `DONE`), the PNGs and the trees.
 Useful names: `Buy a ticket`, `Choose One-way`, `Search`, `Place <name>` (for example `Place Gardens by the Bay`),
-`Station <name>`, `Change destination`, `Confirm destination`, `See it on the map`, `Filter NS|EW|NE|CC|DT|TE` (map only),
+`Station <name>`, `Change destination` (map card), `Confirm selected ticket`, `Open metro map view`, `Filter NS|EW|NE|CC|DT|TE` (destination list and map),
 `Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Insert $2`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
 `Keypad 5`, `Amount More`, `SIMULATE: tap card on reader`, `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
 Names stay in English whatever language is active. The language pills live in the footer, so switch language after the first

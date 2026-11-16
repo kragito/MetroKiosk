@@ -272,11 +272,7 @@ void FKioskSession::SetSearchText(const FString& Text)
 
 void FKioskSession::OpenKeyboard(bool bOpen)
 {
-	State.bKeyboardOpen = bOpen;
-	if (bOpen)
-	{
-		State.LineFilter = INDEX_NONE; // opening search clears the optional map line highlight so results are never silently narrowed
-	}
+	State.bKeyboardOpen = bOpen; // the line filter stays: it narrows typed results too, and the list heading names it
 	NotifyChanged();
 }
 
@@ -927,6 +923,14 @@ bool FKioskSession::ApplySample(const FString& RawName)
 	else if (Name == TEXT("DestinationSearch") || Name == TEXT("DestinationTypo") || Name == TEXT("DestinationNoMatch"))
 	{
 		State.SearchText = Name == TEXT("DestinationSearch") ? TEXT("garden") : (Name == TEXT("DestinationTypo") ? TEXT("harbor frnt") : TEXT("hrbrfrnt"));
+		State.bKeyboardOpen = true;
+		Place(S::Destination, { S::Home, S::TicketType });
+	}
+	else if (Name == TEXT("DestinationFiltered")) { State.Ticket = ETicketType::OneWay; State.LineFilter = 0; Place(S::Destination, { S::Home, S::TicketType }); }
+	else if (Name == TEXT("DestinationSearchSelected"))
+	{
+		SeedTicketSample();
+		State.SearchText = TEXT("har");
 		State.bKeyboardOpen = true;
 		Place(S::Destination, { S::Home, S::TicketType });
 	}

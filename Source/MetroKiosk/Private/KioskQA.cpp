@@ -57,7 +57,8 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 			TEXT("DestinationMap"), TEXT("DestinationSelected"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"), TEXT("PayMethod"), TEXT("PayMethodTopUp"),
 			TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
 			TEXT("HelpCall"), TEXT("HelpCallCash"), TEXT("HelpPip"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"),
-			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession") };
+			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
+			TEXT("DestinationFiltered"), TEXT("DestinationSearchSelected") };
 		// The same screens in the other three languages (the ones where text is longest or hardware is pointed at).
 		static const TCHAR* const Localised[] = {
 			TEXT("Home"), TEXT("TicketType"), TEXT("TicketTypeLate"), TEXT("DestinationSelected"), TEXT("DestinationMap"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"),
