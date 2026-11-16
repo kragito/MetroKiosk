@@ -36,6 +36,7 @@ namespace
 			if (!Route.Legs.IsEmpty() && LastNode != INDEX_NONE && (LastNode % (FKioskData::NumLines * MaxServices)) == (Node % (FKioskData::NumLines * MaxServices)))
 			{
 				Route.Legs.Last().ToStation = StationOf(Node);
+					++Route.Legs.Last().Stops;
 			}
 			else
 			{
@@ -220,6 +221,25 @@ FText FKioskRoutes::Summary(const FKioskRoute& Route)
 			Text, FKioskPlaces::StationLabel(Change.Name), NextLine);
 	}
 	return Text;
+}
+
+FText FKioskRoutes::LegText(const FKioskRoute& Route, int32 LegIndex)
+{
+	const TArray<FKioskStation>& Stations = FKioskData::Stations();
+	if (!Route.bValid || !Route.Legs.IsValidIndex(LegIndex))
+	{
+		return FText::GetEmpty();
+	}
+	const FKioskRouteLeg& Leg = Route.Legs[LegIndex];
+	const FText Line = LineName(Leg.Line);
+	const FText End = FKioskPlaces::StationLabel(Stations[Leg.ToStation].Name);
+	const int32 Stops = Leg.Stops;
+	if (LegIndex == 0)
+	{
+		return FText::Format(KT("Take the {0}, {1} {1}|plural(one=stop,other=stops) to {2}"), Line, Stops, End);
+	}
+	return FText::Format(KT("Change at {0} to the {1}, {2} {2}|plural(one=stop,other=stops) to {3}"),
+		FKioskPlaces::StationLabel(Stations[Leg.FromStation].Name), Line, Stops, End);
 }
 
 FText FKioskRoutes::Detail(const FKioskRoute& Route)

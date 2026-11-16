@@ -10,6 +10,7 @@ struct FKioskRouteLeg
 	int32 Line = INDEX_NONE;
 	int32 FromStation = INDEX_NONE;
 	int32 ToStation = INDEX_NONE;
+	int32 Stops = 0;   // stations ridden through after boarding, ending at ToStation (so at least 1 for a real leg)
 };
 
 struct FKioskRoute
@@ -34,6 +35,9 @@ public:
 
 	/** "Take East-West Line → change at Outram Park → North East Line" (translated). */
 	static FText Summary(const FKioskRoute& Route);
+	/** One step of the route, translated: "Take the East-West Line, 3 stops to Outram Park" (first leg) or
+	 *  "Change at Outram Park to the North East Line, 1 stop to HarbourFront" (later legs). */
+	static FText LegText(const FKioskRoute& Route, int32 LegIndex);
 	/** "13 min · 1 change" or "7 min · direct" (translated). */
 	static FText Detail(const FKioskRoute& Route);
 	/** Full line name, translated ("Circle Line"). */

@@ -259,7 +259,7 @@ int32 FKioskSearch::EditDistance(const FString& A, const FString& B)
 	return Rows[N % 3][M];
 }
 
-FKioskSearchResult FKioskSearch::Run(const FString& Query, int32 LineFilter)
+FKioskSearchResult FKioskSearch::Run(const FString& Query, int32 LineFilter, int32 MaxHits)
 {
 	FKioskSearchResult Result;
 	const FString Normalized = Normalize(Query);
@@ -315,9 +315,9 @@ FKioskSearchResult FKioskSearch::Run(const FString& Query, int32 LineFilter)
 			}
 			return NameOf(A) < NameOf(B);
 		});
-		if (Result.Hits.Num() > MaxResults)
+		if (Result.Hits.Num() > MaxHits)
 		{
-			Result.Hits.SetNum(MaxResults);
+			Result.Hits.SetNum(MaxHits);
 		}
 		return Result;
 	}

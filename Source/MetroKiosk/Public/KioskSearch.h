@@ -24,7 +24,7 @@ class METROKIOSK_API FKioskSearch
 {
 public:
 	/** Ranked results for what the user has typed. Empty query gives an empty result. Never returns nothing for a non-empty query unless LineFilter (a line index) leaves no candidates. */
-	static FKioskSearchResult Run(const FString& Query, int32 LineFilter = INDEX_NONE);
+	static FKioskSearchResult Run(const FString& Query, int32 LineFilter = INDEX_NONE, int32 MaxHits = MaxResults);
 	/** Lower-case, drops spaces and punctuation, keeps non-ASCII letters. */
 	static FString Normalize(const FString& Text);
 	/** Optimal string alignment (Damerau-Levenshtein with adjacent swaps). */

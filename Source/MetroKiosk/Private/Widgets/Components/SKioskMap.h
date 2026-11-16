@@ -14,6 +14,10 @@ public:
 		SLATE_ARGUMENT(int32, SelectedStation)
 		SLATE_ARGUMENT(float, Zoom)
 		SLATE_ARGUMENT(TSharedPtr<FKioskSession>, Session)
+		/** Stations that match the typed search. Used only when bDimOthers is true. */
+		SLATE_ARGUMENT(TSet<int32>, LitStations)
+		/** True while the search text matches something: every station not in LitStations fades. */
+		SLATE_ARGUMENT(bool, bDimOthers)
 		SLATE_EVENT(FOnKioskStationTapped, OnStationTapped)
 	SLATE_END_ARGS()
 
@@ -35,6 +39,8 @@ private:
 	int32 SelectedStation = INDEX_NONE;
 	float Zoom = 1.f;
 	TSharedPtr<FKioskSession> Session;
+	TSet<int32> LitStations;
+	bool bDimOthers = false;
 	FVector2f DragLast = FVector2f::ZeroVector;
 	FVector2f DragStart = FVector2f::ZeroVector;
 	bool bPressed = false;

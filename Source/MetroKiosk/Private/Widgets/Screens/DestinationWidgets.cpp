@@ -330,11 +330,11 @@ namespace KioskDest
 			.OnClicked_Lambda([Session]() { Session->ConfirmDestination(); return FReply::Handled(); });
 	}
 
-	TSharedRef<SWidget> SearchField(const TSharedRef<FKioskSession>& Session)
+	TSharedRef<SWidget> SearchField(const TSharedRef<FKioskSession>& Session, const FText& PlaceholderText)
 	{
 		const FKioskColors& C = KC();
 		const bool bHasText = !Session->State.SearchText.IsEmpty();
-		const FText Placeholder = KT("Search all stations");
+		const FText Placeholder = PlaceholderText.IsEmpty() ? KT("Search all stations") : PlaceholderText;
 		return SNew(SBox).MinDesiredHeight(88.f)
 		[
 			Panel(

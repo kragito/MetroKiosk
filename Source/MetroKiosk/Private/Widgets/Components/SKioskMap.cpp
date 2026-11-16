@@ -21,6 +21,8 @@ void SKioskMap::Construct(const FArguments& InArgs)
 	SelectedStation = InArgs._SelectedStation;
 	Zoom = FMath::Max(1.f, InArgs._Zoom);
 	Session = InArgs._Session;
+	LitStations = InArgs._LitStations;
+	bDimOthers = InArgs._bDimOthers;
 	SetClipping(EWidgetClipping::ClipToBounds);
 	TSharedRef<FKioskAutomationMeta> Meta = MakeShared<FKioskAutomationMeta>();
 	Meta->Name = TEXT("Map");
@@ -87,10 +89,13 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		const bool bSelected = Index == SelectedStation;
 		const bool bHere = Index == FKioskData::CityHallIndex();
 		const bool bOnFilter = Filter != INDEX_NONE && Station.OnLine(Filter);
-		const bool bDim = Filter != INDEX_NONE && !bOnFilter && !bSelected && !bHere;
-		const float Radius = (bSelected ? 17.f : (bInterchange ? 11.f : 7.f)) * FMath::Sqrt(Zoom);
+		const bool bLit = bDimOthers && LitStations.Contains(Index);
+		const bool bSearchDim = bDimOthers && !bLit && !bSelected && !bHere;
+		const bool bDim = (Filter != INDEX_NONE && !bOnFilter && !bSelected && !bHere) || bSearchDim;
+		const float Radius = (bSelected ? 17.f : (bInterchange ? 11.f : (bLit ? 9.f : 7.f))) * FMath::Sqrt(Zoom);
 
-		// When the line highlighter is on, dim every part of a station that is not on that line (fill and ring).
+		// When the line highlighter is on, or search text matches stations, dim every part of a station that is not
+		// on that line / not a match (fill and ring). Matches keep full strength and show their name.
 		const float Fade = bDim ? 0.25f : 1.f;
 		FLinearColor Ring = bInterchange ? C.Ink : C.Line[Station.FirstLine()];
 		Ring.A *= Fade;
@@ -121,7 +126,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 5.f))),
 				Text, MarkerFont, ESlateDrawEffect::None, C.White);
 		}
-		else if (!bDim && (bSelected || bInterchange || bOnFilter || Zoom > 1.2f))
+		else if (!bDim && (bSelected || bInterchange || bOnFilter || bLit || Zoom > 1.2f))
 		{
 			// Crowded stations put their label on the left; every label sits on a soft white pill so lines never cut through it.
 			static const TSet<FString> LeftLabels = { TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),

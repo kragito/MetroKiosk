@@ -43,7 +43,8 @@ namespace KioskDest
 	FText LineShortName(int32 LineIndex);
 
 	TSharedRef<SWidget> ConfirmButton(const TSharedRef<FKioskSession>& Session);
-	TSharedRef<SWidget> SearchField(const TSharedRef<FKioskSession>& Session);
+	/** Placeholder defaults to "Search all stations"; the map screen passes "Find station on the map". */
+	TSharedRef<SWidget> SearchField(const TSharedRef<FKioskSession>& Session, const FText& PlaceholderText = FText::GetEmpty());
 	TSharedRef<SWidget> KeyboardWidget(const TSharedRef<FKioskSession>& Session);
 
 	/** "13 min · 1 change · $1.50" for a station under the current ticket type. */
