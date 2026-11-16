@@ -3,13 +3,16 @@
 # Needs up-to-date binaries (run Tools\build.ps1 first) and no running editor for this project.
 param([string]$Filter = "MetroKiosk")
 
+. "$PSScriptRoot\engine.ps1"
+$Engine = Join-Path (Get-UnrealRoot) "Engine"
+
 $Project = (Resolve-Path "$PSScriptRoot\..\MetroKiosk.uproject").Path
 $Root = Split-Path $Project
 $Log = Join-Path $Root "Saved\Logs\AutomationRun.log"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 Remove-Item $Log -ErrorAction SilentlyContinue
 
-& "C:\Program Files\Epic Games\UE_5.8\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" $Project `
+& "$Engine\Binaries\Win64\UnrealEditor-Cmd.exe" $Project `
     "-ExecCmds=Automation RunTests $Filter; Quit" -unattended -nullrhi -nosplash -nosound "-abslog=$Log" | Out-Null
 
 if (-not (Test-Path $Log)) { Write-Output "No log was written."; exit 2 }

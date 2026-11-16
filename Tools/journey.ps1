@@ -8,7 +8,8 @@ param(
     [switch]$StealFocusForTest   # test aid: opens Notepad over the game so it is NOT the active window
 )
 
-$Engine = "C:\Program Files\Epic Games\UE_5.8\Engine"
+. "$PSScriptRoot\engine.ps1"
+$Engine = Join-Path (Get-UnrealRoot) "Engine"
 $Project = (Resolve-Path "$PSScriptRoot\..\MetroKiosk.uproject").Path
 $Root = Split-Path $Project
 $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-MetroKiosk.dll"

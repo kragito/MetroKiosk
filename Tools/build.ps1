@@ -2,7 +2,8 @@
 # Usage: powershell -File Tools\build.ps1 [-Relaunch]
 param([switch]$Relaunch)
 
-$Engine = "C:\Program Files\Epic Games\UE_5.8\Engine"
+. "$PSScriptRoot\engine.ps1"
+$Engine = Join-Path (Get-UnrealRoot) "Engine"
 $Project = (Resolve-Path "$PSScriptRoot\..\MetroKiosk.uproject").Path
 
 Get-Process UnrealEditor -ErrorAction SilentlyContinue | Stop-Process -Force

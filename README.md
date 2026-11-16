@@ -12,7 +12,11 @@ Flows: one-time ticket, card top-up, and concession pass renewal. Hardware (card
 slot, cash slots) is simulated with clearly marked dashed "SIMULATE" controls.
 
 ## Requirements
-- Unreal Engine 5.8 (installed at `C:\Program Files\Epic Games\UE_5.8`)
+- Unreal Engine 5.8. The `Tools/` scripts find it through `Tools/engine.ps1`, in this order: the
+  `UE_ROOT` environment variable (the folder that contains `Engine`), then the Epic launcher's install
+  record (registry `HKLM:\SOFTWARE\EpicGames\Unreal Engine\5.8`, then `LauncherInstalled.dat`), then
+  `C:\Program Files\Epic Games\UE_5.8`. If none has `Engine\Build\BatchFiles\Build.bat`, the script
+  stops with a message naming `UE_ROOT`. An invalid `UE_ROOT` is ignored with a warning.
 - Visual Studio 2022 with the C++ game development workload
 - Windows (Tamil text uses the system font `Nirmala.ttc`)
 

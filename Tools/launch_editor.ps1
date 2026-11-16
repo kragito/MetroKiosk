@@ -1,5 +1,6 @@
 # Launches the editor for this project and waits until the MCP server answers on :8000.
-$Engine = "C:\Program Files\Epic Games\UE_5.8\Engine"
+. "$PSScriptRoot\engine.ps1"
+$Engine = Join-Path (Get-UnrealRoot) "Engine"
 $Project = (Resolve-Path "$PSScriptRoot\..\MetroKiosk.uproject").Path
 
 Start-Process "$Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList "`"$Project`"", "-NoSplash"
