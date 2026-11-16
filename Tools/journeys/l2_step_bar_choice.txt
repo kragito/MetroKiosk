@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose Round trip|expect:Select a location|expect:Round trip|shot:stepbar_ticket_chosen|click:Station HarbourFront|click:Confirm selected ticket|expect:Check your trip|expect:HarbourFront|shot:stepbar_review|click:Back|expect:Select a location|dump

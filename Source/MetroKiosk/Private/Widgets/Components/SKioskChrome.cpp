@@ -119,7 +119,11 @@ void SKioskStepBar::Construct(const FArguments& InArgs)
 		];
 		Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)
 		[
-			Text(Steps.Labels[Index], KioskType::Body, bCurrent, bDone || bCurrent ? C.Ink : C.Muted)
+			// Chosen names can be long (station names in other languages): wrap inside a capped width so later steps stay on the bar.
+			SNew(SBox).MaxDesiredWidth(250.f)
+			[
+				TextWrap(Steps.Labels[Index], KioskType::Body, bCurrent, bDone || bCurrent ? C.Ink : C.Muted)
+			]
 		];
 		if (Index + 1 < Steps.Labels.Num())
 		{
