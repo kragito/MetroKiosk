@@ -48,6 +48,8 @@ struct FKioskState
 	int32 TopUpCents = 0;
 	int32 Concession = INDEX_NONE;
 	EKioskCardType CardType = EKioskCardType::Student; // the Metro card on the reader (card flows)
+	bool bPassStartChosen = false; // a card with no active pass picks the day its 30-day pass starts (T-011)
+	FDateTime PassStart;           // that day (midnight); only meaningful when bPassStartChosen
 	int32 LineFilter = INDEX_NONE;
 	FString SearchText;
 	bool bKeyboardOpen = false;

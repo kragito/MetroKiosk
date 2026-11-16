@@ -378,6 +378,7 @@ void FKioskSession::SimulateMetroCardTap(EKioskCardType Type)
 {
 	State.CardType = Type;
 	State.Concession = INDEX_NONE; // a different card may hold a different pass; EnterScreen pre-selects the right one
+	State.bPassStartChosen = false;
 	SimulateCardTap();
 }
 
@@ -389,6 +390,38 @@ const FKioskCardInfo& FKioskSession::CardInfo() const
 FText FKioskSession::CardLabel() const
 {
 	return IsStudentCard() ? KT("Student card") : KT("Adult card");
+}
+
+FDateTime FKioskSession::Today()
+{
+	return Now().GetDate();
+}
+
+bool FKioskSession::CanChoosePassStart(const FDateTime& Day) const
+{
+	return Day.GetDate() >= Today();
+}
+
+bool FKioskSession::ChoosePassStart(const FDateTime& Day)
+{
+	if (!CanChoosePassStart(Day))
+	{
+		return false;
+	}
+	State.PassStart = Day.GetDate();
+	State.bPassStartChosen = true;
+	NotifyChanged();
+	return true;
+}
+
+FDateTime FKioskSession::PassStartDate() const
+{
+	return State.bPassStartChosen ? State.PassStart : Today();
+}
+
+FDateTime FKioskSession::PassEndDate() const
+{
+	return PassStartDate() + FTimespan::FromDays(29);
 }
 
 int32 FKioskSession::CurrentPass() const
@@ -484,6 +517,10 @@ void FKioskSession::SelectConcession(int32 Index)
 
 void FKioskSession::GoToPayment()
 {
+	if (CurrentScreen == EKioskScreen::PassDates && NeedsPassStart() && !State.bPassStartChosen)
+	{
+		return; // a pass cannot be paid for until its start day is chosen
+	}
 	GoTo(EKioskScreen::PayMethod);
 }
 
@@ -1067,7 +1104,8 @@ bool FKioskSession::ApplySample(const FString& RawName)
 	else if (Name == TEXT("PassDates")) { State.Flow = EKioskFlow::Concession; State.Concession = SamplePass; Place(S::PassDates, { S::Home, S::Concession }); }
 	else if (Name == TEXT("PayMethodTopUp")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::PayMethod, { S::Home, S::CardOptions }); }
 	else if (Name == TEXT("DoneLiftCard")) { State.Flow = EKioskFlow::TopUp; State.TopUpCents = 1000; Place(S::DoneLiftCard, {}); }
-	else if (Name == TEXT("DoneLiftCardConcession")) { State.Flow = EKioskFlow::Concession; State.Concession = SamplePass; Place(S::DoneLiftCard, {}); }
+	else if (Name == TEXT("PassDatesPicked")) /* adult card only: "AdultPassDatesPicked" */ { State.Flow = EKioskFlow::Concession; State.Concession = SamplePass; ChoosePassStart(Today() + FTimespan::FromDays(3)); Place(S::PassDates, { S::Home, S::Concession }); }
+	else if (Name == TEXT("DoneLiftCardConcession")) { State.Flow = EKioskFlow::Concession; State.Concession = SamplePass; if (NeedsPassStart()) { ChoosePassStart(Today() + FTimespan::FromDays(3)); } Place(S::DoneLiftCard, {}); }
 	else { bOk = false; }
 
 	NotifyChanged();

@@ -114,6 +114,19 @@ public:
 	FText CardLabel() const;
 	/** Pass the tapped card already holds, or INDEX_NONE (an adult card has none). */
 	int32 CurrentPass() const;
+	/** Today's date at midnight on the kiosk clock. */
+	static FDateTime Today();
+	/** True when the tapped card has no active pass, so the rider picks the start date (T-011). */
+	bool NeedsPassStart() const { return CurrentPass() == INDEX_NONE; }
+	/** Past days cannot be chosen; today and later can. */
+	bool CanChoosePassStart(const FDateTime& Day) const;
+	/** Chooses the start day (date part only). Returns false and changes nothing for a past day. */
+	bool ChoosePassStart(const FDateTime& Day);
+	bool HasPassStart() const { return State.bPassStartChosen; }
+	/** First day of the pass being bought: the chosen day, or today when none is chosen. */
+	FDateTime PassStartDate() const;
+	/** Last day of that pass: start + 29 days (30 days in all). */
+	FDateTime PassEndDate() const;
 	/** Price of a concession pass for the tapped card: student concession price or the adult price. */
 	int32 PassPriceCents(int32 ConcessionIndex) const;
 	/** QA: which card the reader detects when no SIMULATE card is chosen (the -KioskCard=Student|Adult switch). */

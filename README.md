@@ -86,7 +86,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `k6_concession_renewal` | renewal with the current pass pre-selected, two-month dates check, done screen with receipt buttons |
 | `k7_map_back_to_list` | Back from the map returns to the list; leftover search text is cleared |
 | `l5_adult_topup` | adult Metro card top-up: "Adult card", $18.50 balance, no low-balance banner or pass, +$20 to $38.50, done screen |
-| `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, pass starts today, done screen |
+| `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, "No pass active", "Go to payment" disabled until a day is picked (`click:Day +3` = three days from today; names are `Day YYYY-MM-DD`), done screen shows the chosen start |
 
 ## Automation tests
 ```powershell

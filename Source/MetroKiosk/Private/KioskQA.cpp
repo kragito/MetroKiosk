@@ -60,7 +60,9 @@ void FKioskQARunner::Initialise(const TSharedRef<FKioskSession>& InSession, cons
 			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
 			TEXT("DestinationFiltered"), TEXT("DestinationSearchSelected"),
 			// Adult Metro card (T-014): appended last so the numbers above stay put.
-			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession") };
+			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession"),
+			// Adult card, start day picked (T-011): today + 3 days.
+			TEXT("AdultPassDatesPicked") };
 		// The same screens in the other three languages (the ones where text is longest or hardware is pointed at).
 		static const TCHAR* const Localised[] = {
 			TEXT("Home"), TEXT("TicketType"), TEXT("TicketTypeLate"), TEXT("DestinationSelected"), TEXT("DestinationMap"), TEXT("Review"), TEXT("ReviewMixed"), TEXT("ReviewDayPass"),

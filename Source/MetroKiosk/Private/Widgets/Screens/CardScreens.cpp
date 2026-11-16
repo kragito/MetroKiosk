@@ -85,24 +85,6 @@ namespace
 	{
 		return FText::Format(KT("{0} {1}"), FText::AsNumber(Date.GetDay()), ShortMonth(Date.GetMonth()));
 	}
-
-	/** A card with no active pass buys a pass that starts today (T-011 adds start-date picking) and lasts 30 days. */
-	FDateTime AdultPassStart()
-	{
-		const FDateTime Now = FKioskSession::Now();
-		return FDateTime(Now.GetYear(), Now.GetMonth(), Now.GetDay());
-	}
-
-	FDateTime AdultPassEnd()
-	{
-		return AdultPassStart() + FTimespan::FromDays(29);
-	}
-
-	/** "15 Nov - 14 Dec" for a pass that starts today. */
-	FText AdultPassRange()
-	{
-		return FText::Format(KT("{0} – {1}"), DayMonth(AdultPassStart()), DayMonth(AdultPassEnd()));
-	}
 }
 
 // --- scan card -----------------------------------------------------------------------------
@@ -212,7 +194,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 		const int32 Amount = Amounts[Index];
 		Tiles->AddSlot().FillWidth(1.f).Padding(Index == 0 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f, Index == 2 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f)
 		[
-			SNew(SBox).HeightOverride(190.f)
+			SNew(SBox).MinDesiredHeight(110.f)
 			[
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::Tile)
@@ -277,7 +259,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 					.Label(KT("Buy a ticket instead"))
 					.ButtonTag(TEXT("Buy a ticket instead"))
 					.Padding(FMargin(8.f, 6.f))
-					.MaxWidth(300.f)
+					.MaxWidth(480.f)
 					.OnClicked_Lambda([Session]()
 					{
 						Session->State.Flow = EKioskFlow::Ticket;
@@ -300,10 +282,13 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("Quick top up"), KioskType::H3, true, C.Ink) ]
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(28.f, 0.f, 0.f, 0.f)[ TextWrap(KT("One tap, then pay"), KioskType::Caption, false, C.Muted) ]
 				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ Tiles ]
+				+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 12.f, 0.f, 0.f)[ Tiles ] // tiles absorb spare/lost height; option row below is auto-height
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 12.f)[ Text(KT("Other card options"), KioskType::H3, true, C.Ink) ]
-				+ SVerticalBox::Slot().FillHeight(1.f)
+				+ SVerticalBox::Slot().AutoHeight()
 				[
+					// Auto height with a minimum: both cards grow together for longer titles, so each button stays pinned at the card bottom.
+					SNew(SBox).MinDesiredHeight(350.f)
+					[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, KioskLayout::TileGap * 0.5f, 0.f)
 					[
@@ -318,6 +303,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 							Info.bHasActivePass ? KT("Renew pass") : KT("Buy pass"),
 							Info.bHasActivePass ? FName(TEXT("Renew concession pass")) : FName(TEXT("Buy concession pass")),
 							[Session]() { Session->State.Flow = EKioskFlow::Concession; Session->GoTo(EKioskScreen::Concession); })
+					]
 					]
 				]
 			]
@@ -617,7 +603,8 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 namespace
 {
 	/** One month of a Monday-first calendar. Day cells are flat (no button look): a coloured band shows the pass ranges. */
-	TSharedRef<SWidget> MonthGrid(const FText& Title, int32 LeadingBlanks, int32 DaysInMonth, int32 FirstNewDay, int32 LastCurrentDay, int32 LastNewDay)
+	TSharedRef<SWidget> MonthGrid(const FText& Title, int32 LeadingBlanks, int32 DaysInMonth, int32 FirstNewDay, int32 LastCurrentDay, int32 LastNewDay,
+		int32 LastPastDay = 0, TFunction<TSharedRef<SWidget>(int32, const TSharedRef<SWidget>&)> MakeTappable = nullptr)
 	{
 		const FKioskColors& C = KC();
 		TSharedRef<SVerticalBox> Calendar = SNew(SVerticalBox);
@@ -657,13 +644,17 @@ namespace
 					const FLinearColor Mark = bCurrent ? C.Help : C.Primary;
 					Cell = SNew(SOverlay)
 						+ SOverlay::Slot()[ SNew(SBorder).BorderImage(FKioskStyle::Get().Solid(Fill)).BorderBackgroundColor(FLinearColor::White) ]
-						+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(DayNumber), KioskType::Body, bMark, C.Ink) ]
+						+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(DayNumber), KioskType::Body, bMark, DayNumber <= LastPastDay ? C.Muted : C.Ink) ]
 						+ SOverlay::Slot().VAlign(VAlign_Bottom)
 						[
 							bMark
 								? StaticCastSharedRef<SWidget>(SNew(SBox).HeightOverride(5.f)[ SNew(SBorder).BorderImage(FKioskStyle::Get().Solid(Mark)).BorderBackgroundColor(FLinearColor::White) ])
 								: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 						];
+					if (MakeTappable && DayNumber > LastPastDay)
+					{
+						Cell = MakeTappable(DayNumber, Cell); // start-date picking: today and later are buttons, past days stay flat
+					}
 				}
 				Cells->AddSlot().FillWidth(1.f)[ SNew(SBox).HeightOverride(50.f)[ Cell ] ];
 			}
@@ -679,32 +670,71 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 {
 	const FKioskColors& C = KC();
 	const int32 PassIndex = Session->State.Concession;
-	// A card with an active pass renews it (the sample runs 15 Nov to 14 Dec 2026); a card without one starts a pass today.
+	// A card with an active pass renews it (the sample runs 15 Nov to 14 Dec 2026); a card without one picks a start day.
 	const bool bRenewing = Session->CurrentPass() != INDEX_NONE;
+	const bool bPicked = !bRenewing && Session->HasPassStart();
 
 	FText FirstMonthTitle = KT("November 2026");
 	FText SecondMonthTitle = KT("December 2026");
 	int32 FirstLead = 6, FirstDays = 30, FirstNewDay = 15, FirstLastCurrent = 14, FirstLastNew = 31;
-	int32 SecondLead = 1, SecondDays = 31, SecondLastNew = 14;
+	int32 SecondLead = 1, SecondDays = 31, SecondNewDay = 0, SecondLastNew = 14;
+	int32 FirstPast = 0;
+	TFunction<TSharedRef<SWidget>(int32, const TSharedRef<SWidget>&)> FirstTap, SecondTap;
 	if (!bRenewing)
 	{
-		const FDateTime Start = AdultPassStart();
-		const FDateTime End = AdultPassEnd();
-		const FDateTime FirstMonth(Start.GetYear(), Start.GetMonth(), 1);
-		const int32 SecondYear = Start.GetMonth() == 12 ? Start.GetYear() + 1 : Start.GetYear();
-		const int32 SecondMonthNumber = Start.GetMonth() == 12 ? 1 : Start.GetMonth() + 1;
+		const FDateTime Today = FKioskSession::Today();
+		const FDateTime FirstMonth(Today.GetYear(), Today.GetMonth(), 1);
+		const int32 SecondYear = Today.GetMonth() == 12 ? Today.GetYear() + 1 : Today.GetYear();
+		const int32 SecondMonthNumber = Today.GetMonth() == 12 ? 1 : Today.GetMonth() + 1;
 		const FDateTime SecondMonth(SecondYear, SecondMonthNumber, 1);
 		FirstMonthTitle = FText::Format(KT("{0} {1}"), ShortMonth(FirstMonth.GetMonth()), FText::FromString(FString::FromInt(FirstMonth.GetYear())));
 		SecondMonthTitle = FText::Format(KT("{0} {1}"), ShortMonth(SecondMonth.GetMonth()), FText::FromString(FString::FromInt(SecondMonth.GetYear())));
 		FirstLead = static_cast<int32>(FirstMonth.GetDayOfWeek()); // Monday = 0
 		FirstDays = FDateTime::DaysInMonth(FirstMonth.GetYear(), FirstMonth.GetMonth());
-		FirstNewDay = Start.GetDay();
-		FirstLastCurrent = 0;
 		SecondLead = static_cast<int32>(SecondMonth.GetDayOfWeek());
 		SecondDays = FDateTime::DaysInMonth(SecondMonth.GetYear(), SecondMonth.GetMonth());
-		const bool bEndsInFirstMonth = End.GetMonth() == Start.GetMonth();
-		FirstLastNew = bEndsInFirstMonth ? End.GetDay() : FirstDays;
-		SecondLastNew = bEndsInFirstMonth ? 0 : End.GetDay();
+		FirstLastCurrent = 0;
+		FirstPast = Today.GetDay() - 1;
+		// The chosen range [Start, End] clipped to each month: 0/0 when it does not touch the month, and one past the last day
+		// when it runs on into the next month (so no end marker is drawn there). Correct for a pass that spans three months.
+		FirstNewDay = 0; FirstLastNew = 0; SecondNewDay = 0; SecondLastNew = 0;
+		if (bPicked)
+		{
+			const FDateTime Start = Session->PassStartDate();
+			const FDateTime End = Session->PassEndDate();
+			auto Clip = [&Start, &End](const FDateTime& Month, int32 Days, int32& OutFirst, int32& OutLast)
+			{
+				const FDateTime MonthEnd(Month.GetYear(), Month.GetMonth(), Days);
+				if (End < Month || Start > MonthEnd)
+				{
+					return;
+				}
+				OutFirst = Start >= Month ? Start.GetDay() : 0;
+				OutLast = End <= MonthEnd + FTimespan::FromHours(23) ? End.GetDay() : Days + 1;
+			};
+			Clip(FirstMonth, FirstDays, FirstNewDay, FirstLastNew);
+			Clip(SecondMonth, SecondDays, SecondNewDay, SecondLastNew);
+		}
+		auto MakeTap = [Session](int32 Year, int32 Month)
+		{
+			return TFunction<TSharedRef<SWidget>(int32, const TSharedRef<SWidget>&)>([Session, Year, Month](int32 Day, const TSharedRef<SWidget>& Cell) -> TSharedRef<SWidget>
+			{
+				const FDateTime Date(Year, Month, Day);
+				// Name "Day 2026-11-20"; label "Day +3" (days from today) so a journey can click a day whatever the real date is.
+				const int32 Offset = (Date - FKioskSession::Today()).GetDays();
+				return SNew(SKioskButton)
+					.Kind(EKioskButtonKind::Card)
+					.Label(FText::FromString(FString::Printf(TEXT("Day %+d"), Offset)))
+					.ButtonTag(*FString::Printf(TEXT("Day %04d-%02d-%02d"), Year, Month, Day))
+					.Padding(FMargin(0.f))
+					.OnClicked_Lambda([Session, Date]() { Session->ChoosePassStart(Date); return FReply::Handled(); })
+					[
+						Cell
+					];
+			});
+		};
+		FirstTap = MakeTap(FirstMonth.GetYear(), FirstMonth.GetMonth());
+		SecondTap = MakeTap(SecondMonth.GetYear(), SecondMonth.GetMonth());
 	}
 
 	auto Legend = [&](const FLinearColor& Swatch, const FText& Label)
@@ -733,8 +763,8 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 30.f, 0.f)[ MonthGrid(FirstMonthTitle, FirstLead, FirstDays, FirstNewDay, FirstLastCurrent, FirstLastNew) ]
-						+ SHorizontalBox::Slot().FillWidth(1.f)[ MonthGrid(SecondMonthTitle, SecondLead, SecondDays, 0, 0, SecondLastNew) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 30.f, 0.f)[ MonthGrid(FirstMonthTitle, FirstLead, FirstDays, FirstNewDay, FirstLastCurrent, FirstLastNew, FirstPast, FirstTap) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f)[ MonthGrid(SecondMonthTitle, SecondLead, SecondDays, SecondNewDay, 0, SecondLastNew, 0, SecondTap) ]
 					]
 					+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 					+ SVerticalBox::Slot().AutoHeight()
@@ -755,12 +785,24 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FText::Format(Session->IsStudentCard() ? KT("{0} – Student") : KT("{0} – Adult"), FKioskData::ConcessionName(PassIndex)), KioskType::H2, true, C.Ink, 1.f) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(KT("30 days · unlimited rides"), KioskType::Body, false, C.Muted) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 18.f)[ Rule(C.BorderStrong, 2.f) ]
-						+ SVerticalBox::Slot().AutoHeight()[ Text(KT("New pass"), KioskType::Caption, false, C.Muted) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextWrap(bRenewing ? KT("15 Nov – 14 Dec 2026") : AdultPassRange(), KioskType::H2, true, C.Primary, 1.f) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(bRenewing ? KT("Current pass ends 14 Nov 2026") : KT("Starts today"), KioskType::Body, false, C.Ink, 1.1f) ]
+						+ SVerticalBox::Slot().AutoHeight()[ Text(bRenewing || bPicked ? KT("New pass") : KT("No pass active"), KioskType::Caption, false, C.Muted) ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
+						[
+							TextWrap(bRenewing ? KT("15 Nov – 14 Dec 2026")
+								: (bPicked ? FText::Format(KT("{0} – {1}"), DayMonth(Session->PassStartDate()), DayMonth(Session->PassEndDate())) : KT("Select a start date")),
+								KioskType::H2, true, (bRenewing || bPicked) ? C.Primary : C.Ink, 1.f)
+						]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bRenewing || bPicked ? 14.f : 0.f, 0.f, 0.f)
+						[
+							bRenewing || bPicked
+								? StaticCastSharedRef<SWidget>(TextWrap(bRenewing ? KT("Current pass ends 14 Nov 2026") : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Ink, 1.1f))
+								: StaticCastSharedRef<SWidget>(SNew(SSpacer))
+						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 						[
-							TextWrap(bRenewing ? KT("Your new pass starts the day after it ends, so you don't lose any days.") : KT("Your pass starts today and lasts 30 days."), KioskType::Body, false, C.Muted, 1.2f)
+							TextWrap(bRenewing ? KT("Your new pass starts the day after it ends, so you don't lose any days.")
+								: (bPicked ? KT("Your pass lasts 30 days from the day you chose.") : KT("Tap a day on the calendar. Your pass lasts 30 days from that day.")),
+								KioskType::Body, false, C.Muted, 1.2f)
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->PassPriceCents(PassIndex)), KioskType::Display, true, C.Ink) ],
 						C.Surface, C.BorderStrong, 2.f, FMargin(32.f, 28.f))
@@ -773,6 +815,7 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 					.Label(KT("Go to payment"))
 					.ButtonTag(TEXT("Go to payment"))
 					.RightIcon(EKioskIcon::ArrowRight)
+					.Enabled(bRenewing || bPicked)
 					.OnClicked_Lambda([Session]() { Session->GoToPayment(); return FReply::Handled(); })
 				]
 			]
@@ -808,12 +851,12 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		BalanceDetail = SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("New pass validity · 15 Nov – 14 Dec") : FText::Format(KT("New pass validity · {0} – {1}"), DayMonth(AdultPassStart()), DayMonth(AdultPassEnd())),
+				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("New pass validity · 15 Nov – 14 Dec") : FText::Format(KT("New pass validity · {0} – {1}"), DayMonth(Session->PassStartDate()), DayMonth(Session->PassEndDate())),
 					KioskType::Body, true, C.Ink, 1.1f)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
 			[
-				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("Current pass · ends 14 Nov") : KT("Starts today"), KioskType::Body, false, C.Muted, 1.1f)
+				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("Current pass · ends 14 Nov") : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Muted, 1.1f)
 			];
 	}
 

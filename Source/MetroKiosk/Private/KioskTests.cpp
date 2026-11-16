@@ -114,14 +114,21 @@ namespace
 	{
 		FString Run;
 		bool bInBraces = false;
+		// Format directives such as {0}|plural(one=x,other=y): the directive name and its keys are syntax, not text.
+		bool bInDirective = false;
+		bool bDirectiveKey = false;
 		for (int32 Index = 0; Index <= Text.Len(); ++Index)
 		{
 			const TCHAR Ch = Index < Text.Len() ? Text[Index] : TEXT(' ');
+			if (Ch == TEXT('|') && Text.Mid(Index, 8) == TEXT("|plural(")) { bInDirective = true; bDirectiveKey = true; }
+			else if (bInDirective && Ch == TEXT('=')) { bDirectiveKey = false; }
+			else if (bInDirective && Ch == TEXT(',')) { bDirectiveKey = true; }
+			else if (bInDirective && Ch == TEXT(')')) { bInDirective = false; bDirectiveKey = false; }
 			if (Ch == TEXT('{'))
 			{
 				bInBraces = true;
 			}
-			if (!bInBraces && ((Ch >= TEXT('a') && Ch <= TEXT('z')) || (Ch >= TEXT('A') && Ch <= TEXT('Z'))))
+			if (!bInBraces && !bDirectiveKey && ((Ch >= TEXT('a') && Ch <= TEXT('z')) || (Ch >= TEXT('A') && Ch <= TEXT('Z'))))
 			{
 				Run.AppendChar(Ch);
 			}
@@ -262,7 +269,7 @@ bool FKioskLocCoverageTest::RunTest(const FString& Parameters)
 			TEXT("WaitTapCard"), TEXT("WaitChipCard"), TEXT("WaitCash"), TEXT("WaitCashPartial"), TEXT("Processing"), TEXT("ProcessingCash"), TEXT("Receipt"),
 			TEXT("HelpCall"), TEXT("HelpCallCash"), TEXT("HelpPip"), TEXT("IdlePrompt"), TEXT("ScanCard"), TEXT("CardOptions"), TEXT("TopUpAmount"),
 			TEXT("TopUpAmountSelected"), TEXT("TopUpKeypad"), TEXT("Concession"), TEXT("PassDates"), TEXT("DoneLiftCard"), TEXT("DoneLiftCardConcession"),
-			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultTopUpKeypad"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession"),
+			TEXT("AdultCardOptions"), TEXT("AdultTopUpAmountSelected"), TEXT("AdultTopUpKeypad"), TEXT("AdultConcession"), TEXT("AdultPassDates"), TEXT("AdultDoneLiftCard"), TEXT("AdultDoneLiftCardConcession"), TEXT("AdultPassDatesPicked"),
 			TEXT("DestinationMapSearch"), TEXT("DestinationMapSelected") };
 		static const TCHAR* const Suffixes[] = { TEXT("_Chinese"), TEXT("_Malay"), TEXT("_Tamil") };
 
@@ -462,6 +469,35 @@ bool FKioskSessionRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("adult top-up sample label"), S->CardLabel().ToString(), FString(TEXT("Adult card")));
 	TestEqual(TEXT("adult top-up new balance"), S->NewBalanceCents(), FKioskData::Card(EKioskCardType::Adult).BalanceCents + 1000);
 	TestTrue(TEXT("adult top-up summary names the adult card"), S->OrderSummary().ToString().Contains(TEXT("Adult card")));
+
+	// Start-date picking (T-011): a card with no active pass chooses the day its 30-day pass starts.
+	S->ApplySample(TEXT("AdultPassDates"));
+	TestTrue(TEXT("adult pass dates screen"), S->Current() == Screen::PassDates);
+	TestTrue(TEXT("adult card needs a start date"), S->NeedsPassStart());
+	TestFalse(TEXT("no start date chosen at first"), S->HasPassStart());
+	S->GoToPayment();
+	TestTrue(TEXT("payment is blocked until a day is chosen"), S->Current() == Screen::PassDates);
+	const FDateTime Today = FKioskSession::Today();
+	TestFalse(TEXT("yesterday cannot be chosen"), S->ChoosePassStart(Today - FTimespan::FromDays(1)));
+	TestFalse(TEXT("a rejected day chooses nothing"), S->HasPassStart());
+	TestTrue(TEXT("today can be chosen"), S->ChoosePassStart(Today));
+	TestTrue(TEXT("pass ends 29 days after the start"), S->PassEndDate() == (Today + FTimespan::FromDays(29)));
+	const FDateTime Later = Today + FTimespan::FromDays(40);
+	TestTrue(TEXT("a later day can be chosen"), S->ChoosePassStart(Later + FTimespan::FromHours(13)));
+	TestTrue(TEXT("the start keeps only the date"), S->PassStartDate() == (Later));
+	TestTrue(TEXT("end is start + 29 days"), S->PassEndDate() == (Later + FTimespan::FromDays(29)));
+	S->GoToPayment();
+	TestTrue(TEXT("payment opens once a day is chosen"), S->Current() == Screen::PayMethod);
+	S->ApplySample(TEXT("Home"));
+	TestFalse(TEXT("the chosen day is cleared with the session"), S->HasPassStart());
+	S->ApplySample(TEXT("AdultPassDatesPicked"));
+	TestTrue(TEXT("picked sample has a start"), S->HasPassStart());
+	TestTrue(TEXT("picked sample starts three days from today"), S->PassStartDate() == (FKioskSession::Today() + FTimespan::FromDays(3)));
+	S->ApplySample(TEXT("PassDates"));
+	TestFalse(TEXT("student renewal needs no start date"), S->NeedsPassStart());
+	S->GoToPayment();
+	TestTrue(TEXT("student renewal goes straight to payment"), S->Current() == Screen::PayMethod);
+
 	S->ApplySample(TEXT("TopUpAmountSelected"));
 	TestTrue(TEXT("existing samples stay on the student card"), S->State.CardType == FKioskSession::DefaultCardType());
 	S->ApplySample(TEXT("Home"));
