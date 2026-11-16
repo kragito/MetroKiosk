@@ -3,18 +3,19 @@
 Source: SyncSketch review `S2gV9JYjG504`. The PDF (Team05_TDP_Part2_Documentation.pdf) and
 the video (Team05_TDP_Part2_Video.mp4) were both reviewed by the DigiPen instructor about 27–28 days ago.
 The feedback was given on the original Figma prototype, before the Unreal recreation.
-Checked against the current build at commit e1d645b (captures in Saved/Captures).
+Originally checked against the build at commit e1d645b (captures in Saved/Captures). Statuses below were
+updated from the `Docs/PLAN.md` status table (2026-11-16) and the git history at commit a92b798.
 
 ## Status summary
 
 | # | Feedback | Where | Current build | Status |
 |---|----------|-------|---------------|--------|
-| 1 | Arrows on the edges of the Top up / Concession cards look like they connect to the options on their right | Video, frame 0957 (Home) | Same arrows, same position (01_Home.png) | **Not addressed** |
-| 2 | Keep the UI consistent down to the smallest details: button/shape sizes, colours, positioning, alignment | Video, frame 3535 (Choose a ticket, One-way card circled) | Ticket cards are now consistent (same type sizes, prices on one baseline), but there has been no app-wide consistency pass | **Partly addressed** |
-| 3 | Destination step relies on too much assumed knowledge: knowing exactly where to go, how lines work, how to spell station names. Reduce errors and serve the user's actual goal | Video, frame 4223 (Where are you going?, popular list + line filter marked) | Unchanged: station-name list, line filter, exact-text search, map | **Not addressed (biggest item)** |
-| 4 | Citations don't show understanding or justify the specific application. Needs more detailed, principle-based justification | PDF, frame 0002 (steps 5 & 6 citations underlined) | Documentation, not the app | **Docs task** |
-| 5 | Video use cases should tell a specific user's story with context, not describe features generically | Video, frame 10748 | Video deliverable | **Video task** |
-| 6 | Not all required interactions are demonstrated in the video | Video, frame 15008 | Video deliverable | **Video task** |
+| 1 | Arrows on the edges of the Top up / Concession cards look like they connect to the options on their right | Video, frame 0957 (Home) | Arrows removed; Home tiles are unified with full-width action buttons | **Addressed** in 9e0a836 |
+| 2 | Keep the UI consistent down to the smallest details: button/shape sizes, colours, positioning, alignment | Video, frame 3535 (Choose a ticket, One-way card circled) | App-wide consistency pass done: type scale, button roles, footer pills, shared styles. Formal review and UX re-test were cut short (PLAN.md) | **Addressed** in 9e0a836, plus UX-evaluation fixes e3b1c5b..9f185b7; formal review not completed |
+| 3 | Destination step relies on too much assumed knowledge: knowing exactly where to go, how lines work, how to spell station names. Reduce errors and serve the user's actual goal | Video, frame 4223 (Where are you going?, popular list + line filter marked) | Goal-first destination screen with place and fuzzy search, per-destination route and fare, map as secondary. Rated "Resolved" in the UX evaluation (PLAN.md) | **Addressed** in ccc6d14..0d2686f (biggest item) |
+| 4 | Citations don't show understanding or justify the specific application. Needs more detailed, principle-based justification | PDF, frame 0002 (steps 5 & 6 citations underlined) | Documentation, not the app. Paste-ready revised text written (`Docs/TDP_Part2_Revised_Text.md`); the PDF source is not in the repo, so the PDF itself is not updated | **Partly done**: revised text in 8244eab; PDF not updated |
+| 5 | Video use cases should tell a specific user's story with context, not describe features generically | Video, frame 10748 | Video deliverable. Storyboard written (`Docs/VIDEO_STORYBOARD.md`); the video itself is not re-recorded | **Partly done**: storyboard in 8244eab; video not re-recorded |
+| 6 | Not all required interactions are demonstrated in the video | Video, frame 15008 | Video deliverable. Storyboard maps scenes to journey scripts with an interactions checklist; the video itself is not re-recorded | **Partly done**: storyboard in 8244eab; video not re-recorded |
 | + | Positive: physical-kiosk visual first, overview before detail, clear document structure, generally good use of design principles | PDF frames 0001/0002, video 3535 | Keep | Keep as is |
 
 ## What needs to be done before further development
