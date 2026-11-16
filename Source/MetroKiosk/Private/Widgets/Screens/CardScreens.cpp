@@ -829,8 +829,6 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 {
 	const FKioskColors& C = KC();
 	const bool bTopUp = Session->State.Flow == EKioskFlow::TopUp;
-	const TSharedRef<bool> bPrinted = MakeShared<bool>(false);
-	const TSharedRef<bool> bEmailed = MakeShared<bool>(false);
 
 	const FText Body = bTopUp
 		? KT("Your top-up is done. Lift your Metro card off the reader below the screen before you go.")
@@ -933,57 +931,11 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 8.f, 0.f)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Outline)
-					.Label(KT("Print receipt"))
-					.ButtonTag(TEXT("Print receipt"))
-					.LeftIcon(EKioskIcon::Printer)
-					.Padding(FMargin(14.f, 8.f))
-					.OnClicked_Lambda([Session, bPrinted]() { *bPrinted = true; Session->NotifyChanged(); return FReply::Handled(); })
-				]
-				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 0.f, 0.f)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Outline)
-					.Label(KT("Email receipt"))
-					.ButtonTag(TEXT("Email receipt"))
-					.LeftIcon(EKioskIcon::Mail)
-					.Padding(FMargin(14.f, 8.f))
-					.OnClicked_Lambda([Session, bEmailed]() { *bEmailed = true; Session->NotifyChanged(); return FReply::Handled(); })
-				]
+				ReceiptActions(Session, true)
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
-				TextDyn([bPrinted, bEmailed]()
-				{
-					return *bPrinted ? KT("Your receipt is printing in the tray.")
-						: (*bEmailed ? KT("Enter your email on the next screen.") : FText::GetEmpty());
-				}, KioskType::Caption, false, C.Muted)
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()[ ProgressBar([Session]() { return Session->ReturnFractionLeft(); }, 0.f, 14.f, C.Disabled, C.Ink) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
-					[
-						TextDyn([Session]() { return FText::Format(KT("Returning to start in {0} s"), FText::AsNumber(Session->ReturnSecondsLeft())); }, KioskType::Caption, false, C.Muted)
-					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Outline)
-					.Label(KT("I need more time"))
-					.ButtonTag(TEXT("I need more time"))
-					.MaxWidth(380.f)
-					.OnClicked_Lambda([Session]() { Session->ExtendReturn(); return FReply::Handled(); })
-				]
+				ReturnCountdown(Session)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)

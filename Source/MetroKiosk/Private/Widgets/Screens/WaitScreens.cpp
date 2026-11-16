@@ -325,8 +325,6 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSession>& Session)
 {
 	const FKioskColors& C = KC();
-	const TSharedRef<bool> bPrinted = MakeShared<bool>(false);
-	const TSharedRef<bool> bEmailed = MakeShared<bool>(false);
 	const FKioskState& State = Session->State;
 
 	const FText Trip = State.Ticket == ETicketType::DayPass
@@ -337,36 +335,6 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 	const FText RouteNote = (State.Ticket == ETicketType::DayPass || !Route.bValid)
 		? FText::GetEmpty()
 		: FText::Format(KT("{0} · {1}"), FKioskRoutes::Detail(Route), FKioskRoutes::Summary(Route));
-
-	TSharedRef<SWidget> ReceiptButtons = SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)
-		[
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Outline)
-			.Label(KT("Print receipt"))
-			.ButtonTag(TEXT("Print receipt"))
-			.LeftIcon(EKioskIcon::Printer)
-			.MinHeight(KioskLayout::BtnPrimaryH)
-			.OnClicked_Lambda([Session, bPrinted]() { *bPrinted = true; Session->NotifyChanged(); return FReply::Handled(); })
-		]
-		+ SVerticalBox::Slot().AutoHeight()
-		[
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Outline)
-			.Label(KT("Email receipt"))
-			.ButtonTag(TEXT("Email receipt"))
-			.LeftIcon(EKioskIcon::Mail)
-			.MinHeight(KioskLayout::BtnPrimaryH)
-			.OnClicked_Lambda([Session, bEmailed]() { *bEmailed = true; Session->NotifyChanged(); return FReply::Handled(); })
-		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
-		[
-			TextDyn([bPrinted, bEmailed]()
-			{
-				return *bPrinted ? KT("Your receipt is printing in the tray.")
-					: (*bEmailed ? KT("Enter your email on the next screen.") : FText::GetEmpty());
-			}, KioskType::Body, false, C.Muted)
-		];
 
 	ChildSlot
 	.Padding(KioskLayout::PageX, 26.f, KioskLayout::PageX, 26.f)
@@ -423,28 +391,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight()
-					[
-						ProgressBar([Session]() { return Session->ReturnFractionLeft(); }, 0.f, 14.f, C.Disabled, C.Ink)
-					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
-					[
-						TextDyn([Session]() { return FText::Format(KT("Returning to start in {0} s"), FText::AsNumber(Session->ReturnSecondsLeft())); }, KioskType::Caption, false, C.Muted)
-					]
-				]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Outline)
-					.Label(KT("I need more time"))
-					.ButtonTag(TEXT("I need more time"))
-					.MaxWidth(420.f)
-					.OnClicked_Lambda([Session]() { Session->ExtendReturn(); return FReply::Handled(); })
-				]
+				ReturnCountdown(Session)
 			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.48f)
@@ -452,7 +399,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 			Card(
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 22.f)[ TextWrap(KT("Want a receipt?"), KioskType::H2, true, C.Ink) ]
-				+ SVerticalBox::Slot().AutoHeight()[ ReceiptButtons ]
+				+ SVerticalBox::Slot().AutoHeight()[ ReceiptActions(Session) ]
 				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 				+ SVerticalBox::Slot().AutoHeight()
 				[

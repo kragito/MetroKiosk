@@ -2,6 +2,7 @@
 
 #include "KioskData.h"
 #include "KioskLoc.h"
+#include "KioskSession.h"
 #include "SKioskButton.h"
 #include "SKioskDashedBox.h"
 #include "Fonts/FontMeasure.h"
@@ -310,6 +311,78 @@ namespace KioskUI
 						SNullWidget::NullWidget
 					]
 				]
+			];
+	}
+
+	TSharedRef<SWidget> ReceiptActions(const TSharedRef<FKioskSession>& Session, bool bSideBySide)
+	{
+		const FKioskColors& C = KC();
+		const TSharedRef<bool> bPrinted = MakeShared<bool>(false);
+		const TSharedRef<bool> bEmailed = MakeShared<bool>(false);
+
+		TSharedRef<SWidget> PrintButton = SNew(SKioskButton)
+			.Kind(EKioskButtonKind::Outline)
+			.Label(KT("Print receipt"))
+			.ButtonTag(TEXT("Print receipt"))
+			.LeftIcon(EKioskIcon::Printer)
+			.OnClicked_Lambda([Session, bPrinted]() { *bPrinted = true; Session->NotifyChanged(); return FReply::Handled(); });
+		TSharedRef<SWidget> EmailButton = SNew(SKioskButton)
+			.Kind(EKioskButtonKind::Outline)
+			.Label(KT("Email receipt"))
+			.ButtonTag(TEXT("Email receipt"))
+			.LeftIcon(EKioskIcon::Mail)
+			.OnClicked_Lambda([Session, bEmailed]() { *bEmailed = true; Session->NotifyChanged(); return FReply::Handled(); });
+
+		TSharedRef<SWidget> Buttons = SNullWidget::NullWidget;
+		if (bSideBySide)
+		{
+			Buttons = SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 8.f, 0.f)[ PrintButton ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(8.f, 0.f, 0.f, 0.f)[ EmailButton ];
+		}
+		else
+		{
+			Buttons = SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ PrintButton ]
+				+ SVerticalBox::Slot().AutoHeight()[ EmailButton ];
+		}
+
+		return SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ Buttons ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
+			[
+				TextDyn([bPrinted, bEmailed]()
+				{
+					return *bPrinted ? KT("Your receipt is printing in the tray.")
+						: (*bEmailed ? KT("Enter your email on the next screen.") : FText::GetEmpty());
+				}, KioskType::Body, false, C.Muted)
+			];
+	}
+
+	TSharedRef<SWidget> ReturnCountdown(const TSharedRef<FKioskSession>& Session)
+	{
+		const FKioskColors& C = KC();
+		return SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().AutoHeight()
+				[
+					ProgressBar([Session]() { return Session->ReturnFractionLeft(); }, 0.f, 14.f, C.Disabled, C.Ink)
+				]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
+				[
+					TextDyn([Session]() { return FText::Format(KT("Returning to start in {0} s"), FText::AsNumber(Session->ReturnSecondsLeft())); }, KioskType::Caption, false, C.Muted)
+				]
+			]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)
+			[
+				SNew(SKioskButton)
+				.Kind(EKioskButtonKind::Outline)
+				.Label(KT("I need more time"))
+				.ButtonTag(TEXT("I need more time"))
+				.MaxWidth(420.f)
+				.OnClicked_Lambda([Session]() { Session->ExtendReturn(); return FReply::Handled(); })
 			];
 	}
 }

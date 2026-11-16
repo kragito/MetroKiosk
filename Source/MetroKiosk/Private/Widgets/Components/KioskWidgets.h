@@ -12,6 +12,8 @@
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
+class FKioskSession;
+
 namespace KioskUI
 {
 	TSharedRef<STextBlock> Text(const FText& Value, float Px, bool bBold = false, const FLinearColor& Color = KC().Ink,
@@ -78,4 +80,11 @@ namespace KioskUI
 
 	/** Rounded progress bar. Fraction is evaluated every frame. */
 	TSharedRef<SWidget> ProgressBar(TFunction<float()> Fraction, float Width, float Height, const FLinearColor& Track, const FLinearColor& Fill);
+
+	/** Print / Email receipt buttons plus the status line under them. Shared by the ticket receipt and the card-flow done screen.
+	 *  bSideBySide puts the two buttons in one row (for screens short on height); otherwise they stack. */
+	TSharedRef<SWidget> ReceiptActions(const TSharedRef<FKioskSession>& Session, bool bSideBySide = false);
+
+	/** "Returning to start in N s" progress bar and countdown text, with the "I need more time" button beside it. */
+	TSharedRef<SWidget> ReturnCountdown(const TSharedRef<FKioskSession>& Session);
 }
