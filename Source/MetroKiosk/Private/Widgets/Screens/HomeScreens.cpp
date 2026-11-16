@@ -155,7 +155,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Contactless, 48.f, C.Primary, 4.f) ], C.PrimaryTint, 47.f)
 			]
 		]
-		+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(28.f, 0.f, 24.f, 0.f)
+		+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(28.f, 14.f, 24.f, 14.f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Or place your Metro card on the reader below the screen to begin"), KioskType::H2, true, C.Ink, 1.f) ]
@@ -208,7 +208,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			+ SVerticalBox::Slot().AutoHeight()[ Rule(C.BorderStrong, 2.f) ]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SBox).HeightOverride(166.f)[ Banner ]
+				SNew(SBox).MinDesiredHeight(166.f)[ Banner ]
 			]
 		]
 	];

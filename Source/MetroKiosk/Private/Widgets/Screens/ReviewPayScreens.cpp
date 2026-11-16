@@ -258,7 +258,7 @@ namespace
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 6.f, 12.f, 0.f)[ Dot(C.Primary, 14.f) ]
 					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Where), KioskType::Caption, true, C.Muted, 1.1f) ]
 				]
-				+ SVerticalBox::Slot().FillHeight(1.f).VAlign(VAlign_Center).HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ HardwareDiagram(Mask(Where), 0.6f) ]
+				+ SVerticalBox::Slot().FillHeight(1.f).VAlign(VAlign_Bottom).HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ HardwareDiagram(Mask(Where), 0.6f) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ ActionBar(ButtonLabel) ]
 			],
 			C.Surface, C.BorderStrong, 2.f, FMargin(KioskLayout::CardPad));

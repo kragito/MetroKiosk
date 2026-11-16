@@ -234,10 +234,15 @@ TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()
 					[
 						TextWrap(KT("Are you still there?"), KioskType::H1, true, C.Ink, 1.f, ETextJustify::Center)
 					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Center)
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Fill)
 					[
-						TextDyn([S]() { return FText::Format(KT("Your purchase will be cancelled and the kiosk will reset in {0} s."), FText::AsNumber(S->IdlePromptSecondsLeft())); },
-							KioskType::Body, false, C.Ink, ETextJustify::Center)
+						// Wraps inside the dialog padding (long translations such as Tamil would otherwise run past it).
+						SNew(STextBlock)
+							.Text_Lambda([S]() { return FText::Format(KT("Your purchase will be cancelled and the kiosk will reset in {0} s."), FText::AsNumber(S->IdlePromptSecondsLeft())); })
+							.Font(FKioskStyle::Get().Font(KioskType::Body, false))
+							.ColorAndOpacity(C.Ink)
+							.AutoWrapText(true)
+							.Justification(ETextJustify::Center)
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 28.f, 0.f, 0.f)
 					[
