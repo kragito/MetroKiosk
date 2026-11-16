@@ -408,7 +408,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 						[
 							SNew(SVerticalBox)
 							+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Session->ReceiptValidText(), KioskType::Body, true, C.Ink, 1.1f) ]
-							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ TextWrap(FKioskSession::ValidityRule(State.Ticket), KioskType::Caption, false, C.Muted, 1.1f) ]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ State.Ticket == ETicketType::OneWay ? StaticCastSharedRef<SWidget>(SNew(SSpacer)) : StaticCastSharedRef<SWidget>(TextWrap(FKioskSession::ValidityRule(State.Ticket), KioskType::Caption, false, C.Muted, 1.1f)) ]
 						]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(12.f, 0.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->TicketTotalCents()), KioskType::H3, true, C.Ink) ]
 					]
