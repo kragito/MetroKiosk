@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Script,
     [Parameter(Mandatory = $true)][string]$Out,
     [int]$TimeoutSeconds = 300,
+    [switch]$NoBuild,            # run against the binaries as they are, even if sources are newer (other work in progress)
     [switch]$StealFocusForTest   # test aid: opens Notepad over the game so it is NOT the active window
 )
 
@@ -17,7 +18,9 @@ $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-MetroKiosk.dll"
 # A running editor is never touched. If the code changed and needs a rebuild, stop and say so.
 $editor = Get-Process UnrealEditor -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -notmatch "Preview" }
 $newestSource = Get-ChildItem (Join-Path $Root "Source") -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not (Test-Path $Dll) -or $newestSource.LastWriteTime -gt (Get-Item $Dll).LastWriteTime) {
+if ($NoBuild -and (Test-Path $Dll)) {
+    Write-Output "NoBuild: using the existing binaries."
+} elseif (-not (Test-Path $Dll) -or $newestSource.LastWriteTime -gt (Get-Item $Dll).LastWriteTime) {
     if ($editor) {
         Write-Output "STOP: the binaries are older than the sources and the editor is running. Close the editor (or run Tools\build.ps1, which closes it) and try again."
         exit 2
