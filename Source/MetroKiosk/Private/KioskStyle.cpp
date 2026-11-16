@@ -5,6 +5,7 @@
 #include "Fonts/CompositeFont.h"
 #include "Misc/Paths.h"
 #include "HAL/PlatformFileManager.h"
+#include "HAL/PlatformMisc.h"
 
 namespace
 {
@@ -45,18 +46,34 @@ namespace
 		}
 
 		{
-			// Tamil is not covered by the engine fonts; use the Windows system face (collection: regular, bold).
-			const FString Nirmala = TEXT("C:/Windows/Fonts/Nirmala.ttc");
-			if (!FPlatformFileManager::Get().GetPlatformFile().FileExists(*Nirmala))
+			// Tamil is not covered by the engine fonts; use the Windows system face. Windows 11 ships
+			// Nirmala.ttc (collection: regular, bold); Windows 10 ships Nirmala.ttf and NirmalaB.ttf.
+			FString WinDir = FPlatformMisc::GetEnvironmentVariable(TEXT("WINDIR"));
+			if (WinDir.IsEmpty())
 			{
-				UE_LOG(LogTemp, Warning, TEXT("Kiosk: Tamil font %s not found; Tamil text will not render"), *Nirmala);
+				WinDir = TEXT("C:/Windows");
+			}
+			const FString WinFonts = WinDir / TEXT("Fonts");
+			IPlatformFile& PF = FPlatformFileManager::Get().GetPlatformFile();
+			const FString NirmalaTtc = WinFonts / TEXT("Nirmala.ttc");
+			const FString NirmalaReg = WinFonts / TEXT("Nirmala.ttf");
+			const FString NirmalaBold = WinFonts / TEXT("NirmalaB.ttf");
+			const bool bTtc = PF.FileExists(*NirmalaTtc);
+			if (!bTtc && !PF.FileExists(*NirmalaReg))
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Kiosk: Tamil font Nirmala not found in %s; Tamil text will not render"), *WinFonts);
 			}
 			else
 			{
+				const FString RegPath = bTtc ? NirmalaTtc : NirmalaReg;
+				const FString BoldPath = bTtc ? NirmalaTtc : (PF.FileExists(*NirmalaBold) ? NirmalaBold : NirmalaReg);
 				FCompositeSubFont Tamil;
-				Tamil.Typeface.AppendFont(RegularName, Nirmala, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
-				Tamil.Typeface.AppendFont(BoldName, Nirmala, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
-				Tamil.Typeface.Fonts[1].Font.SetSubFaceIndex(1);
+				Tamil.Typeface.AppendFont(RegularName, RegPath, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				Tamil.Typeface.AppendFont(BoldName, BoldPath, EFontHinting::Default, EFontLoadingPolicy::LazyLoad);
+				if (bTtc)
+				{
+					Tamil.Typeface.Fonts[1].Font.SetSubFaceIndex(1);
+				}
 				Tamil.CharacterRanges.Add(FInt32Range(FInt32RangeBound::Inclusive(0x0B80), FInt32RangeBound::Inclusive(0x0BFF)));
 				Tamil.ScalingFactor = 0.9f;
 				Font->SubTypefaces.Add(Tamil);
