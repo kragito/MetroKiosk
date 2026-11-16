@@ -67,7 +67,7 @@ screen). Keep these clearly marked as simulation and not part of the real UI des
 | 3c | Map | 03c_map | A schematic metro map with tappable stations and a "You are here" marker at City Hall. Right: "Search for a place or station", the same summary card, an optional "Highlight one line" row (dims the other lines), "Open station list view", "Confirm destination". |
 | 3d | Destination selected | 03d_destination_selected | The summary card shows the place and its station ("Gardens by the Bay · near Bayfront"), "Take North-South Line → change at Marina Bay → Circle Line", "12 min · 1 change", "One-way: $1.64 per adult", a "Change" button, and the green "Confirm destination". |
 | 4 | Check your trip | 04_review | Left: ticket summary card ("One-way ticket" tag, Change link, From City Hall NS EW → To HarbourFront NE CC, dashed note "Valid for 2 hours after purchase. About 14 min on the Blue line."). Right: "Who is riding?" Adult $1.68 each, Child (5–17) $1.18 each · 30% off · under 5 ride free, Senior (65+) $1.18 each · 30% off, each with − count + steppers (− outlined, + navy). "Total · N rider(s)" with total amount, green "Go to payment →". Can't go below 0 riders total (at least 1 rider). |
-| 5 | Pay $X | 05_pay_method | 3 cards: "Tap card or phone" (Fastest tag, "Pay with card" navy), "Insert chip card" ("Pay with chip card/NETs"), "Pay with cash" ("Bills up to $20 and coins…", "Pay with cash"). Subtitle "Use any method below. The lit slot on the kiosk shows you where." and right-aligned summary "One-way · City Hall → Harbourfront · 1 adult". |
+| 5 | Pay $X | 05_pay_method | 3 cards: "Tap card or phone" (Fastest tag, "Pay with card" navy), "Insert chip card" ("Pay with chip card/NETs"), "Pay with cash" ("Notes up to $50 and coins…", "Pay with cash"). Subtitle "Use any method below. The lit slot on the kiosk shows you where." and right-aligned summary "One-way · City Hall → Harbourfront · 1 adult". |
 | 6a | Wait for card | 06_wait_tap_card | Pill "Paying **$1.64** · one-way to Bayfront", "Hold your card or phone on the reader", explanation of where the reader is, status pill "● Waiting for your card · 9:59 left" (a real countdown), 3 tips (phone unlock / one card only / NETS reader below). Right: illustration of the reader with "Bank card". |
 | 6b | Wait for chip card | 06_wait_chip_card | "Insert your card, chip first" with the chip-slot illustration "Chip first, facing up", "Chip slot · middle right". |
 | 6c | Wait for cash | 06_wait_cash | Panel: To pay / Put in / Still to pay (navy), progress bar, Notes $2 $5 $10, Coins 10¢ 20¢ 50¢ $1 (tapping simulates inserting money), tray note. Change is shown when overpaying. |
@@ -117,60 +117,6 @@ Fares come from one source of truth (`KioskRoutes.*`): the fastest route from Ci
   Review, Pay, Wait, Receipt and the scripted harness all use `FKioskSession::AdultFareCents()`.
 Places: about 60 real places (attractions, malls, hospitals, universities, the airport, hawker centres), each mapped
 to its nearest station in `KioskPlaces.cpp`, with a category, alias keywords and translated names.
-
-Station list: include at least ~40 real station names across the 6 lines (the map frame lists Boon Lay,
-Jurong East, Buona Vista, Outram Park, Raffles Place, Bugis, Paya Lebar, Tanah Merah,
-Tampines, Pasir Ris, Expo, Changi Airport, Woodlands, Yishun, Ang Mo Kio, Bishan,
-Newton, Orchard, Dhoby Ghaut, Marina Bay, Marina South Pier, HarbourFront, Chinatown,
-Little India, Serangoon, Sengkang, Punggol, Promenade, MacPherson, Caldecott,
-Botanic Gardens, Bukit Panjang, Beauty World, Woodlands North, Gardens by the Bay,
-Bayshore, Marsiling, Marymount, Marine Parade, Marine Terrace, Hume).
-Card: Student card •••• 4821, balance $3.20, Bus + Train pass ends 14 Nov 2026.
-
-## Technical architecture (Unreal Engine 5.8, C++)
-
-- Project `MetroKiosk` (C++ module `MetroKiosk`). The UI is **pure C++ Slate**
-  (`SCompoundWidget` subclasses, declarative `SNew` syntax), so it is fully code-reviewable with no
-  binary .uasset editing.
-- A `AKioskGameMode` (set as GlobalDefaultGameMode in DefaultEngine.ini) adds the root
-  `SKioskRoot` widget to the game viewport on BeginPlay, shows the mouse cursor, and
-  uses UI-only input.
-- Fixed 1917×1105 design canvas inside `SScaleBox` (ScaleToFit), so it renders identically at any window size.
-- A central `FKioskStyle` (tokens, fonts, brushes with rounded corners via
-  `FSlateRoundedBoxBrush`) is used by every widget. No hardcoded colours outside it.
-- A `FKioskState`/session model (flow type, ticket type, destination, riders, amount, cash inserted,
-  language, previous screen for help) plus a simple navigator (screen enum + history stack for Back,
-  Start over resets the session).
-- Reusable components: header, step bar, footer, primary/secondary/outlined buttons, line badge,
-  option card, stepper, tag/pill.
-- Localisation: all user-facing strings via `NSLOCTEXT`/`LOCTEXT`. Switching language must at least
-  change the static chrome strings (provide a small in-code string table for 中文 / Melayu / தமிழ்
-  for chrome and main headings; full translation is not required, but nothing may break).
-  CJK and Tamil glyphs must render (use a fallback font that covers them; check
-  `Engine/Content/Slate/Fonts` and the engine's default composite font).
-- **Review/QA hooks** (required):
-  - `-KioskScreen=<ScreenName>` command-line arg opens directly to that screen with sample state.
-  - `-KioskCaptureAll=<absolute dir>` cycles every screen (and key states such as destination
-    selected, cash part-paid, processing, other language), saves a PNG per screen named
-    `NN_<ScreenName>.png` via `FScreenshotRequest`, then quits. Used by the UX reviewer.
-  - Run with: `UnrealEditor.exe <uproject> -game -windowed -ResX=1917 -ResY=1105 -KioskCaptureAll=<dir>`.
-
-## Tooling (build, run, and Unreal MCP)
-
-- Build (closes the editor first, since Live Coding blocks external builds):
-  `powershell -File Tools/build.ps1` (add `-Relaunch` to reopen the editor and wait for MCP).
-- Launch editor + wait for MCP: `powershell -File Tools/launch_editor.ps1`.
-- Unreal MCP server: `http://localhost:8000/mcp` (Epic's ModelContextProtocol plugin,
-  auto-starts with the editor). CLI bridge usable from Bash:
-  - `python Tools/ue_mcp.py toolsets`
-  - `python Tools/ue_mcp.py describe SlateInspectorToolset.SlateInspectorToolset`
-  - `python Tools/ue_mcp.py call EditorToolset.EditorAppToolset StartPIE '{"options":{"bSimulate":false,"playMode":"PlayMode_InEditorFloating","warmupSeconds":2}}'`
-  - `python Tools/ue_mcp.py call SlateInspectorToolset.SlateInspectorToolset Snapshot '{"ref":""}'`
-    (then `Click` with a ref, `Screenshot` with `--out file.png`, `WaitFor`, `Type`, `PressKey`)
-  - `python Tools/ue_mcp.py call EditorToolset.LogsToolset <tool> '{...}'` for the output log
-  - `python Tools/ue_mcp.py call EditorToolset.EditorAppToolset StopPIE '{}'`
-- Give interactive widgets meaningful `.Tag()` / `ToolTipText` / accessible text so the Slate
-  inspector snapshot shows readable names (for example the button's label).
 
 Station list: include at least ~40 real station names across the 6 lines (the map frame lists Boon Lay,
 Jurong East, Buona Vista, Outram Park, Raffles Place, Bugis, Paya Lebar, Tanah Merah,
