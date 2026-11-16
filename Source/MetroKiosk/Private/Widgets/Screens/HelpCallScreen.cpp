@@ -40,7 +40,7 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 
 	const FText Caption = (Session->State.Flow == EKioskFlow::Ticket && Stations.IsValidIndex(Session->State.Destination))
 		? FText::Format(KT("Hi, I can see you're buying a {0} ticket to {1}. How can I help?"),
-			FText::FromString(Session->TicketLabel().ToString().ToLower()), FText::FromString(Stations[Session->State.Destination].Name))
+			FText::FromString(Session->TicketLabel().ToString().ToLower()), Session->DestinationLabel())
 		: KT("Hi, I can see you're in the middle of a purchase. How can I help?");
 
 	TSharedRef<SWidget> Video = Panel(

@@ -584,7 +584,14 @@ FText FKioskSession::TicketLabel() const
 FText FKioskSession::DestinationLabel() const
 {
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
-	return Stations.IsValidIndex(State.Destination) ? FText::FromString(Stations[State.Destination].Name) : KT("Destination");
+	if (!Stations.IsValidIndex(State.Destination))
+	{
+		return KT("Destination");
+	}
+	// The one place a destination name is turned into text: active-language name, English when there is none.
+	const FString& English = Stations[State.Destination].Name;
+	const FString Local = FKioskPlaces::LocalName(English);
+	return FText::FromString(Local.IsEmpty() ? English : Local);
 }
 
 FText FKioskSession::RiderSummary() const
@@ -824,16 +831,13 @@ FKioskStepInfo FKioskSession::StepInfo() const
 		FText DestinationStep = KT("Destination");
 		if (Info.Current > 2)
 		{
-			const TArray<FKioskStation>& Stations = FKioskData::Stations();
 			if (State.Ticket == ETicketType::DayPass)
 			{
 				DestinationStep = KT("All lines");
 			}
-			else if (Stations.IsValidIndex(State.Destination))
+			else if (FKioskData::Stations().IsValidIndex(State.Destination))
 			{
-				const FString& English = Stations[State.Destination].Name;
-				const FString Local = FKioskPlaces::LocalName(English);
-				DestinationStep = FText::FromString(Local.IsEmpty() ? English : Local);
+				DestinationStep = DestinationLabel();
 			}
 		}
 		Info.Labels.Add(DestinationStep);
