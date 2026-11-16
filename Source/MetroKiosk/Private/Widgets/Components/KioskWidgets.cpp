@@ -178,11 +178,11 @@ namespace KioskUI
 	{
 		switch (Which)
 		{
-		case EHardware::MetroReader: return KT("Metro card reader · below the screen, left");
-		case EHardware::Contactless: return KT("Contactless reader · right of the screen, top");
-		case EHardware::ChipSlot: return KT("Chip and NETS slot, PIN pad · right of the screen, middle");
-		case EHardware::CashSlots: return KT("Note and coin slots · right of the screen, lower down");
-		default: return KT("Collection tray · below the screen, centre");
+		case EHardware::MetroReader: return KT("Metro card reader · below the screen, right of centre");
+		case EHardware::Contactless: return KT("Contactless reader · right column, top");
+		case EHardware::ChipSlot: return KT("Chip and NETS slot, PIN pad · right column, middle");
+		case EHardware::CashSlots: return KT("Note and coin slots · right column, bottom");
+		default: return KT("Collection tray · below the screen, left");
 		}
 	}
 
@@ -210,8 +210,8 @@ namespace KioskUI
 			+ SOverlay::Slot()[ Part(EHardware::Contactless, FVector2D(304.f, 20.f), FVector2D(72.f, 46.f), EKioskIcon::Contactless, 30.f, 10.f) ]
 			+ SOverlay::Slot()[ Part(EHardware::ChipSlot, FVector2D(304.f, 74.f), FVector2D(72.f, 46.f), EKioskIcon::ChipCard, 30.f, 10.f) ]
 			+ SOverlay::Slot()[ Part(EHardware::CashSlots, FVector2D(304.f, 128.f), FVector2D(72.f, 42.f), EKioskIcon::Cash, 28.f, 10.f) ]
-			+ SOverlay::Slot()[ Part(EHardware::MetroReader, FVector2D(24.f, 184.f), FVector2D(92.f, 34.f), EKioskIcon::Contactless, 24.f, 10.f) ]
-			+ SOverlay::Slot()[ Part(EHardware::Tray, FVector2D(138.f, 184.f), FVector2D(94.f, 34.f), EKioskIcon::Tray, 24.f, 10.f) ];
+			+ SOverlay::Slot()[ Part(EHardware::MetroReader, FVector2D(176.f, 184.f), FVector2D(110.f, 34.f), EKioskIcon::Contactless, 24.f, 17.f) ]
+			+ SOverlay::Slot()[ Part(EHardware::Tray, FVector2D(24.f, 184.f), FVector2D(124.f, 34.f), EKioskIcon::Tray, 24.f, 10.f) ];
 
 		return SNew(SBox).WidthOverride(W * Scale).HeightOverride(H * Scale)
 		[

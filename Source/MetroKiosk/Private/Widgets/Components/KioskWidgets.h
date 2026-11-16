@@ -50,8 +50,8 @@ namespace KioskUI
 	TSharedRef<SWidget> ChangeButton(FOnClicked OnClicked, const FName& Tag = TEXT("Change"));
 
 	/** Parts of the kiosk front that the UI points at. Physical layout (single source of truth):
-	 *  metro card reader below the screen (left), contactless reader right (top), chip/NETS slot + PIN pad right (middle),
-	 *  note and coin slots right (lower), collection tray below the screen (centre). */
+	 *  collection tray below the screen (left), metro card reader below the screen (right of centre, the bowl the card rests on),
+	 *  right column top to bottom: contactless reader, chip/NETS slot + PIN pad, note and coin slots. */
 	enum class EHardware : uint32
 	{
 		MetroReader = 1 << 0,
@@ -62,7 +62,7 @@ namespace KioskUI
 	};
 	inline uint32 Mask(EHardware A) { return static_cast<uint32>(A); }
 	inline uint32 Mask(EHardware A, EHardware B) { return static_cast<uint32>(A) | static_cast<uint32>(B); }
-	/** One-line location for a device, e.g. "Metro card reader · below the screen, left". */
+	/** One-line location for a device, e.g. "Collection tray · below the screen, left". */
 	FText HardwareName(EHardware Which);
 	/** Small kiosk-front diagram with the given parts lit green. */
 	TSharedRef<SWidget> HardwareDiagram(uint32 HighlightMask, float Scale = 1.f);

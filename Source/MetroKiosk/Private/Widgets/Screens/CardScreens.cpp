@@ -84,7 +84,7 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 50.f, 0.f, 0.f)[ TextWrap(KT("Place your Metro card on the reader"), KioskType::H1, true, C.Ink) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
 			[
-				TextWrap(KT("The Metro card reader is below the screen, on the left. It glows green when it's ready. Hold the card still until this screen changes."), KioskType::Body, false, C.Ink, 1.2f)
+				TextWrap(KT("The Metro card reader is the curved bowl below the screen, right of centre. Rest the card on it. It glows green when it's ready. Hold the card still until this screen changes."), KioskType::Body, false, C.Ink, 1.2f)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[

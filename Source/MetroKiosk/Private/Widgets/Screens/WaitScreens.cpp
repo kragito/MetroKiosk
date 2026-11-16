@@ -242,21 +242,21 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 	if (bCash)
 	{
 		Heading = KT("Insert notes or coins");
-		Body = KT("The note and coin slots are on the right of the screen, lower down. Their lights are flashing green. The total updates as each note or coin goes in.");
+		Body = KT("The note and coin slots are in the right column, at the bottom. Their lights are flashing green. The total updates as each note or coin goes in.");
 		Tips = { KT("Notes: $2, $5, $10 or $50. Coins: 10¢, 20¢, 50¢ or $1."), KT("Overpaying is fine. Change comes out in the tray.") };
 		Lit = Mask(EHardware::CashSlots, EHardware::Tray);
 	}
 	else if (bChip)
 	{
 		Heading = KT("Insert your card, chip first");
-		Body = KT("The chip slot is on the right of the screen, in the middle. Its light is flashing green. Push the card in, chip facing up, until it stops.");
+		Body = KT("The chip slot is in the right column, in the middle. Its light is flashing green. Push the card in, chip facing up, until it stops.");
 		Tips = { KT("Leave the card in until the screen tells you to take it."), KT("You may be asked for your PIN on the pad beside the slot."), KT("Contactless card? Tapping is faster.") };
 		Lit = Mask(EHardware::ChipSlot);
 	}
 	else
 	{
 		Heading = KT("Hold your card or phone on the reader");
-		Body = KT("The contactless reader is on the right of the screen, at the top. Its ring is glowing green now. Hold your card flat on it until you hear a beep.");
+		Body = KT("The contactless reader is in the right column, at the top. Its ring is glowing green now. Hold your card flat on it until you hear a beep.");
 		Tips = { KT("Tap one card only. Take it out of your wallet so the wrong card isn't charged."), KT("Paying by phone? Unlock it first."), KT("NETS card? Use the chip and NETS slot, below the contactless reader.") };
 		Lit = Mask(EHardware::Contactless);
 	}
