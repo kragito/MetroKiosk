@@ -116,14 +116,16 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		{
 			const FString Text = KT("You are here").ToString();
 			const float TextWidth = FontMeasure->Measure(Text, MarkerFont).X;
-			const FVector2f BoxSize(TextWidth + 22.f, 32.f);
-			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f);
+			// Measured width can undershoot the shaped width of complex scripts (Tamil), so leave ~6% slack and centre the text.
+			const float Slack = TextWidth * 0.06f;
+			const FVector2f BoxSize(TextWidth + Slack + 22.f, 32.f);
+			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f - 14.f); // sits above-left so it never covers the Chinatown label
 			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
 				ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
 			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
-				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f, 5.f))),
+				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f + Slack * 0.5f, 5.f))),
 				Text, MarkerFont, ESlateDrawEffect::None, C.White);
 		}
 		else if (!bDim && (bSelected || bInterchange || bOnFilter || bLit || Zoom > 1.2f))

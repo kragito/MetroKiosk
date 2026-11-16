@@ -36,7 +36,7 @@ namespace
 			if (!Route.Legs.IsEmpty() && LastNode != INDEX_NONE && (LastNode % (FKioskData::NumLines * MaxServices)) == (Node % (FKioskData::NumLines * MaxServices)))
 			{
 				Route.Legs.Last().ToStation = StationOf(Node);
-					++Route.Legs.Last().Stops;
+				++Route.Legs.Last().Stops;
 			}
 			else
 			{

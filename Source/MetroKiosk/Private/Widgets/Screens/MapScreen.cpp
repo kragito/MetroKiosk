@@ -99,7 +99,7 @@ namespace
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(Label, KioskType::Caption, false, C.Muted) ]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(14.f, 0.f, 12.f, 0.f)
 				[
-					TextWrap(FKioskPlaces::StationLabel(Station.Name), KioskType::H3, true, C.Ink)
+					TextWrap(FKioskPlaces::StationLabel(Station.Name), KioskType::Body, true, C.Ink)
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ LineBadges(Station.LineMask) ];
 		};
@@ -111,7 +111,7 @@ namespace
 		TSharedRef<SVerticalBox> Legs = SNew(SVerticalBox);
 		for (int32 Index = 0; Index < Route.Legs.Num(); ++Index)
 		{
-			Legs->AddSlot().AutoHeight().Padding(0.f, Index == 0 ? 0.f : 12.f, 0.f, 0.f)
+			Legs->AddSlot().AutoHeight().Padding(0.f, Index == 0 ? 0.f : 8.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 2.f, 14.f, 0.f)[ LineBadge(Route.Legs[Index].Line) ]
@@ -126,7 +126,7 @@ namespace
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()[ EndRow(KT("From"), Here) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ EndRow(KT("To"), There) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 12.f)[ Rule(C.BorderStrong, 2.f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 8.f)[ Rule(C.BorderStrong, 2.f) ]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
@@ -136,8 +136,8 @@ namespace
 					Text(FKioskSession::Money(Session->AdultFareCents()), KioskType::Body, true, C.Ink)
 				]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ Legs ],
-			C.Surface, C.Ink, 3.f, FMargin(26.f, 20.f));
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ Legs ],
+			C.Surface, C.Ink, 3.f, FMargin(26.f, 14.f));
 	}
 }
 
@@ -145,6 +145,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 {
 	const FKioskColors& C = KC();
 	const bool bKeyboard = Session->State.bKeyboardOpen;
+	const bool bSelected = FKioskData::Stations().IsValidIndex(Session->State.Destination);
 	const TSet<int32> Lit = MatchingStations(Session->State);
 	const bool bTyped = !FKioskSearch::Normalize(Session->State.SearchText).IsEmpty();
 
@@ -193,17 +194,22 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 	else
 	{
 		Right->AddSlot().AutoHeight()[ TextWrap(KT("Where are you going?"), KioskType::H1, true, C.Ink) ];
-		Right->AddSlot().AutoHeight().Padding(4.f, 8.f, 0.f, 0.f)
+		if (!bSelected)
+		{
+			// Once a route is showing, the card needs the room more than the typing hint does.
+			Right->AddSlot().AutoHeight().Padding(4.f, 8.f, 0.f, 0.f)
+			[
+				TextWrap(KT("A keyboard will popup. The list narrows with every letter you type."), KioskType::Caption, false, C.Muted, 1.1f)
+			];
+		}
+		Right->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ KioskDest::SearchField(Session, KT("Find station on the map")) ];
+		Right->AddSlot().FillHeight(1.f).Padding(0.f, 14.f, 0.f, 0.f)
 		[
-			TextWrap(KT("A keyboard will popup. The list narrows with every letter you type."), KioskType::Caption, false, C.Muted, 1.1f)
-		];
-		Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::SearchField(Session, KT("Find station on the map")) ];
-		Right->AddSlot().FillHeight(1.f).Padding(0.f, 20.f, 0.f, 0.f)
-		[
-			SNew(SScrollBox).ScrollBarVisibility(EVisibility::Collapsed)
+			// Takes the height it needs; scrolls (with the usual scroll bar as the cue) only for an unusually long route.
+			SNew(SScrollBox)
 			+ SScrollBox::Slot()[ RouteCard(Session) ]
 		];
-		Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Left)
+		Right->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f).HAlign(HAlign_Left)
 		[
 			SNew(SKioskButton)
 			.Kind(EKioskButtonKind::Outline)
@@ -215,7 +221,7 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 			.OnClicked_Lambda([Session]() { Session->ShowDestinationList(); return FReply::Handled(); })
 		];
 	}
-	Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::ConfirmButton(Session) ];
+	Right->AddSlot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ KioskDest::ConfirmButton(Session) ];
 
 	ChildSlot
 	.Padding(KioskLayout::PageX, 26.f, KioskLayout::PageX, 30.f)
@@ -224,41 +230,48 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 		+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 40.f, 0.f)
 		[
 			Panel(
-				SNew(SOverlay)
-				+ SOverlay::Slot()
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot().FillHeight(1.f)
 				[
-					SNew(SKioskMap)
-					.SelectedStation(Session->State.Destination)
-					.Zoom(Session->MapZoom)
-					.Session(Session)
-					.LitStations(Lit)
-					.bDimOthers(!Lit.IsEmpty())
-					.OnStationTapped(FOnKioskStationTapped::CreateLambda([Session](int32 Index) { Session->SelectDestination(Index); }))
-				]
-				+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Top).Padding(22.f, 22.f, 22.f, 0.f)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left).Padding(0.f, 0.f, 16.f, 0.f)[ CountNote ]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
+					SNew(SOverlay)
+					+ SOverlay::Slot()
 					[
-						Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), KioskType::Caption, true, C.Ink), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(24.f, 16.f))
+						SNew(SKioskMap)
+						.SelectedStation(Session->State.Destination)
+						.Zoom(Session->MapZoom)
+						.Session(Session)
+						.LitStations(Lit)
+						.bDimOthers(!Lit.IsEmpty())
+						.OnStationTapped(FOnKioskStationTapped::CreateLambda([Session](int32 Index) { Session->SelectDestination(Index); }))
+					]
+					+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Top).Padding(22.f, 22.f, 22.f, 0.f)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left).Padding(0.f, 0.f, 16.f, 0.f)[ CountNote ]
+						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
+						[
+							Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), KioskType::Caption, true, C.Ink), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(24.f, 16.f))
+						]
 					]
 				]
-				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(22.f, 0.f, 0.f, 22.f)
-				[
-					Panel(LineHighlighter(Session), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(18.f, 14.f))
-				]
-				+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 22.f, 22.f)
+				// A strip of its own under the drawing: the highlighter and zoom buttons never overlap a station.
+				+ SVerticalBox::Slot().AutoHeight().Padding(18.f, 4.f, 18.f, 12.f)
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()[ ZoomButton(EKioskIcon::Plus, KT("Zoom in"), 0.5f) ]
-					+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ ZoomButton(EKioskIcon::Minus, KT("Zoom out"), -0.5f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
+					[
+						Panel(LineHighlighter(Session), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(18.f, 8.f))
+					]
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)[ ZoomButton(EKioskIcon::Plus, KT("Zoom in"), 0.5f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom).Padding(12.f, 0.f, 0.f, 0.f)[ ZoomButton(EKioskIcon::Minus, KT("Zoom out"), -0.5f) ]
 				],
 				C.Surface, KioskLayout::CardRadius, C.BorderStrong, 2.f, FMargin(2.f))
 		]
 		+ SHorizontalBox::Slot().AutoWidth()
 		[
-			SNew(SBox).WidthOverride(680.f)
+			// The on-screen keyboard is 850 px wide (ten 76 px keys), so the column widens while it is open.
+			SNew(SBox).WidthOverride(bKeyboard ? 880.f : 680.f)
 			[
 				Right
 			]
