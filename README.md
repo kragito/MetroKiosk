@@ -32,6 +32,8 @@ The kiosk UI is hosted by `AKioskGameMode`, which is the project's default game 
 - `-KioskCaptureAll=<absolute dir>` saves a PNG of every screen and state (including destination: empty, search "garden",
   typo "harbor frnt", "Did you mean", place selected, 中文 and தமிழ்), then quits.
   `powershell -File Tools/capture.ps1` runs it into `Saved/Captures`.
+- `-KioskCaptureRes=WIDTHxHEIGHT` makes captures use that window size instead of 1917x1105 (the canvas scales to fit);
+  `Tools/capture.ps1 -ResX 1280 -ResY 720 -Out Saved\Captures_1280x720` passes it for you.
 
 ## Scripted journeys (no editor, no PIE)
 A UX tester can drive the app headlessly from the command line. It runs the standalone game, sends real

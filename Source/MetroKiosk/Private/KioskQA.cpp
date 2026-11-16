@@ -107,24 +107,37 @@ void FKioskQARunner::Shutdown()
 
 bool FKioskQARunner::EnsureCaptureResolution()
 {
-	// Captures are always the 1917x1105 design size regardless of how the OS sized the window.
+	// Captures use the 1917x1105 design size unless -KioskCaptureRes=WIDTHxHEIGHT asks for another.
 	if (!GEngine || !GEngine->GameViewport || !GEngine->GameViewport->Viewport)
 	{
 		return true;
 	}
+	int32 TargetX = 1917;
+	int32 TargetY = 1105;
+	FString ResArg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("-KioskCaptureRes="), ResArg))
+	{
+		FString XStr, YStr;
+		if (ResArg.Split(TEXT("x"), &XStr, &YStr, ESearchCase::IgnoreCase) && XStr.IsNumeric() && YStr.IsNumeric()
+			&& FCString::Atoi(*XStr) > 0 && FCString::Atoi(*YStr) > 0)
+		{
+			TargetX = FCString::Atoi(*XStr);
+			TargetY = FCString::Atoi(*YStr);
+		}
+	}
 	const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
-	if (Size.X == 1917 && Size.Y == 1105)
+	if (Size.X == TargetX && Size.Y == TargetY)
 	{
 		return true;
 	}
 	if (++ResizeAttempts > 60)
 	{
-		UE_LOG(LogKioskQA, Warning, TEXT("Could not resize viewport to 1917x1105 (now %dx%d); capturing anyway"), Size.X, Size.Y);
+		UE_LOG(LogKioskQA, Warning, TEXT("Could not resize viewport to %dx%d (now %dx%d); capturing anyway"), TargetX, TargetY, Size.X, Size.Y);
 		return true;
 	}
 	if (ResizeAttempts % 10 == 1)
 	{
-		GEngine->Exec(GEngine->GameViewport->GetWorld(), TEXT("r.SetRes 1917x1105w"));
+		GEngine->Exec(GEngine->GameViewport->GetWorld(), *FString::Printf(TEXT("r.SetRes %dx%dw"), TargetX, TargetY));
 	}
 	return false;
 }
