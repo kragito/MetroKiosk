@@ -15,6 +15,15 @@ namespace
 	const FVector2f GMapMin(40.f, 20.f);
 	const FVector2f GMapMax(930.f, 580.f);
 	constexpr float HitRadius = 30.f;
+	constexpr float SlackDefault = 0.06f; // measured text width can undershoot the shaped width, so leave this fraction spare
+	constexpr float SlackTamil = 0.14f;   // the "You are here" pill in Tamil only; its text shaped tight at 6%
+	constexpr float MarkerNearGap = 12.f; // "You are here" pill stays this close to its dot unless a leader line joins them
+
+	/** Extra width to add to a measured text width so shaped text fits; callers centre the text inside it. */
+	float TextSlack(float MeasuredWidth, bool bTamilWider = false)
+	{
+		return MeasuredWidth * ((bTamilWider && FKioskLoc::GetLanguage() == EKioskLanguage::Tamil) ? SlackTamil : SlackDefault);
+	}
 
 	/** A station label waiting for collision-free placement. */
 	struct FPendingLabel
@@ -101,6 +110,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	TArray<FSlateRect> Placed;     // rectangles already taken, in local space
 	TArray<bool> DotFull; // parallel to DotRects: true when the dot is drawn at full strength (not dimmed)
 	TArray<TPair<int32, FSlateRect>> DotRects; // every station dot (with 2 px margin); a label's own dot does not block it
+	FVector2f HerePos = FVector2f::ZeroVector; // "You are here" dot; the marker is placed once every dot is known
+	float HereDraw = 0.f;
+	int32 HereIndex = INDEX_NONE;
 	for (int32 Index = 0; Index < Stations.Num(); ++Index)
 	{
 		const FKioskStation& Station = Stations[Index];
@@ -136,20 +148,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		// City Hall shows the "You are here" marker instead of a plain label.
 		if (bHere)
 		{
-			const FString Text = KT("You are here").ToString();
-			const float TextWidth = FontMeasure->Measure(Text, MarkerFont).X;
-			// Measured width can undershoot the shaped width of complex scripts (Tamil), so leave ~6% slack and centre the text.
-			const float Slack = TextWidth * 0.06f;
-			const FVector2f BoxSize(TextWidth + Slack + 22.f, 32.f);
-			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f - 14.f); // sits above-left so it never covers the Chinatown label
-			Placed.Add(FSlateRect(BoxPos.X, BoxPos.Y, BoxPos.X + BoxSize.X, BoxPos.Y + BoxSize.Y));
-			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
-			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
-				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
-				ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
-				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f + Slack * 0.5f, 5.f))),
-				Text, MarkerFont, ESlateDrawEffect::None, C.White);
+			HerePos = Pos;
+			HereDraw = Draw;
+			HereIndex = Index;
 		}
 		else if (!bDim && (bSelected || bInterchange || bOnFilter || bLit || Zoom > 1.2f))
 		{
@@ -164,8 +165,8 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			const FString Local = FKioskPlaces::LocalName(Station.Name);
 			Label.Text = Local.IsEmpty() ? Station.Name : Local;
 			const float TextWidth = FontMeasure->Measure(Label.Text, LabelFont).X;
-			// Same ~6% slack as the "You are here" marker: Tamil shapes wider than it measures.
-			Label.Slack = TextWidth * 0.06f;
+			// Station labels use the default slack in every language (no Tamil clipping seen at 6%).
+			Label.Slack = TextSlack(TextWidth);
 			Label.Width = TextWidth + Label.Slack;
 			Label.bPreferLeft = LeftLabels.Contains(Station.Name);
 			Label.bSelected = bSelected;
@@ -173,6 +174,143 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			Label.Priority = bSelected ? 0 : (bLit ? 1 : (bOnFilter ? 2 : (bInterchange ? 3 : 4)));
 			Pending.Add(Label);
 		}
+	}
+
+	// "You are here" marker instead of a plain City Hall label. Default spot is above-left (never covers the Chinatown
+	// label); when a wider translation would cover another station dot there, try the other spots around the dot.
+	if (HereIndex != INDEX_NONE)
+	{
+		const FString Text = KT("You are here").ToString();
+		const float TextWidth = FontMeasure->Measure(Text, MarkerFont).X;
+		const float Slack = TextSlack(TextWidth, true); // the marker alone gets the wider Tamil slack; centre the text inside the slack
+		const FVector2f BoxSize(TextWidth + Slack + 22.f, 32.f);
+		const float Up = -BoxSize.Y * 0.5f - 14.f;
+		const FVector2f Default(-HereDraw - 8.f - BoxSize.X, Up);
+		// The default spot is kept unless it hides a station dot's centre (so languages that fit today do not move).
+		auto HidesDotCentre = [&](const FVector2f& Off)
+		{
+			const FVector2f Try = HerePos + Off;
+			const FSlateRect Inner(Try.X + 6.f, Try.Y + 6.f, Try.X + BoxSize.X - 6.f, Try.Y + BoxSize.Y - 6.f);
+			for (const TPair<int32, FSlateRect>& Dot : DotRects)
+			{
+				if (Dot.Key != HereIndex && Inner.ContainsPoint(Dot.Value.GetCenter()))
+				{
+					return true;
+				}
+			}
+			return false;
+		};
+		FVector2f BoxPos = HerePos + Default;
+		bool bLeader = false;
+		if (HidesDotCentre(Default))
+		{
+			// Candidate offsets: a grid around the dot, nearest to the default first. Built only when the default is blocked.
+			TArray<FVector2f> Offsets;
+			for (float Dy = -90.f; Dy <= 60.f; Dy += 6.f)
+			{
+				for (float Dx = -BoxSize.X - HereDraw - 90.f; Dx <= HereDraw + 90.f; Dx += 6.f)
+				{
+					Offsets.Add(FVector2f(Dx, Dy));
+				}
+			}
+			Offsets.StableSort([&Default](const FVector2f& A, const FVector2f& B)
+				{ return FVector2f::DistSquared(A, Default) < FVector2f::DistSquared(B, Default); });
+			const FSlateRect Bounds(0.f, 0.f, Size.X, Size.Y);
+			// Note: the hint bar, legend and zoom buttons are separate overlay widgets whose rects are not known here, so
+			// they are not avoided; the search window is small and stays near the dot, well clear of them at the default zoom.
+			auto BoxRect = [&](const FVector2f& Off)
+			{
+				const FVector2f Try = HerePos + Off;
+				return FSlateRect(Try.X, Try.Y, Try.X + BoxSize.X, Try.Y + BoxSize.Y);
+			};
+			auto InsideWidget = [&](const FVector2f& Off)
+			{
+				const FSlateRect R = BoxRect(Off);
+				return R.Left >= Bounds.Left && R.Top >= Bounds.Top && R.Right <= Bounds.Right && R.Bottom <= Bounds.Bottom;
+			};
+			auto TouchesDot = [&](const FVector2f& Off)
+			{
+				const FSlateRect R = BoxRect(Off);
+				for (const TPair<int32, FSlateRect>& Dot : DotRects)
+				{
+					// The marker's own dot only needs its drawn radius kept clear.
+					const FSlateRect Dr = Dot.Key == HereIndex
+						? FSlateRect(HerePos.X - HereDraw, HerePos.Y - HereDraw, HerePos.X + HereDraw, HerePos.Y + HereDraw) : Dot.Value;
+					if (FSlateRect::DoRectanglesIntersect(R, Dr))
+					{
+						return true;
+					}
+				}
+				return false;
+			};
+			// Distance from a point to the box placed at Off.
+			auto DistToBox = [&](const FVector2f& Off, const FVector2f& P)
+			{
+				const FSlateRect R = BoxRect(Off);
+				const float Dx = FMath::Max3(R.Left - P.X, 0.f, P.X - R.Right);
+				const float Dy = FMath::Max3(R.Top - P.Y, 0.f, P.Y - R.Bottom);
+				return FMath::Sqrt(Dx * Dx + Dy * Dy);
+			};
+			// True when the leader segment (dot to nearest box point) passes through another station dot.
+			auto LeaderCrossesDot = [&](const FVector2f& Off)
+			{
+				const FSlateRect R = BoxRect(Off);
+				const FVector2f End(FMath::Clamp(HerePos.X, R.Left, R.Right), FMath::Clamp(HerePos.Y, R.Top, R.Bottom));
+				const FVector2f D = End - HerePos;
+				const float Len2 = D.SizeSquared();
+				for (const TPair<int32, FSlateRect>& Dot : DotRects)
+				{
+					if (Dot.Key == HereIndex)
+					{
+						continue;
+					}
+					const FVector2f Ctr = Dot.Value.GetCenter();
+					const float T = Len2 > 0.f ? FMath::Clamp(FVector2f::DotProduct(Ctr - HerePos, D) / Len2, 0.f, 1.f) : 0.f;
+					// The dot rect already carries a 2 px margin, so half its width is the dot radius + 2.
+					if (FVector2f::Distance(Ctr, HerePos + D * T) < Dot.Value.GetSize().X * 0.5f)
+					{
+						return true;
+					}
+				}
+				return false;
+			};
+			// Tiers, nearest to the default first within each:
+			// 0: inside the widget, touches no dot, within MarkerNearGap of the dot (no leader line needed).
+			// 1: inside the widget, touches no dot, further out; a leader line joins it to the dot and crosses no other dot.
+			// 2: last resort when nothing above exists: touches no dot, but may leave the widget or cross a dot with its leader.
+			// A neighbour dot can be closer to the pill than City Hall's own dot; the leader line is what ties them together.
+			bool bFound = false;
+			for (int32 Tier = 0; Tier < 3 && !bFound; ++Tier)
+			{
+				for (const FVector2f& Off : Offsets)
+				{
+					const float Gap = DistToBox(Off, HerePos) - HereDraw;
+					if (TouchesDot(Off) || (Tier < 2 && !InsideWidget(Off)) || (Tier == 0 && Gap > MarkerNearGap)
+						|| (Tier < 2 && Gap > MarkerNearGap && LeaderCrossesDot(Off)))
+					{
+						continue;
+					}
+					BoxPos = HerePos + Off;
+					bLeader = Gap > MarkerNearGap;
+					bFound = true;
+					break;
+				}
+			}
+		}
+		if (bLeader)
+		{
+			const FVector2f Nearest(FMath::Clamp(HerePos.X, BoxPos.X, BoxPos.X + BoxSize.X), FMath::Clamp(HerePos.Y, BoxPos.Y, BoxPos.Y + BoxSize.Y));
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 4, Paint, TArray<FVector2f>{ HerePos, Nearest },
+				ESlateDrawEffect::None, C.Help, true, 2.f);
+		}
+		Placed.Add(FSlateRect(BoxPos.X, BoxPos.Y, BoxPos.X + BoxSize.X, BoxPos.Y + BoxSize.Y));
+		const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
+		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
+			AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
+			ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
+		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
+			AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f + Slack * 0.5f, 5.f))),
+			Text, MarkerFont, ESlateDrawEffect::None, C.White);
 	}
 
 	// Label collision avoidance: highest priority first (stable by station index), first free candidate wins.
