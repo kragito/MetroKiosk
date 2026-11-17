@@ -13,10 +13,11 @@ using namespace KioskUI;
 
 namespace
 {
+
 	/** Wrapping text for names: long names go to a second line rather than being cut off. */
 	TSharedRef<SWidget> Ellipsis(const FText& Value, float Px, bool bBold, const FLinearColor& Color)
 	{
-		return TextWrap(Value, Px, bBold, Color, 1.f);
+		return TextWrap(Value, Px, bBold, Color, KioskType::LineCompact);
 	}
 
 	/** Single-line text that ends in an ellipsis (only for what the customer typed). */
@@ -107,7 +108,7 @@ namespace KioskDest
 		}
 
 		TSharedRef<SWidget> Row = SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ IconDisc(Args.Icon, 62.f, KioskLayout::IconSm) ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ IconDisc(Args.Icon, KioskLayout::IconDisc, KioskLayout::IconSm) ]
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(20.f, 0.f, 16.f, 0.f)[ Names ]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 			[
@@ -118,8 +119,7 @@ namespace KioskDest
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(Args.bSelected ? 12.f : 0.f, 0.f, 0.f, 0.f)
 			[
 				Args.bSelected
-					? StaticCastSharedRef<SWidget>(SNew(SBox).WidthOverride(44.f).HeightOverride(44.f)
-						[ Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, 24.f, C.White, 3.5f) ], C.Primary, 22.f) ])
+					? Badge(EKioskIcon::Check, KioskLayout::BadgeSm, C.Primary, C.White, 3.5f)
 					: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 			];
 
@@ -188,9 +188,9 @@ namespace KioskDest
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 					[
 						TextWrap(KT("Pick a place or station, or type where you want to go. We show the route and fare before you confirm."),
-							KioskType::Body, false, C.Muted, 1.25f)
+							KioskType::Body, false, C.Muted, KioskType::LineBody)
 					],
-					C.HelpTint, C.BorderStrong, 2.f, FMargin(28.f, bCompact ? 22.f : 30.f))
+					C.HelpTint, C.BorderStrong, 2.f, bCompact ? KioskLayout::CardPadTight : KioskLayout::CardPadWide)
 			];
 		}
 
@@ -218,7 +218,7 @@ namespace KioskDest
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ IconDisc(Info.Icon, bCompact ? 60.f : 76.f, bCompact ? KioskLayout::IconSm : 42.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ IconDisc(Info.Icon, bCompact ? KioskLayout::IconDisc : KioskLayout::IconDiscLg, bCompact ? KioskLayout::IconSm : KioskLayout::IconDiscLg * 0.55f) ]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(20.f, 0.f, 16.f, 0.f)[ Names ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
 				[
@@ -226,7 +226,7 @@ namespace KioskDest
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bCompact ? 14.f : 20.f, 0.f, bCompact ? 12.f : 16.f)[ Rule(C.BorderStrong, 2.f) ]
-			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FKioskRoutes::Summary(Route), bCompact ? KioskType::Body : KioskType::H3, true, C.Ink, 1.2f) ]
+			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FKioskRoutes::Summary(Route), bCompact ? KioskType::Body : KioskType::H3, true, C.Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bCompact ? 12.f : 18.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox)
@@ -235,9 +235,9 @@ namespace KioskDest
 					Pill(FKioskRoutes::Detail(Route), C.PrimaryTint, C.Ink, KioskType::Body, true, C.Transparent, FMargin(20.f, 9.f))
 				]
 				+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ TextWrap(FareText, bCompact ? KioskType::Body : KioskType::H3, true, C.Ink, 1.1f, ETextJustify::Right) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ TextWrap(FareText, bCompact ? KioskType::Body : KioskType::H3, true, C.Ink, KioskType::LineBody, ETextJustify::Right) ]
 			],
-			C.Surface, KioskLayout::CardRadius, C.Ink, 3.f, FMargin(28.f, bCompact ? 20.f : 26.f));
+			C.Surface, KioskLayout::CardRadius, C.Ink, 3.f, bCompact ? KioskLayout::CardPadTight : KioskLayout::CardPadWide);
 	}
 
 	FText LineShortName(int32 LineIndex)
@@ -270,14 +270,14 @@ namespace KioskDest
 				? FText::Format(KT("about {0} min · direct"), FText::AsNumber(Route.Minutes))
 				: FText::Format(KT("about {0} min · {1} {1}|plural(one=change,other=changes)"), FText::AsNumber(Route.Minutes), FText::AsNumber(Route.Changes));
 			Body = SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("City Hall"), KioskType::Body, false, C.Ink) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(FKioskSession::OriginLabel(), KioskType::Body, false, C.Ink) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(18.f, 0.f)[ Icon(EKioskIcon::ArrowRight, 30.f, C.Ink, 3.f) ]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextWrap(Info.Title, KioskType::Body, true, C.Ink) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16.f, 0.f, 0.f, 0.f)[ Text(About, KioskType::Caption, false, C.Muted) ];
 		}
 		return SNew(SBox).MinDesiredHeight(76.f)
 		[
-			Panel(Body, C.Surface, KioskLayout::InnerRadius + 2.f, C.BorderStrong, 2.f, FMargin(24.f, 12.f))
+			Panel(Body, C.Surface, KioskLayout::InnerRadius + 2.f, C.BorderStrong, 2.f, KioskLayout::CardPadTight)
 		];
 	}
 
@@ -454,7 +454,6 @@ namespace KioskDest
 				.Kind(EKioskButtonKind::Primary)
 				.Label(KT("Done"))
 				.ButtonTag(TEXT("Hide keyboard"))
-				.FontPx(KioskType::BtnStd)
 				.MinWidth(150.f).Height(KeyH)
 				.OnClicked_Lambda([Session]() { Session->OpenKeyboard(false); return FReply::Handled(); })
 			]

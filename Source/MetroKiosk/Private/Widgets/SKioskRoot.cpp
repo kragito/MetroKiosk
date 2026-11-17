@@ -149,12 +149,12 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 		[
 			Panel(
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 16.f, 0.f)[ Icon(EKioskIcon::Tray, 34.f, C.Ink, 3.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 16.f, 0.f)[ Icon(EKioskIcon::Tray, KioskLayout::IconSm, C.Ink, 3.f) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
 					Text(FText::Format(KT("Your {0} has been returned to the collection tray."), FKioskSession::Money(Returned)), KioskType::H3, true, C.Ink)
 				],
-				C.AmberFill, KioskLayout::CardRadius, C.AmberStroke, 2.f, FMargin(30.f, 16.f))
+				C.AmberFill, KioskLayout::CardRadius, C.AmberStroke, 2.f, KioskLayout::CardPadTight)
 		];
 	}
 
@@ -214,7 +214,7 @@ TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()
 	const TSharedRef<FKioskSession> S = Session.ToSharedRef();
 
 	return SNew(SBorder)
-		.BorderImage(FKioskStyle::Get().Solid(FLinearColor(0.05f, 0.08f, 0.15f, 0.62f)))
+		.BorderImage(FKioskStyle::Get().Solid(KC().Scrim))
 		.BorderBackgroundColor(FLinearColor::White)
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Center)
@@ -225,14 +225,11 @@ TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()
 					SNew(SVerticalBox)
 					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)
 					[
-						SNew(SBox).WidthOverride(96.f).HeightOverride(96.f)
-						[
-							Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Clock, 56.f, C.White, 5.f) ], C.AmberStrong, 48.f)
-						]
+						Badge(EKioskIcon::Clock, KioskLayout::IconLg, C.AmberStrong, C.White, 5.f)
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Center)
 					[
-						TextWrap(KT("Are you still there?"), KioskType::H1, true, C.Ink, 1.f, ETextJustify::Center)
+						TextWrap(KT("Are you still there?"), KioskType::H1, true, C.Ink, KioskType::LineCompact, ETextJustify::Center)
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Fill)
 					[

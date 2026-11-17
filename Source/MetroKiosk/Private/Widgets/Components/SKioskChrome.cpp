@@ -16,7 +16,7 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 
 	TSharedRef<SWidget> Logo = bHelp
 		? Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Headset, 42.f, C.Help, 3.f) ], C.White, KioskLayout::InnerRadius)
-		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("M")), 56.f, true, C.White) ], C.Logo, KioskLayout::InnerRadius);
+		: Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("M")), KioskType::Logo, true, C.White) ], C.Logo, KioskLayout::InnerRadius);
 
 	TSharedRef<SWidget> Left = SNullWidget::NullWidget;
 	if (bHelp)
@@ -39,7 +39,7 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)
 			[
-				Text(KT("City Hall"), KioskType::H1, true, C.White)
+				Text(FKioskSession::OriginLabel(), KioskType::H1, true, C.White)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 4.f, 0.f, 0.f)
 			[
@@ -85,6 +85,7 @@ void SKioskHeader::Construct(const FArguments& InArgs)
 
 // --- step bar ------------------------------------------------------------------------------
 
+
 void SKioskStepBar::Construct(const FArguments& InArgs)
 {
 	using namespace KioskUI;
@@ -102,20 +103,20 @@ void SKioskStepBar::Construct(const FArguments& InArgs)
 		TSharedRef<SWidget> Circle = SNullWidget::NullWidget;
 		if (bDone)
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, 24.f, C.White, 3.f) ], C.Primary, 22.f);
+			Circle = Badge(EKioskIcon::Check, KioskLayout::BadgeSm, C.Primary, C.White, 3.f);
 		}
 		else if (bCurrent)
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, true, C.White) ], C.Ink, 22.f);
+			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, true, C.White) ], C.Ink, KioskLayout::BadgeSm * 0.5f);
 		}
 		else
 		{
-			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, false, C.Muted) ], C.Transparent, 22.f, C.Muted, 2.f);
+			Circle = Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::AsNumber(Number), KioskType::Body, false, C.Muted) ], C.Transparent, KioskLayout::BadgeSm * 0.5f, C.Muted, 2.f);
 		}
 
 		Row->AddSlot().AutoWidth().VAlign(VAlign_Center)
 		[
-			SNew(SBox).WidthOverride(44.f).HeightOverride(44.f)[ Circle ]
+			SNew(SBox).WidthOverride(KioskLayout::BadgeSm).HeightOverride(KioskLayout::BadgeSm)[ Circle ]
 		];
 		Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)
 		[
@@ -200,7 +201,7 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			.Label(KT("Back"))
 			.ButtonTag(TEXT("Back"))
 			.LeftIcon(EKioskIcon::ChevronLeft)
-			.MinWidth(190.f).MaxWidth(300.f)
+			.MinWidth(KioskLayout::FooterBtnMinW).MaxWidth(KioskLayout::FooterBtnMaxW)
 			.Enabled(Config.bNavEnabled)
 			.OnClicked_Lambda([Session]() { Session->Back(); return FReply::Handled(); })
 		];
@@ -214,7 +215,7 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			.Label(KT("Start over"))
 			.ButtonTag(TEXT("Start over"))
 			.LeftIcon(EKioskIcon::Restart)
-			.MinWidth(210.f).MaxWidth(320.f)
+			.MinWidth(KioskLayout::FooterBtnMinW).MaxWidth(KioskLayout::FooterBtnMaxW)
 			.Enabled(Config.bNavEnabled)
 			.OnClicked_Lambda([Session]() { Session->StartOver(); return FReply::Handled(); })
 		];
@@ -239,7 +240,7 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			.Kind(EKioskButtonKind::HelpLight)
 			.Label(KT("Back to call"))
 			.ButtonTag(TEXT("Back to call"))
-			.MinWidth(300.f).MaxWidth(420.f)
+			.MinWidth(KioskLayout::HelpBtnMinW).MaxWidth(KioskLayout::HelpBtnMaxW)
 			.OnClicked_Lambda([Session]() { Session->ResumeCall(); return FReply::Handled(); })
 			[
 				SNew(SHorizontalBox)
@@ -264,7 +265,7 @@ void SKioskFooter::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 			.Label(KT("Help · talk to staff"))
 			.ButtonTag(TEXT("Help"))
 			.LeftIcon(EKioskIcon::Headset)
-			.MinWidth(300.f).MaxWidth(400.f)
+			.MinWidth(KioskLayout::HelpBtnMinW).MaxWidth(KioskLayout::HelpBtnMaxW)
 			.OnClicked_Lambda([Session]() { Session->StartCall(); return FReply::Handled(); });
 	}
 

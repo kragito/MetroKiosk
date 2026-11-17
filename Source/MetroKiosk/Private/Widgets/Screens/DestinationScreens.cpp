@@ -147,12 +147,15 @@ void SDestinationScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 	if (bKeyboard)
 	{
 		Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::KeyboardWidget(Session) ];
+		// Confirm sits directly under the keyboard (as in Figma); the spare height goes below it.
+		Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::ConfirmButton(Session) ];
+		Right->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
 	}
 	else
 	{
 		Right->AddSlot().AutoHeight().Padding(4.f, 8.f, 0.f, 0.f)
 		[
-			TextWrap(KT("A keyboard will popup. The list narrows with every letter you type."), KioskType::Caption, false, C.Muted, 1.1f)
+			TextWrap(KT("A keyboard will popup. The list narrows with every letter you type."), KioskType::Caption, false, C.Muted, KioskType::LineBody)
 		];
 		Right->AddSlot().AutoHeight().Padding(4.f, 26.f, 0.f, 10.f)[ Text(KT("Filter by line"), KioskType::Body, true, C.Ink) ];
 		Right->AddSlot().AutoHeight()[ KioskDest::LineFilterGrid(Session) ];
@@ -164,21 +167,22 @@ void SDestinationScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 			.ButtonTag(TEXT("Open metro map view"))
 			.LeftIcon(EKioskIcon::Map)
 			.RightIcon(EKioskIcon::ArrowRight)
-			.MinWidth(340.f).MaxWidth(620.f)
+			.MinWidth(KioskLayout::ToggleBtnMinW).MaxWidth(KioskLayout::ToggleBtnMaxW)
 			.OnClicked_Lambda([Session]() { Session->ShowDestinationMap(); return FReply::Handled(); })
 		];
+		// Without the keyboard, Confirm is pinned to the bottom of the column.
+		Right->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
+		Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::ConfirmButton(Session) ];
 	}
-	Right->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
-	Right->AddSlot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ KioskDest::ConfirmButton(Session) ];
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 24.f, KioskLayout::PageX, 22.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.5f).Padding(0.f, 0.f, 48.f, 0.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 20.f)[ TextWrap(KT("Where are you going?"), KioskType::H1, true, C.Ink) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, KioskLayout::TitleGap)[ TextWrap(KT("Where are you going?"), KioskType::H1, true, C.Ink) ]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ ResultsPanel(Session) ]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.5f)

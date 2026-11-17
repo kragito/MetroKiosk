@@ -254,7 +254,7 @@ namespace KioskUI
 				[
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 7.f, 12.f, 0.f)[ Dot(C.Primary, 14.f) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Which), CaptionPx, true, C.Ink, 1.1f) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Which), CaptionPx, true, C.Ink, KioskType::LineBody) ]
 				];
 				bFirst = false;
 			}
