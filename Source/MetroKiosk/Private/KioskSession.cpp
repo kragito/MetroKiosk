@@ -685,7 +685,7 @@ FText FKioskSession::OrderSummary() const
 	{
 		return FText::Format(KT("{0} · All lines · {1}"), TicketLabel(), RiderSummary());
 	}
-	return FText::Format(KT("{0} · City Hall → {1} · {2}"), TicketLabel(), DestinationLabel(), RiderSummary());
+	return FText::Format(KT("{0} · {1} → {2} · {3}"), TicketLabel(), OriginLabel(), DestinationLabel(), RiderSummary());
 }
 
 // --- clock ---------------------------------------------------------------------------------
@@ -780,11 +780,50 @@ namespace
 
 namespace
 {
-	FText DayMonthText(const FDateTime& Date, bool bWithYear)
+	FText YearText(int32 Year)
 	{
-		const FText Short = FText::Format(KT("{0} {1}"), FText::AsNumber(Date.GetDay()), MonthName(Date.GetMonth()));
-		return bWithYear ? FText::Format(KT("{0} {1}"), Short, FText::FromString(FString::FromInt(Date.GetYear()))) : Short;
+		const FText Number = FText::FromString(FString::FromInt(Year));
+		// Chinese writes the year first and marks it: 2026年.
+		return FKioskLoc::GetLanguage() == EKioskLanguage::Chinese ? FText::Format(KT("{0} (year)"), Number) : Number;
 	}
+}
+
+FText FKioskSession::DayMonthText(const FDateTime& Date, bool bWithYear)
+{
+	const bool bChinese = FKioskLoc::GetLanguage() == EKioskLanguage::Chinese;
+	// Chinese: month then day (11月14日). Other languages: day then month (14 Nov).
+	const FText Short = bChinese
+		? FText::Format(KT("{0}{1}"), MonthName(Date.GetMonth()), FText::Format(KT("{0} (day of month)"), FText::AsNumber(Date.GetDay())))
+		: FText::Format(KT("{0} {1}"), FText::AsNumber(Date.GetDay()), MonthName(Date.GetMonth()));
+	if (!bWithYear)
+	{
+		return Short;
+	}
+	return bChinese ? FText::Format(KT("{0}{1}"), YearText(Date.GetYear()), Short) : FText::Format(KT("{0} {1}"), Short, YearText(Date.GetYear()));
+}
+
+FText FKioskSession::MonthYearText(const FDateTime& Date)
+{
+	if (FKioskLoc::GetLanguage() == EKioskLanguage::Chinese)
+	{
+		return FText::Format(KT("{0}{1}"), YearText(Date.GetYear()), MonthName(Date.GetMonth())); // 2026年11月
+	}
+	return FText::Format(KT("{0} {1}"), MonthName(Date.GetMonth()), YearText(Date.GetYear()));
+}
+
+FText FKioskSession::DateRangeText(const FDateTime& Start, const FDateTime& End, bool bWithYear)
+{
+	if (bWithYear && Start.GetYear() != End.GetYear() && FKioskLoc::GetLanguage() == EKioskLanguage::Chinese)
+	{
+		// A range that crosses a year prints the year on both sides: 2026年12月20日 – 2027年1月18日.
+		return FText::Format(KT("{0} – {1}"), DayMonthText(Start, true), DayMonthText(End, true));
+	}
+	const FText Range = FText::Format(KT("{0} – {1}"), DayMonthText(Start, false), DayMonthText(End, false));
+	if (!bWithYear)
+	{
+		return Range;
+	}
+	return FKioskLoc::GetLanguage() == EKioskLanguage::Chinese ? FText::Format(KT("{0}{1}"), YearText(End.GetYear()), Range) : FText::Format(KT("{0} {1}"), Range, YearText(End.GetYear()));
 }
 
 FText FKioskSession::OriginLabel()
@@ -802,17 +841,26 @@ FText FKioskSession::CurrentPassEndText(bool bWithYear) const
 	return DayMonthText(FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay), bWithYear);
 }
 
-FText FKioskSession::RenewalRangeText(bool bWithYear) const
+bool FKioskSession::RenewalRange(FDateTime& OutStart, FDateTime& OutEnd) const
 {
 	const FKioskCardInfo& Info = CardInfo();
 	if (!Info.bHasActivePass || Info.PassEndDay <= 0)
 	{
+		return false;
+	}
+	OutStart = FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay) + FTimespan::FromDays(1);
+	OutEnd = OutStart + FTimespan::FromDays(29); // 30 days in all, same rule as PassEndDate()
+	return true;
+}
+
+FText FKioskSession::RenewalRangeText(bool bWithYear) const
+{
+	FDateTime Start, End;
+	if (!RenewalRange(Start, End))
+	{
 		return FText::GetEmpty();
 	}
-	const FDateTime Start = FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay) + FTimespan::FromDays(1);
-	const FDateTime End = Start + FTimespan::FromDays(29); // 30 days in all, same rule as PassEndDate()
-	const FText Range = FText::Format(KT("{0} – {1}"), DayMonthText(Start, false), DayMonthText(End, false));
-	return bWithYear ? FText::Format(KT("{0} {1}"), Range, FText::FromString(FString::FromInt(End.GetYear()))) : Range;
+	return DateRangeText(Start, End, bWithYear);
 }
 
 FText FKioskSession::TimeOfDayText(const FDateTime& Time)

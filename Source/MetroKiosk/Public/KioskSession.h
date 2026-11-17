@@ -130,10 +130,18 @@ public:
 	/** This kiosk's station: English name from the data, and the same name in the active language. */
 	static FString OriginName() { return FKioskData::OriginName(); }
 	static FText OriginLabel();
+	/** A date as the kiosk shows it: "14 Nov" / "14 Nov 2026" (en, ms, ta) or "11月14日" / "2026年11月14日" (zh). Every date text goes through this. */
+	static FText DayMonthText(const FDateTime& Date, bool bWithYear = false);
+	/** Month and year for a calendar title: "Nov 2026" (en, ms, ta) or "2026年11月" (zh). */
+	static FText MonthYearText(const FDateTime& Date);
+	/** Two dates as a range: "15 Nov – 14 Dec", with the end date's year appended (zh: prefixed) when bWithYear. */
+	static FText DateRangeText(const FDateTime& Start, const FDateTime& End, bool bWithYear = false);
 	/** Last day of the tapped card's active pass ("14 Nov", or "14 Nov 2026" with bWithYear). Empty when it has no pass. */
 	FText CurrentPassEndText(bool bWithYear = false) const;
 	/** Dates of the renewal pass that follows the active one ("15 Nov – 14 Dec", or with the year appended). Empty when no pass. */
 	FText RenewalRangeText(bool bWithYear = false) const;
+	/** First and last day of the renewal pass (the day after the active pass ends, 30 days in all). False when the card has no active pass or no end date. */
+	bool RenewalRange(FDateTime& OutStart, FDateTime& OutEnd) const;
 	/** Price of a concession pass for the tapped card: student concession price or the adult price. */
 	int32 PassPriceCents(int32 ConcessionIndex) const;
 	/** QA: which card the reader detects when no SIMULATE card is chosen (the -KioskCard=Student|Adult switch). */

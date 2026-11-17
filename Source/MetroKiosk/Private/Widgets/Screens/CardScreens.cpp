@@ -27,7 +27,7 @@ namespace
 			[
 				Text(KT("Metro card"), FMath::Max(KioskType::Caption, Height * 0.12f), true, C.Ink)
 			],
-			C.Surface, 16.f, C.Ink, 3.f);
+			C.Surface, KioskLayout::InnerRadius, C.Ink, 3.f);
 	}
 
 	TSharedRef<SWidget> CardInfoLine(const FText& Label, const FText& Value)
@@ -47,43 +47,23 @@ namespace
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::Contactless, KioskLayout::IconSm, C.Primary, 3.f) ]
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Keep your card on the reader"), KioskType::Caption, true, C.Ink, 1.1f) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Keep your card on the reader"), KioskType::Caption, true, C.Ink, KioskType::LineBody) ]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ HardwareHint(Mask(EHardware::MetroReader), 0.42f) ];
 	}
 
-	TSharedRef<SWidget> CheckBadge(float Size)
+	/** Green tick shown on a selected option tile. */
+	TSharedRef<SWidget> CheckBadge()
 	{
-		const FKioskColors& C = KC();
-		return SNew(SBox).WidthOverride(Size).HeightOverride(Size)
-			[ Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, Size * 0.6f, C.White, 4.f) ], C.Primary, 12.f) ];
+		return Badge(EKioskIcon::Check, KioskLayout::IconXl, KC().Primary, KC().White, 4.f);
 	}
 }
 
 namespace
 {
-	FText ShortMonth(int32 Month)
-	{
-		switch (Month)
-		{
-		case 1: return KT("Jan");
-		case 2: return KT("Feb");
-		case 3: return KT("Mar");
-		case 4: return KT("Apr");
-		case 5: return KT("May");
-		case 6: return KT("Jun");
-		case 7: return KT("Jul");
-		case 8: return KT("Aug");
-		case 9: return KT("Sep");
-		case 10: return KT("Oct");
-		case 11: return KT("Nov");
-		default: return KT("Dec");
-		}
-	}
-
 	FText DayMonth(const FDateTime& Date)
 	{
-		return FText::Format(KT("{0} {1}"), FText::AsNumber(Date.GetDay()), ShortMonth(Date.GetMonth()));
+		return FKioskSession::DayMonthText(Date);
 	}
 }
 
@@ -102,16 +82,16 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 		];
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 34.f, KioskLayout::PageX, 34.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.45f).Padding(0.f, 0.f, 48.f, 0.f)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 50.f, 0.f, 0.f)[ TextWrap(KT("Place your Metro card on the reader"), KioskType::H1, true, C.Ink) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, KioskLayout::TitleGap, 0.f, 0.f)
 			[
-				TextWrap(KT("The Metro card reader is the curved bowl below the screen, right of centre. Rest the card on it. It glows green when it's ready. Hold the card still until this screen changes."), KioskType::Body, false, C.Ink, 1.2f)
+				TextWrap(KT("The Metro card reader is the curved bowl below the screen, right of centre. Rest the card on it. It glows green when it's ready. Hold the card still until this screen changes."), KioskType::Body, false, C.Ink, KioskType::LineBody)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
@@ -119,11 +99,11 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 16.f, 0.f)[ Dot(C.Primary, 16.f) ]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ TextWrap(KT("Waiting for your card…"), KioskType::Body, true, C.Ink) ],
-					C.Surface, 26.f, C.BorderStrong, 2.f, FMargin(28.f, 12.f))
+					C.Surface, 26.f, C.BorderStrong, 2.f, KioskLayout::CardPadTight)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 24.f, 0.f, 0.f)
 			[
-				TextWrap(KT("Not reading? Take the card out of your wallet or phone case, then try again."), KioskType::Caption, false, C.Muted, 1.2f)
+				TextWrap(KT("Not reading? Take the card out of your wallet or phone case, then try again."), KioskType::Caption, false, C.Muted, KioskType::LineBody)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
@@ -148,7 +128,7 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ HardwareHint(Mask(EHardware::MetroReader), 0.8f) ],
-				C.Band, C.Transparent, 0.f, FMargin(KioskLayout::CardPad, 24.f))
+				C.Band, C.Transparent, 0.f, KioskLayout::CardPadWide)
 		]
 	];
 }
@@ -180,25 +160,26 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 		[
 			Info.bHasActivePass
-				? TextWrap(KT("Bus + Train · ends 14 Nov"), KioskType::Body, true, C.Ink, 1.1f)
-				: TextWrap(KT("No active pass"), KioskType::Body, false, C.Muted, 1.1f)
+				? TextWrap(FText::Format(KT("{0} · ends {1}"), KT("Bus + Train"), Session->CurrentPassEndText()), KioskType::Body, true, C.Ink, KioskType::LineBody)
+				: TextWrap(KT("No active pass"), KioskType::Body, false, C.Muted, KioskType::LineBody)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 		+ SVerticalBox::Slot().AutoHeight()[ KeepCardNote() ],
-		C.Band, C.BorderStrong, 2.f, FMargin(KioskLayout::CardPad, 28.f));
+		C.Band, C.BorderStrong, 2.f, KioskLayout::CardPadWide);
 
 	TSharedRef<SHorizontalBox> Tiles = SNew(SHorizontalBox);
-	const int32 Amounts[3] = { 1000, 2000, 5000 };
-	for (int32 Index = 0; Index < 3; ++Index)
+	const TArray<int32>& QuickAmounts = FKioskData::QuickTopUpAmounts();
+	for (int32 Index = 0; Index < QuickAmounts.Num(); ++Index)
 	{
-		const int32 Amount = Amounts[Index];
-		Tiles->AddSlot().FillWidth(1.f).Padding(Index == 0 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f, Index == 2 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f)
+		const int32 Amount = QuickAmounts[Index];
+		const FText Dollars = FText::Format(KT("${0}"), FText::AsNumber(Amount / 100));
+		Tiles->AddSlot().FillWidth(1.f).Padding(Index == 0 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f, Index == QuickAmounts.Num() - 1 ? 0.f : KioskLayout::TileGap * 0.5f, 0.f)
 		[
 			SNew(SBox).MinDesiredHeight(110.f)
 			[
 				SNew(SKioskButton)
 				.Kind(EKioskButtonKind::Tile)
-				.Label(FText::FromString(FString::Printf(TEXT("Top up $%d"), Amount / 100)))
+				.Label(FText::Format(KT("{0} {1}"), KT("Top up"), Dollars))
 				.ButtonTag(*FString::Printf(TEXT("Quick top up %d"), Amount / 100))
 				.Padding(FMargin(0.f))
 				.OnClicked_Lambda([Session, Amount]() { Session->QuickTopUp(Amount); return FReply::Handled(); })
@@ -206,7 +187,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 					SNew(SOverlay)
 					+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Center).Padding(34.f, 0.f, 0.f, 24.f)
 					[
-						Text(FText::FromString(FString::Printf(TEXT("+$%d"), Amount / 100)), KioskType::Display, true, C.White)
+						Text(FText::FromString(FString(TEXT("+")) + Dollars.ToString()), KioskType::Display, true, C.White)
 					]
 					+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Bottom).Padding(34.f, 0.f, 12.f, 24.f)
 					[
@@ -231,12 +212,12 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()[ Icon(IconType, KioskLayout::IconLg, C.Ink, 4.f) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink, 1.f) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(Sub, KioskType::Body, false, C.Muted, 1.15f) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(Sub, KioskType::Body, false, C.Muted, KioskType::LineBody) ]
 				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ ActionBar(Action, true) ]
 			],
-			C.Surface, C.Ink, 3.f, FMargin(28.f, 24.f));
+			C.Surface, C.Ink, 3.f, KioskLayout::CardPadTight);
 	};
 
 	ChildSlot
@@ -251,7 +232,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 			[
 				// "Card options only ·" sits beside the link (Figma 156:29687); both wrap, so longer translations still fit.
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextWrap(KT("Card options only ·"), KioskType::Caption, false, C.Muted, 1.1f, ETextJustify::Right) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextWrap(KT("Card options only ·"), KioskType::Caption, false, C.Muted, KioskType::LineBody, ETextJustify::Right) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(8.f, 0.f, 0.f, 0.f)
 				[
 					SNew(SKioskButton)
@@ -269,7 +250,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 				]
 			]
 		]
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 20.f, 0.f, 0.f)
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, KioskLayout::TitleGap, 0.f, 0.f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(0.34f).Padding(0.f, 0.f, KioskLayout::Gutter, 0.f)[ CardPanel ]
@@ -299,7 +280,7 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 					[
 						OptionCard(EKioskIcon::IdCard,
 							Info.bHasActivePass ? KT("Renew concession pass") : KT("Buy a concession pass"),
-							Info.bHasActivePass ? KT("Your Bus + Train pass ends 14 Nov") : KT("Bus, train or both for 30 days"),
+							Info.bHasActivePass ? FText::Format(KT("Your {0} pass ends {1}"), KT("Bus + Train"), Session->CurrentPassEndText()) : KT("Bus, train or both for 30 days"),
 							Info.bHasActivePass ? KT("Renew pass") : KT("Buy pass"),
 							Info.bHasActivePass ? FName(TEXT("Renew concession pass")) : FName(TEXT("Buy concession pass")),
 							[Session]() { Session->State.Flow = EKioskFlow::Concession; Session->GoTo(EKioskScreen::Concession); })
@@ -354,16 +335,20 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 				? Text(FKioskSession::Money(Session->NewBalanceCents()), KioskType::Display, true, C.Primary)
 				: Text(FText::FromString(TEXT("—")), KioskType::Display, true, C.Muted)
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bHasSelection ? 6.f : 18.f, 0.f, 0.f)
 		[
-			TextWrap(bHasSelection ? FText::Format(KT("+{0} added"), FKioskSession::Money(Selected)) : KT("Pick an amount"), KioskType::Caption, false, C.Muted)
+			bHasSelection
+				? StaticCastSharedRef<SWidget>(TextWrap(FText::Format(KT("+{0} added"), FKioskSession::Money(Selected)), KioskType::Caption, false, C.Muted, KioskType::LineBody))
+				: StaticCastSharedRef<SWidget>(TextWrap(KT("Pick an amount"), KioskType::H1, false, C.Ink, KioskType::LineCompact)) // Figma 156:30545: the prompt is large
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 		+ SVerticalBox::Slot().AutoHeight()[ KeepCardNote() ],
-		C.Band, C.BorderStrong, 2.f, FMargin(KioskLayout::CardPad, 28.f));
+		C.Band, C.BorderStrong, 2.f, KioskLayout::CardPadWide);
 
-	struct FAmount { int32 Cents; const TCHAR* Label; };
-	const FAmount Amounts[6] = { { 1000, TEXT("$10") }, { 2000, TEXT("$20") }, { 3000, TEXT("$30") }, { 5000, TEXT("$50") }, { 10000, TEXT("$100") }, { 0, TEXT("More") } };
+	// The preset amounts come from the data layer; the last tile (Cents 0) opens the keypad.
+	TArray<int32> AmountTiles = FKioskData::TopUpAmounts();
+	AmountTiles.Add(0);
+	constexpr float AmountTileHeight = 170.f; // Figma 156:30545: compact tiles with Continue close under the grid
 
 	TSharedRef<SVerticalBox> Grid = SNew(SVerticalBox);
 	for (int32 Row = 0; Row < 2; ++Row)
@@ -371,18 +356,17 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 		TSharedRef<SHorizontalBox> Cells = SNew(SHorizontalBox);
 		for (int32 Col = 0; Col < 3; ++Col)
 		{
-			const FAmount& Amount = Amounts[Row * 3 + Col];
-			const bool bMore = Amount.Cents == 0;
-			const bool bSelected = !bMore && Selected == Amount.Cents;
-			const FText Label = bMore ? KT("More") : FText::FromString(Amount.Label);
-			const int32 Cents = Amount.Cents;
+			const int32 Cents = AmountTiles.IsValidIndex(Row * 3 + Col) ? AmountTiles[Row * 3 + Col] : 0;
+			const bool bMore = Cents == 0;
+			const bool bSelected = !bMore && Selected == Cents;
+			const FText Label = bMore ? KT("More") : FText::Format(KT("${0}"), FText::AsNumber(Cents / 100));
 			Cells->AddSlot().FillWidth(1.f).Padding(Col == 0 ? 0.f : 8.f, 0.f, Col == 2 ? 0.f : 8.f, 0.f)
 			[
 				Panel(
 					SNew(SKioskButton)
 					.Kind(EKioskButtonKind::Card)
 					.Label(Label)
-					.ButtonTag(*FString::Printf(TEXT("Amount %s"), Amount.Label))
+					.ButtonTag(*(bMore ? FString(TEXT("Amount More")) : FString::Printf(TEXT("Amount $%d"), Cents / 100)))
 					.Padding(FMargin(0.f))
 					.OnClicked_Lambda([Session, Cents, bMore]()
 					{
@@ -394,13 +378,13 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 						+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(Label, KioskType::Display, true, C.Ink) ]
 						+ SOverlay::Slot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 14.f, 14.f, 0.f)
 						[
-							bSelected ? CheckBadge(48.f) : StaticCastSharedRef<SWidget>(SNew(SSpacer))
+							bSelected ? CheckBadge() : StaticCastSharedRef<SWidget>(SNew(SSpacer))
 						]
 					],
 					bSelected ? C.PrimaryTint : C.Surface, KioskLayout::CardRadius, bSelected ? C.Ink : C.BorderStrong, bSelected ? 4.f : 2.f)
 			];
 		}
-		Grid->AddSlot().FillHeight(1.f).Padding(0.f, Row == 0 ? 0.f : 8.f, 0.f, Row == 0 ? 8.f : 0.f)[ Cells ];
+		Grid->AddSlot().AutoHeight().Padding(0.f, Row == 0 ? 0.f : 8.f, 0.f, Row == 0 ? 8.f : 0.f)[ SNew(SBox).HeightOverride(AmountTileHeight)[ Cells ] ];
 	}
 
 	// Custom amount: whole-dollar numeric keypad ($5 to $500).
@@ -416,9 +400,9 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)
 				[
 					TextWrap(FText::Format(KT("Enter a whole-dollar amount from ${0} to ${1}"), FText::AsNumber(FKioskSession::MinTopUpDollars), FText::AsNumber(FKioskSession::MaxTopUpDollars)),
-						KioskType::Caption, false, C.Muted, 1.1f, ETextJustify::Right)
+						KioskType::Caption, false, C.Muted, KioskType::LineBody, ETextJustify::Right)
 				],
-				C.Surface, C.Ink, 3.f, FMargin(30.f, 12.f))
+				C.Surface, C.Ink, 3.f, KioskLayout::CardPadTight)
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f)
 		[
@@ -441,7 +425,7 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 					SNew(SKioskButton).Kind(EKioskButtonKind::KeyMuted).Label(KT("Backspace")).ButtonTag(TEXT("Keypad Backspace")).MinHeight(0.f)
 					.OnClicked_Lambda([Session]() { Session->BackspaceTopUp(); return FReply::Handled(); })
 					[
-						Icon(EKioskIcon::Backspace, 40.f, C.Ink, 3.f)
+						Icon(EKioskIcon::Backspace, KioskLayout::IconSm, C.Ink, 3.f)
 					]
 				]
 			]
@@ -449,30 +433,44 @@ void STopUpScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSe
 
 	TSharedRef<SWidget> AmountArea = Session->State.bTopUpKeypad ? Keypad : StaticCastSharedRef<SWidget>(Grid);
 
+	// Keypad fills the column; the compact amount grid keeps its height so Continue sits right under it.
+	TSharedRef<SVerticalBox> RightColumn = SNew(SVerticalBox);
+	if (Session->State.bTopUpKeypad)
+	{
+		RightColumn->AddSlot().FillHeight(1.f)[ AmountArea ];
+	}
+	else
+	{
+		RightColumn->AddSlot().AutoHeight()[ AmountArea ];
+	}
+	RightColumn->AddSlot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 16.f, 0.f, 0.f)
+	[
+		SNew(SKioskButton)
+		.Kind(EKioskButtonKind::Primary)
+		.Label(KT("Continue"))
+		.ButtonTag(TEXT("Continue"))
+		.RightIcon(EKioskIcon::ArrowRight)
+		.MinWidth(KioskLayout::PrimaryMinW).MaxWidth(KioskLayout::PrimaryMaxW)
+		.Enabled(bHasSelection)
+		.OnClicked_Lambda([Session]() { Session->ContinueTopUp(); return FReply::Handled(); })
+	];
+	if (!Session->State.bTopUpKeypad)
+	{
+		RightColumn->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
+	}
+
 	ChildSlot
 	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ TextWrap(KT("How much would you like to add?"), KioskType::H1, true, C.Ink) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, KioskLayout::TitleGap)[ TextWrap(KT("How much would you like to add?"), KioskType::H1, true, C.Ink) ]
 		+ SVerticalBox::Slot().FillHeight(1.f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(0.32f).Padding(0.f, 0.f, KioskLayout::Gutter, 0.f)[ LeftPanel ]
 			+ SHorizontalBox::Slot().FillWidth(0.68f)
 			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().FillHeight(1.f)[ AmountArea ]
-				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Right).Padding(0.f, 16.f, 0.f, 0.f)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Primary)
-					.Label(KT("Continue"))
-					.ButtonTag(TEXT("Continue"))
-					.RightIcon(EKioskIcon::ArrowRight)
-					.MinWidth(300.f)
-					.Enabled(bHasSelection)
-					.OnClicked_Lambda([Session]() { Session->ContinueTopUp(); return FReply::Handled(); })
-				]
+				RightColumn
 			]
 		]
 	];
@@ -500,9 +498,9 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 		{
 			Icons->AddSlot().AutoWidth().Padding(bFirst ? 0.f : 10.f, 0.f, 0.f, 0.f)
 			[
-				SNew(SBox).WidthOverride(76.f).HeightOverride(76.f)
+				SNew(SBox).WidthOverride(KioskLayout::IconDiscLg).HeightOverride(KioskLayout::IconDiscLg)
 				[
-					Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(IconType, 46.f, C.Ink, 3.f) ], C.Band, KioskLayout::InnerRadius)
+					Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconDiscLg * 0.6f, C.Ink, 3.f) ], C.Band, KioskLayout::InnerRadius)
 				]
 			];
 		};
@@ -528,7 +526,7 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 						+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
 						[
-							bSelected ? CheckBadge(48.f) : StaticCastSharedRef<SWidget>(SNew(SSpacer))
+							bSelected ? CheckBadge() : StaticCastSharedRef<SWidget>(SNew(SSpacer))
 						]
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f).HAlign(HAlign_Left)
@@ -537,8 +535,8 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 							? Pill(KT("Your current pass"), C.HelpTint, C.Ink, KioskType::Caption, true, C.Help, FMargin(18.f, 6.f))
 							: StaticCastSharedRef<SWidget>(SNew(SSpacer).Size(FVector2D(1.f, 40.f)))
 					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ TextWrap(PassName, KioskType::H2, true, C.Ink, 1.f) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(FKioskData::ConcessionDescription(Index), KioskType::Body, false, C.Muted, 1.1f) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ TextWrap(PassName, KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(FKioskData::ConcessionDescription(Index), KioskType::Body, false, C.Muted, KioskType::LineBody) ]
 					+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 					+ SVerticalBox::Slot().AutoHeight()
 					[
@@ -554,7 +552,7 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->PassPriceCents(Index)), KioskType::Display, true, C.Ink) ]
 					+ SVerticalBox::Slot().AutoHeight()[ Text(KT("for 30 days"), KioskType::Caption, false, C.Muted) ]
 				],
-				bSelected ? C.PrimaryTint : C.Surface, KioskLayout::CardRadius, bSelected ? C.Ink : C.BorderStrong, bSelected ? 4.f : 2.f, FMargin(30.f, 26.f, 30.f, 24.f))
+				bSelected ? C.PrimaryTint : C.Surface, KioskLayout::CardRadius, bSelected ? C.Ink : C.BorderStrong, bSelected ? 4.f : 2.f, KioskLayout::CardPadWide)
 		];
 	}
 
@@ -563,16 +561,16 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Choose a concession pass"), KioskType::H1, true, C.Ink) ]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bStudentCard ? 14.f : 0.f, 0.f, 0.f)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bStudentCard ? KioskLayout::TitleGap : 0.f, 0.f, 0.f)
 		[
 			// Only a student card gets the banner; an adult card sees plain adult prices.
 			bStudentCard
 				? StaticCastSharedRef<SWidget>(Card(
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::IdCard, 44.f, C.Primary, 3.f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::IdCard, KioskLayout::IconSm, C.Primary, 3.f) ]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16.f, 0.f, 0.f, 0.f)[ Text(KT("Student card detected"), KioskType::H3, true, C.Ink) ]
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)[ TextWrap(KT("· student concession prices shown"), KioskType::Body, false, C.Ink) ],
-					C.Surface, C.BorderStrong, 2.f, FMargin(22.f, 12.f)))
+					C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadTight))
 				: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 		]
 		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 22.f, 0.f, 20.f)[ Cards ]
@@ -581,7 +579,7 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)
 			[
-				TextWrap(KT("Every pass lasts 30 days with unlimited rides. Next, you'll see the exact dates it covers before you pay."), KioskType::Body, false, C.Ink, 1.2f)
+				TextWrap(KT("Every pass lasts 30 days with unlimited rides. Next, you'll see the exact dates it covers before you pay."), KioskType::Body, false, C.Ink, KioskType::LineBody)
 			]
 			+ SHorizontalBox::Slot().AutoWidth().Padding(24.f, 0.f, 0.f, 0.f)
 			[
@@ -590,7 +588,7 @@ void SConcessionScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 				.Label(KT("Continue · check dates"))
 				.ButtonTag(TEXT("Continue · check dates"))
 				.RightIcon(EKioskIcon::ArrowRight)
-				.MinWidth(500.f).MaxWidth(640.f)
+				.MinWidth(KioskLayout::PrimaryMinW).MaxWidth(KioskLayout::PrimaryMaxW)
 				.Enabled(Selected != INDEX_NONE)
 				.OnClicked_Lambda([Session]() { Session->GoTo(EKioskScreen::PassDates); return FReply::Handled(); })
 			]
@@ -674,47 +672,60 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 	const bool bRenewing = Session->CurrentPass() != INDEX_NONE;
 	const bool bPicked = !bRenewing && Session->HasPassStart();
 
-	FText FirstMonthTitle = KT("November 2026");
-	FText SecondMonthTitle = KT("December 2026");
-	int32 FirstLead = 6, FirstDays = 30, FirstNewDay = 15, FirstLastCurrent = 14, FirstLastNew = 31;
-	int32 SecondLead = 1, SecondDays = 31, SecondNewDay = 0, SecondLastNew = 14;
-	int32 FirstPast = 0;
+	const FKioskCardInfo& Info = Session->CardInfo();
+	const FDateTime Today = FKioskSession::Today();
+	// Renewing: the two month grids start at the month the card's pass ends in. Otherwise they start at today's month.
+	const bool bCardAnchored = bRenewing && Info.PassEndDay > 0;
+	const FDateTime Anchor = bCardAnchored ? FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay) : Today;
+	const FDateTime FirstMonth(Anchor.GetYear(), Anchor.GetMonth(), 1);
+	const int32 SecondYear = Anchor.GetMonth() == 12 ? Anchor.GetYear() + 1 : Anchor.GetYear();
+	const int32 SecondMonthNumber = Anchor.GetMonth() == 12 ? 1 : Anchor.GetMonth() + 1;
+	const FDateTime SecondMonth(SecondYear, SecondMonthNumber, 1);
+	const FText FirstMonthTitle = FKioskSession::MonthYearText(FirstMonth);
+	const FText SecondMonthTitle = FKioskSession::MonthYearText(SecondMonth);
+	const int32 FirstLead = static_cast<int32>(FirstMonth.GetDayOfWeek()); // Monday = 0
+	const int32 FirstDays = FDateTime::DaysInMonth(FirstMonth.GetYear(), FirstMonth.GetMonth());
+	const int32 SecondLead = static_cast<int32>(SecondMonth.GetDayOfWeek());
+	const int32 SecondDays = FDateTime::DaysInMonth(SecondMonth.GetYear(), SecondMonth.GetMonth());
+	const int32 FirstLastCurrent = bCardAnchored ? Anchor.GetDay() : 0;
+	const int32 FirstPast = bRenewing ? 0 : Today.GetDay() - 1;
+
+	// The chosen range [Start, End] clipped to each month: 0/0 when it does not touch the month, and one past the last day
+	// when it runs on into the next month (so no end marker is drawn there). Correct for a pass that spans three months.
+	int32 FirstNewDay = 0, FirstLastNew = 0, SecondNewDay = 0, SecondLastNew = 0;
+	FDateTime Start, End;
+	bool bHasRange = false;
+	if (bCardAnchored)
+	{
+		Start = Anchor + FTimespan::FromDays(1); // the new pass starts the day after the current one ends
+		End = Start + FTimespan::FromDays(29);   // 30 days in all, same rule as PassEndDate()
+		bHasRange = true;
+	}
+	else if (bPicked)
+	{
+		Start = Session->PassStartDate();
+		End = Session->PassEndDate();
+		bHasRange = true;
+	}
+	if (bHasRange)
+	{
+		auto Clip = [&Start, &End](const FDateTime& Month, int32 Days, int32& OutFirst, int32& OutLast)
+		{
+			const FDateTime MonthEnd(Month.GetYear(), Month.GetMonth(), Days);
+			if (End < Month || Start > MonthEnd)
+			{
+				return;
+			}
+			OutFirst = Start >= Month ? Start.GetDay() : 0;
+			OutLast = End <= MonthEnd + FTimespan::FromHours(23) ? End.GetDay() : Days + 1;
+		};
+		Clip(FirstMonth, FirstDays, FirstNewDay, FirstLastNew);
+		Clip(SecondMonth, SecondDays, SecondNewDay, SecondLastNew);
+	}
+
 	TFunction<TSharedRef<SWidget>(int32, const TSharedRef<SWidget>&)> FirstTap, SecondTap;
 	if (!bRenewing)
 	{
-		const FDateTime Today = FKioskSession::Today();
-		const FDateTime FirstMonth(Today.GetYear(), Today.GetMonth(), 1);
-		const int32 SecondYear = Today.GetMonth() == 12 ? Today.GetYear() + 1 : Today.GetYear();
-		const int32 SecondMonthNumber = Today.GetMonth() == 12 ? 1 : Today.GetMonth() + 1;
-		const FDateTime SecondMonth(SecondYear, SecondMonthNumber, 1);
-		FirstMonthTitle = FText::Format(KT("{0} {1}"), ShortMonth(FirstMonth.GetMonth()), FText::FromString(FString::FromInt(FirstMonth.GetYear())));
-		SecondMonthTitle = FText::Format(KT("{0} {1}"), ShortMonth(SecondMonth.GetMonth()), FText::FromString(FString::FromInt(SecondMonth.GetYear())));
-		FirstLead = static_cast<int32>(FirstMonth.GetDayOfWeek()); // Monday = 0
-		FirstDays = FDateTime::DaysInMonth(FirstMonth.GetYear(), FirstMonth.GetMonth());
-		SecondLead = static_cast<int32>(SecondMonth.GetDayOfWeek());
-		SecondDays = FDateTime::DaysInMonth(SecondMonth.GetYear(), SecondMonth.GetMonth());
-		FirstLastCurrent = 0;
-		FirstPast = Today.GetDay() - 1;
-		// The chosen range [Start, End] clipped to each month: 0/0 when it does not touch the month, and one past the last day
-		// when it runs on into the next month (so no end marker is drawn there). Correct for a pass that spans three months.
-		FirstNewDay = 0; FirstLastNew = 0; SecondNewDay = 0; SecondLastNew = 0;
-		if (bPicked)
-		{
-			const FDateTime Start = Session->PassStartDate();
-			const FDateTime End = Session->PassEndDate();
-			auto Clip = [&Start, &End](const FDateTime& Month, int32 Days, int32& OutFirst, int32& OutLast)
-			{
-				const FDateTime MonthEnd(Month.GetYear(), Month.GetMonth(), Days);
-				if (End < Month || Start > MonthEnd)
-				{
-					return;
-				}
-				OutFirst = Start >= Month ? Start.GetDay() : 0;
-				OutLast = End <= MonthEnd + FTimespan::FromHours(23) ? End.GetDay() : Days + 1;
-			};
-			Clip(FirstMonth, FirstDays, FirstNewDay, FirstLastNew);
-			Clip(SecondMonth, SecondDays, SecondNewDay, SecondLastNew);
-		}
 		auto MakeTap = [Session](int32 Year, int32 Month)
 		{
 			return TFunction<TSharedRef<SWidget>(int32, const TSharedRef<SWidget>&)>([Session, Year, Month](int32 Day, const TSharedRef<SWidget>& Cell) -> TSharedRef<SWidget>
@@ -752,7 +763,7 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 16.f)[ Text(KT("Check your pass dates"), KioskType::H1, true, C.Ink) ]
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, KioskLayout::TitleGap)[ Text(KT("Check your pass dates"), KioskType::H1, true, C.Ink) ]
 		+ SVerticalBox::Slot().FillHeight(1.f)
 		[
 			SNew(SHorizontalBox)
@@ -770,10 +781,10 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().AutoWidth()[ bRenewing ? Legend(C.HelpTint, KT("Current pass · ends 14 Nov")) : StaticCastSharedRef<SWidget>(SNew(SSpacer)) ]
+						+ SHorizontalBox::Slot().AutoWidth()[ bRenewing ? Legend(C.HelpTint, FText::Format(KT("Current pass · ends {0}"), Session->CurrentPassEndText())) : StaticCastSharedRef<SWidget>(SNew(SSpacer)) ]
 						+ SHorizontalBox::Slot().AutoWidth()[ Legend(C.PrimaryTint, KT("New pass validity")) ]
 					],
-					C.Surface, C.BorderStrong, 2.f, FMargin(34.f, 26.f))
+					C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide)
 			]
 			+ SHorizontalBox::Slot().FillWidth(0.4f)
 			[
@@ -782,30 +793,30 @@ void SPassDatesScreen::Construct(const FArguments& InArgs, const TSharedRef<FKio
 				[
 					Card(
 						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FText::Format(Session->IsStudentCard() ? KT("{0} – Student") : KT("{0} – Adult"), FKioskData::ConcessionName(PassIndex)), KioskType::H2, true, C.Ink, 1.f) ]
+						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FText::Format(Session->IsStudentCard() ? KT("{0} – Student") : KT("{0} – Adult"), FKioskData::ConcessionName(PassIndex)), KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(KT("30 days · unlimited rides"), KioskType::Body, false, C.Muted) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 18.f)[ Rule(C.BorderStrong, 2.f) ]
 						+ SVerticalBox::Slot().AutoHeight()[ Text(bRenewing || bPicked ? KT("New pass") : KT("No pass active"), KioskType::Caption, false, C.Muted) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
 						[
-							TextWrap(bRenewing ? KT("15 Nov – 14 Dec 2026")
+							TextWrap(bRenewing ? Session->RenewalRangeText(true)
 								: (bPicked ? FText::Format(KT("{0} – {1}"), DayMonth(Session->PassStartDate()), DayMonth(Session->PassEndDate())) : KT("Select a start date")),
-								KioskType::H2, true, (bRenewing || bPicked) ? C.Primary : C.Ink, 1.f)
+								KioskType::H2, true, (bRenewing || bPicked) ? C.Primary : C.Ink, KioskType::LineCompact)
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, bRenewing || bPicked ? 14.f : 0.f, 0.f, 0.f)
 						[
 							bRenewing || bPicked
-								? StaticCastSharedRef<SWidget>(TextWrap(bRenewing ? KT("Current pass ends 14 Nov 2026") : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Ink, 1.1f))
+								? StaticCastSharedRef<SWidget>(TextWrap(bRenewing ? FText::Format(KT("Current pass ends {0}"), Session->CurrentPassEndText(true)) : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Ink, KioskType::LineBody))
 								: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 						[
 							TextWrap(bRenewing ? KT("Your new pass starts the day after it ends, so you don't lose any days.")
 								: (bPicked ? KT("Your pass lasts 30 days from the day you chose.") : KT("Tap a day on the calendar. Your pass lasts 30 days from that day.")),
-								KioskType::Body, false, C.Muted, 1.2f)
+								KioskType::Body, false, C.Muted, KioskType::LineBody)
 						]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->PassPriceCents(PassIndex)), KioskType::Display, true, C.Ink) ],
-						C.Surface, C.BorderStrong, 2.f, FMargin(32.f, 28.f))
+						C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide)
 				]
 				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 				+ SVerticalBox::Slot().AutoHeight()
@@ -834,13 +845,17 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		? KT("Your top-up is done. Lift your Metro card off the reader below the screen before you go.")
 		: KT("Your purchase is done. Lift your Metro card off the reader below the screen before you go.");
 
+	// Renewal range: starts the day after the card's pass ends and runs 30 days (same rule as FKioskSession::RenewalRangeText).
+	FDateTime RenewalStart, RenewalEnd;
+	const bool bHasRenewal = Session->RenewalRange(RenewalStart, RenewalEnd);
+
 	TSharedRef<SWidget> BalanceDetail = SNullWidget::NullWidget;
 	if (bTopUp)
 	{
 		BalanceDetail = SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				TextWrap(FText::Format(KT("+{0} added · was {1}"), FKioskSession::Money(Session->State.TopUpCents), FKioskSession::Money(Session->CardBalanceCents())), KioskType::Body, true, C.Ink, 1.1f)
+				TextWrap(FText::Format(KT("+{0} added · was {1}"), FKioskSession::Money(Session->State.TopUpCents), FKioskSession::Money(Session->CardBalanceCents())), KioskType::Body, true, C.Ink, KioskType::LineBody)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(KT("Ready to use now"), KioskType::Body, false, C.Muted) ];
 	}
@@ -849,12 +864,12 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		BalanceDetail = SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("New pass validity · 15 Nov – 14 Dec") : FText::Format(KT("New pass validity · {0} – {1}"), DayMonth(Session->PassStartDate()), DayMonth(Session->PassEndDate())),
-					KioskType::Body, true, C.Ink, 1.1f)
+				TextWrap(bHasRenewal ? FText::Format(KT("New pass validity · {0} – {1}"), DayMonth(RenewalStart), DayMonth(RenewalEnd)) : FText::Format(KT("New pass validity · {0} – {1}"), DayMonth(Session->PassStartDate()), DayMonth(Session->PassEndDate())),
+					KioskType::Body, true, C.Ink, KioskType::LineBody)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
 			[
-				TextWrap(Session->CurrentPass() != INDEX_NONE ? KT("Current pass · ends 14 Nov") : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Muted, 1.1f)
+				TextWrap(bHasRenewal ? FText::Format(KT("Current pass · ends {0}"), Session->CurrentPassEndText()) : FText::Format(KT("Starts {0}"), DayMonth(Session->PassStartDate())), KioskType::Body, false, C.Muted, KioskType::LineBody)
 			];
 	}
 
@@ -882,7 +897,7 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		+ SOverlay::Slot()[ Positioned(Icon(EKioskIcon::ArrowUp, 140.f, C.Primary, 6.f), FVector2D(500.f, 330.f), FVector2D(70.f, 200.f)) ];
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 28.f, KioskLayout::PageX, 28.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.54f).Padding(0.f, 0.f, 44.f, 0.f)
@@ -893,14 +908,14 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SBox).WidthOverride(84.f).HeightOverride(84.f)
+					SNew(SBox).WidthOverride(KioskLayout::IconDiscLg).HeightOverride(KioskLayout::IconDiscLg)
 					[
-						Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("!")), 52.f, true, C.White) ], C.AmberStrong, 24.f)
+						Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Text(FText::FromString(TEXT("!")), KioskType::Display, true, C.White) ], C.AmberStrong, KioskLayout::IconDiscLg * 0.5f)
 					]
 				]
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Don't forget your card"), KioskType::Display, true, C.Ink, 1.f) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Don't forget your card"), KioskType::Display, true, C.Ink, KioskType::LineCompact) ]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ TextWrap(Body, KioskType::Body, false, C.Ink, 1.3f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ TextWrap(Body, KioskType::Body, false, C.Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f).HAlign(HAlign_Left)
 			[
 				Panel(
@@ -921,7 +936,7 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(FKioskSession::Money(Balance), KioskType::Figure, true, C.Ink) ]
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(40.f, 0.f, 0.f, 0.f)[ BalanceDetail ],
-					C.Surface, C.BorderStrong, 2.f, FMargin(28.f, 16.f))
+					C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadTight)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, Session->ChangeCents() > 0 ? 10.f : 0.f, 0.f, 0.f)
 			[
@@ -955,7 +970,7 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 					]
 				]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ HardwareHint(Mask(EHardware::MetroReader), 0.7f) ],
-				C.Band, C.Transparent, 0.f, FMargin(KioskLayout::CardPad, 24.f))
+				C.Band, C.Transparent, 0.f, KioskLayout::CardPadWide)
 		]
 	];
 }

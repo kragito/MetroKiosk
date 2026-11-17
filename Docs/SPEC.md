@@ -270,3 +270,13 @@ placeholder mismatch, or English mixed into Chinese/Tamil. Station and place nam
 
 - **Clock format (header clock):** English uses the 12-hour form ("7:48 pm"); Chinese, Malay and Tamil use the 24-hour form ("19:48"). This is deliberate (`FKioskSession::TimeOfDayText`), not an omission.
 - **Destination name:** every screen that prints the destination (step bar, Review, Pay summary, receipt, help call) uses `FKioskSession::DestinationLabel()`: the active-language name, English where no translation exists.
+
+- **Date formats:** every date goes through `FKioskSession::DayMonthText`, `MonthYearText` and `DateRangeText`. English, Malay and Tamil show "14 Nov", "14 Nov 2026" and calendar titles "Nov 2026"; Chinese shows "11月14日", "2026年11月14日" and "2026年11月". A Chinese range that crosses a year prints the year on both sides. Both calendar months on Pass dates use the short month title.
+- **Pass lines come from card data:** "ends 14 Nov", the renewal range and the calendar are built from the card's pass end date (`FKioskSession::RenewalRange`); top-up amounts come from the data layer.
+- **Ticket type:** each card ends with the price on the left and a compact Choose button on the right.
+- **Top up amount:** the prompt on the left card ("Pick an amount") is large; the amount tiles are compact and Continue sits directly under the grid (grey until an amount is chosen).
+- **Keyboard and Confirm:** with the on-screen keyboard open, Confirm sits under the keyboard on Destination and on the map.
+- **Help call:** the "Captions are on" row is styled as a status line but is still tappable.
+- **Home:** the side margin is the shared page margin (`KioskLayout::PageX`).
+- **Map labels:** a label moves to a free side or further out with a leader line; a minor label with no free spot is not drawn.
+- **Badges:** check badges are circles (`KioskUI::Badge`).
