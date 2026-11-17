@@ -18,7 +18,7 @@
 namespace
 {
 	/** Latin words that are allowed inside Chinese and Tamil text (brand names and things the customer types on the Latin keyboard). */
-	const TCHAR* const GAllowedLatin[] = { TEXT("NETS"), TEXT("PIN"), TEXT("Gardens"), TEXT("niuchesui"), TEXT("VivoCity"), TEXT("Zoo"), TEXT("ION") };
+	const TCHAR* const GAllowedLatin[] = { TEXT("NETS"), TEXT("PIN"), TEXT("Gardens"), TEXT("niuchesui"), TEXT("VivoCity"), TEXT("Zoo"), TEXT("ION"), TEXT("Esc") };
 
 	FString Unescape(const FString& Raw)
 	{

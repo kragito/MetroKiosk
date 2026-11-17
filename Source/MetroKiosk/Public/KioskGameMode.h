@@ -1,4 +1,4 @@
-// Game mode that hosts the kiosk UI in the game viewport (UI-only input, visible cursor).
+// Game mode that hosts the kiosk UI in the game viewport (UI-only input, visible cursor), or in the 3D concourse with -Kiosk3D.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -6,6 +6,7 @@
 #include "KioskGameMode.generated.h"
 
 class FKioskQARunner;
+class FKioskWorld;
 class FKioskSession;
 class SKioskRoot;
 
@@ -27,5 +28,6 @@ private:
 	TSharedPtr<FKioskSession> Session;
 	TSharedPtr<SKioskRoot> Root;
 	TSharedPtr<FKioskQARunner> QARunner;
+	TSharedPtr<FKioskWorld> World3D;
 	TWeakObjectPtr<UGameViewportClient> HostViewport;
 };

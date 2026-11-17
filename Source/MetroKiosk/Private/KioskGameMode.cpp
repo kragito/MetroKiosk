@@ -9,10 +9,12 @@
 #include "KioskQA.h"
 #include "KioskSession.h"
 #include "Widgets/SKioskRoot.h"
+#include "World/KioskVisitorPawn.h"
+#include "World/KioskWorld.h"
 
 AKioskGameMode::AKioskGameMode()
 {
-	DefaultPawnClass = ASpectatorPawn::StaticClass();
+	DefaultPawnClass = FKioskWorld::IsRequested() ? TSubclassOf<APawn>(AKioskVisitorPawn::StaticClass()) : TSubclassOf<APawn>(ASpectatorPawn::StaticClass());
 	HUDClass = nullptr;
 }
 
@@ -30,15 +32,25 @@ void AKioskGameMode::BeginPlay()
 	Session = MakeShared<FKioskSession>();
 	Root = SNew(SKioskRoot, Session.ToSharedRef());
 	HostViewport = Viewport;
-	Viewport->AddViewportWidgetContent(Root.ToSharedRef(), 100);
 
-	if (APlayerController* Controller = GetWorld()->GetFirstPlayerController())
+	if (FKioskWorld::IsRequested())
 	{
-		Controller->bShowMouseCursor = true;
-		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(Root);
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		Controller->SetInputMode(InputMode);
+		// 3D mode: the kiosk UI lives on the screen of a kiosk in a walkable concourse (see World/KioskWorld.cpp).
+		World3D = MakeShared<FKioskWorld>(GetWorld(), Viewport, Root.ToSharedRef(), Session.ToSharedRef());
+		World3D->Start();
+	}
+	else
+	{
+		Viewport->AddViewportWidgetContent(Root.ToSharedRef(), 100);
+
+		if (APlayerController* Controller = GetWorld()->GetFirstPlayerController())
+		{
+			Controller->bShowMouseCursor = true;
+			FInputModeUIOnly InputMode;
+			InputMode.SetWidgetToFocus(Root);
+			InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			Controller->SetInputMode(InputMode);
+		}
 	}
 
 	QARunner = MakeShared<FKioskQARunner>();
@@ -47,6 +59,11 @@ void AKioskGameMode::BeginPlay()
 
 void AKioskGameMode::RemoveKioskWidget()
 {
+	if (World3D.IsValid())
+	{
+		World3D->Shutdown();
+		World3D.Reset();
+	}
 	if (QARunner.IsValid())
 	{
 		QARunner->Shutdown();

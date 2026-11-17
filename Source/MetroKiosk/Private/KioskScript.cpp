@@ -21,7 +21,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogKioskScript, Log, All);
 
 namespace
 {
-	constexpr int32 SettleFrames = 8;
+	constexpr int32 ScriptSettleFrames = 8;
 	constexpr int32 ShotSettleFrames = 10;
 	constexpr int32 MaxShotWaitFrames = 900;
 	constexpr float CanvasW = 1917.f;
@@ -625,7 +625,7 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		break;
 
 	case EPhase::VerifyClick:
-		if (FrameCounter >= SettleFrames)
+		if (FrameCounter >= ScriptSettleFrames)
 		{
 			const bool bActive = FSlateApplication::Get().IsActive();
 			if (Session->ChangeSerial() == SerialBeforeClick)
@@ -657,7 +657,7 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		break;
 
 	case EPhase::Settle:
-		if (FrameCounter >= SettleFrames)
+		if (FrameCounter >= ScriptSettleFrames)
 		{
 			Phase = EPhase::Next;
 		}

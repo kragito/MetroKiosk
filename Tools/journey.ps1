@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Out,
     [int]$TimeoutSeconds = 300,
     [switch]$NoBuild,            # run against the binaries as they are, even if sources are newer (other work in progress)
+    [string]$Extra = "",         # extra launch arguments, e.g. "-Kiosk3D -Kiosk3DStart=kiosk"
     [switch]$StealFocusForTest   # test aid: opens Notepad over the game so it is NOT the active window
 )
 
@@ -35,6 +36,7 @@ Remove-Item (Join-Path $Out "*") -Include *.png, *.txt -ErrorAction SilentlyCont
 
 $args = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
           "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"")
+if ($Extra) { $args += $Extra.Split(" ", [StringSplitOptions]::RemoveEmptyEntries) }
 # Let any previous -game process finish closing so its window cannot interfere.
 While (Get-Process UnrealEditor -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -match 'Preview' -or $_.MainWindowTitle -eq 'MetroKiosk' }) { Start-Sleep -Seconds 1 }
 Start-Sleep -Seconds 2

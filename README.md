@@ -90,6 +90,17 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `l5_adult_topup` | adult Metro card top-up: "Adult card", $18.50 balance, no low-balance banner or pass, +$20 to $38.50, done screen |
 | `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, "No pass active", "Go to payment" disabled until a day is picked (`click:Day +3` = three days from today; names are `Day YYYY-MM-DD`), done screen shows the chosen start |
 
+## 3D mode (optional)
+`powershell -File Tools/play_3d.ps1` (or add `-Kiosk3D` to a `-game` launch) puts the kiosk in a small metro concourse built
+at runtime from engine basic shapes only (`/Engine/BasicShapes`, no assets under `Content/`). The kiosk screen shows the live
+kiosk UI. Without `-Kiosk3D` the app opens the 2D kiosk exactly as before.
+- Controls: WASD or arrow keys walk, mouse looks, left click presses on the kiosk screen, **E** near the kiosk opens the
+  full-screen kiosk view, **Esc** steps back out.
+- Switches: `-Kiosk3DStart=kiosk` starts in the full-screen view (journey scripts can run as `-Kiosk3D -Kiosk3DStart=kiosk`);
+  `-Kiosk3DShot=<abs path.png>` saves a screenshot of the scene from the spawn point after about 4 s, then quits
+  (`Tools/play_3d.ps1 -Shot <png>`). `-StartAtKiosk` and `-NoBuild` are also script switches.
+- Code: `Source/MetroKiosk/Private/World/` (`KioskEnvironment` scene, `KioskVisitorPawn` first-person pawn, `KioskWorld` mode switching).
+
 ## Automation tests
 ```powershell
 powershell -File Tools/build.ps1

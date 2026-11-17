@@ -343,3 +343,6 @@
 { TEXT("Your ticket is printing. Take it from the collection tray."), TEXT("车票正在打印，请从取物托盘取走。"), TEXT("Tiket anda sedang dicetak. Ambil dari dulang pengumpulan."), TEXT("உங்கள் பயணச்சீட்டு அச்சாகிறது. சேகரிப்புத் தட்டிலிருந்து எடுத்துக்கொள்ளுங்கள்.") },
 { TEXT("Change in the tray: {0}"), TEXT("托盘中的找零：{0}"), TEXT("Baki dalam dulang: {0}"), TEXT("தட்டில் மீதிச் சில்லறை: {0}") },
 { TEXT("Waiting for cash · {0}:{1} left"), TEXT("正在等待现金 · 剩余 {0}:{1}"), TEXT("Menunggu wang tunai · {0}:{1} berbaki"), TEXT("பணத்துக்காகக் காத்திருக்கிறது · {0}:{1} மீதம்") },
+{ TEXT("Esc to step back"), TEXT("按 Esc 返回"), TEXT("Tekan Esc untuk berundur"), TEXT("பின்செல்ல Esc அழுத்தவும்") },
+{ TEXT("Press E to use the kiosk"), TEXT("按 E 使用售票机"), TEXT("Tekan E untuk guna kiosk"), TEXT("கியோஸ்க்கைப் பயன்படுத்த E அழுத்தவும்") },
+{ TEXT("Move with the keyboard, look with the mouse"), TEXT("用键盘行走，用鼠标环视"), TEXT("Bergerak dengan papan kekunci, lihat dengan tetikus"), TEXT("விசைப்பலகையால் நடந்து, சுட்டியால் பாருங்கள்") },
