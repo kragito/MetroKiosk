@@ -14,6 +14,19 @@ namespace
 	const FVector2f GMapMin(40.f, 20.f);
 	const FVector2f GMapMax(930.f, 580.f);
 	constexpr float HitRadius = 30.f;
+
+	/** A station label waiting for collision-free placement. */
+	struct FPendingLabel
+	{
+		int32 Index = INDEX_NONE;
+		FVector2f Pos = FVector2f::ZeroVector; // dot centre, widget-local
+		float DotRadius = 0.f;
+		float Width = 0.f;
+		int32 Priority = 4; // 0 selected, 1 lit, 2 on highlighted line, 3 interchange, 4 rest
+		bool bPreferLeft = false;
+		bool bSelected = false;
+		bool bMustShow = false; // selected or lit: drawn even if every spot overlaps
+	};
 }
 
 void SKioskMap::Construct(const FArguments& InArgs)
@@ -81,6 +94,10 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	const FSlateFontInfo LabelFont = Style.Font(KioskType::MapLabel, true);
 	const FSlateFontInfo MarkerFont = Style.Font(KioskType::Caption, true);
 	const TSharedRef<FSlateFontMeasure> FontMeasure = FSlateApplication::Get().GetRenderer()->GetFontMeasureService();
+	TArray<FPendingLabel> Pending; // labels wait until every dot and the "You are here" chip are known
+	TArray<FSlateRect> Placed;     // rectangles already taken, in local space
+	TArray<bool> DotFull; // parallel to DotRects: true when the dot is drawn at full strength (not dimmed)
+	TArray<TPair<int32, FSlateRect>> DotRects; // every station dot (with 2 px margin); a label's own dot does not block it
 	for (int32 Index = 0; Index < Stations.Num(); ++Index)
 	{
 		const FKioskStation& Station = Stations[Index];
@@ -105,6 +122,8 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				? Style.Round(C.Help, Radius * 1.3f, C.White, 4.f)
 				: Style.Round(C.White, Radius, Ring, bInterchange ? 4.f : 3.f);
 		const float Draw = (bHere && !bSelected) ? Radius * 1.3f : Radius;
+		DotRects.Emplace(Index, FSlateRect(Pos.X - Draw - 2.f, Pos.Y - Draw - 2.f, Pos.X + Draw + 2.f, Pos.Y + Draw + 2.f));
+		DotFull.Add(!bDim);
 		FLinearColor DotTint = FKioskStyle::BrushTint(Dot);
 		DotTint.A *= bDim ? 0.25f : 1.f;
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 3,
@@ -120,6 +139,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			const float Slack = TextWidth * 0.06f;
 			const FVector2f BoxSize(TextWidth + Slack + 22.f, 32.f);
 			const FVector2f BoxPos = Pos + FVector2f(-Draw - 8.f - BoxSize.X, -BoxSize.Y * 0.5f - 14.f); // sits above-left so it never covers the Chinatown label
+			Placed.Add(FSlateRect(BoxPos.X, BoxPos.Y, BoxPos.X + BoxSize.X, BoxPos.Y + BoxSize.Y));
 			const FSlateBrush* MarkerBrush = Style.Round(C.Help, 6.f);
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
 				AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
@@ -133,17 +153,143 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			// Crowded stations put their label on the left; every label sits on a soft white pill so lines never cut through it.
 			static const TSet<FString> LeftLabels = { TEXT("Chinatown"), TEXT("Outram Park"), TEXT("Dhoby Ghaut"),
 				TEXT("Botanic Gardens"), TEXT("Caldecott"), TEXT("Orchard"), TEXT("Buona Vista"), TEXT("HarbourFront") };
-			const float Width = FontMeasure->Measure(Station.Name, LabelFont).X;
-			const float LabelX = LeftLabels.Contains(Station.Name) ? (-Draw - 6.f - Width) : (Draw + 6.f);
-			const FVector2f LabelPos = Pos + FVector2f(LabelX, -10.f);
-			const FSlateBrush* PillBrush = Style.Round(C.MapLabelBg, 5.f);
-			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
-				AllottedGeometry.ToPaintGeometry(FVector2f(Width + 8.f, 24.f), FSlateLayoutTransform(LabelPos + FVector2f(-4.f, -2.f))), PillBrush,
-				ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
-			FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
-				AllottedGeometry.ToPaintGeometry(FVector2f(220.f, 24.f), FSlateLayoutTransform(LabelPos)),
-				Station.Name, LabelFont, ESlateDrawEffect::None, bSelected ? C.Primary : C.Ink);
+			FPendingLabel Label;
+			Label.Index = Index;
+			Label.Pos = Pos;
+			Label.DotRadius = Draw;
+			Label.Width = FontMeasure->Measure(Station.Name, LabelFont).X;
+			Label.bPreferLeft = LeftLabels.Contains(Station.Name);
+			Label.bSelected = bSelected;
+			Label.bMustShow = bSelected || bLit;
+			Label.Priority = bSelected ? 0 : (bLit ? 1 : (bOnFilter ? 2 : (bInterchange ? 3 : 4)));
+			Pending.Add(Label);
 		}
+	}
+
+	// Label collision avoidance: highest priority first (stable by station index), first free candidate wins.
+	Pending.StableSort([](const FPendingLabel& A, const FPendingLabel& B) { return A.Priority < B.Priority; });
+	const FSlateBrush* PillBrush = Style.Round(C.MapLabelBg, 5.f);
+	for (const FPendingLabel& Label : Pending)
+	{
+		const float PillW = Label.Width + 8.f;
+		constexpr float PillH = 24.f;
+		const float R = Label.DotRadius;
+		// Candidate text-origin offsets from the dot centre; the pill is the text box grown by (4, 2).
+		// Order: right/left/above/below at the normal gap, then (priority labels only) the four diagonals,
+		// then right/left/above/below again at +14 and +28 px with a leader line back to the dot.
+		TArray<FVector2f, TInlineAllocator<16>> Candidates;
+		TArray<float, TInlineAllocator<16>> Gaps;
+		auto AddSides = [&](float Gap)
+		{
+			const FVector2f Right(R + 6.f + Gap, -10.f);
+			const FVector2f Left(-R - 6.f - Gap - Label.Width, -10.f);
+			const FVector2f Above(-Label.Width * 0.5f, -R - 6.f - 22.f - Gap);
+			const FVector2f Below(-Label.Width * 0.5f, R + 6.f + Gap);
+			Candidates.Add(Label.bPreferLeft ? Left : Right);
+			Candidates.Add(Label.bPreferLeft ? Right : Left);
+			Candidates.Add(Above);
+			Candidates.Add(Below);
+			for (int32 K = 0; K < 4; ++K)
+			{
+				Gaps.Add(Gap);
+			}
+		};
+		AddSides(0.f);
+		if (Label.bMustShow)
+		{
+			const float D = R * 0.7f + 3.f; // pill corner nearest the dot sits D px diagonally from its centre
+			const FVector2f Corner(4.f, 2.f);
+			Candidates.Add(FVector2f(D, -D - PillH) + Corner);
+			Candidates.Add(FVector2f(-D - PillW, -D - PillH) + Corner);
+			Candidates.Add(FVector2f(D, D) + Corner);
+			Candidates.Add(FVector2f(-D - PillW, D) + Corner);
+			for (int32 K = 0; K < 4; ++K)
+			{
+				Gaps.Add(0.f);
+			}
+			AddSides(14.f);
+			AddSides(28.f);
+		}
+
+		auto PillRect = [&](const FVector2f& Offset)
+		{
+			const FVector2f Min = Label.Pos + Offset + FVector2f(-4.f, -2.f);
+			return FSlateRect(Min.X, Min.Y, Min.X + PillW, Min.Y + PillH);
+		};
+		auto Overlap = [&](const FSlateRect& Rect)
+		{
+			float Total = 0.f;
+			for (const FSlateRect& Other : Placed)
+			{
+				const float W = FMath::Min(Rect.Right, Other.Right) - FMath::Max(Rect.Left, Other.Left);
+				const float H = FMath::Min(Rect.Bottom, Other.Bottom) - FMath::Max(Rect.Top, Other.Top);
+				if (W > 0.f && H > 0.f)
+				{
+					Total += W * H;
+				}
+			}
+			Total *= 10.f; // covering another label is the worst outcome
+			for (int32 DotSlot = 0; DotSlot < DotRects.Num(); ++DotSlot)
+			{
+				const TPair<int32, FSlateRect>& Dot = DotRects[DotSlot];
+				if (Dot.Key == Label.Index)
+				{
+					continue;
+				}
+				const float W = FMath::Min(Rect.Right, Dot.Value.Right) - FMath::Max(Rect.Left, Dot.Value.Left);
+				const float H = FMath::Min(Rect.Bottom, Dot.Value.Bottom) - FMath::Max(Rect.Top, Dot.Value.Top);
+				if (W > 0.f && H > 0.f)
+				{
+					Total += W * H * (DotFull[DotSlot] ? 10.f : 1.f); // dimmed dots are cheap to cover
+				}
+			}
+			// Falling outside the map area counts as overlap too.
+			const float OutX = FMath::Max(0.f, -Rect.Left) + FMath::Max(0.f, Rect.Right - Size.X);
+			const float OutY = FMath::Max(0.f, -Rect.Top) + FMath::Max(0.f, Rect.Bottom - Size.Y);
+			return Total + (OutX * PillH + OutY * PillW) * 10.f;
+		};
+
+		int32 Chosen = INDEX_NONE;
+		int32 Least = 0;
+		float LeastValue = TNumericLimits<float>::Max();
+		for (int32 Slot = 0; Slot < Candidates.Num(); ++Slot)
+		{
+			const float Value = Overlap(PillRect(Candidates[Slot]));
+			if (Value <= 0.f)
+			{
+				Chosen = Slot;
+				break;
+			}
+			if (Value < LeastValue)
+			{
+				LeastValue = Value;
+				Least = Slot;
+			}
+		}
+		if (Chosen == INDEX_NONE)
+		{
+			if (!Label.bMustShow)
+			{
+				continue; // no free spot: skip a minor label rather than cover another
+			}
+			Chosen = Least;
+		}
+		const FSlateRect Rect = PillRect(Candidates[Chosen]);
+		Placed.Add(Rect);
+		const FVector2f LabelPos = Label.Pos + Candidates[Chosen];
+		if (Gaps[Chosen] > 10.f)
+		{
+			// Detached label: thin leader from the dot to the nearest point of the pill so it still reads as belonging to the dot.
+			const FVector2f Anchor(FMath::Clamp(Label.Pos.X, Rect.Left, Rect.Right), FMath::Clamp(Label.Pos.Y, Rect.Top, Rect.Bottom));
+			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 1, Paint, TArray<FVector2f>({ Label.Pos, Anchor }),
+				ESlateDrawEffect::None, C.Ink, true, 1.5f);
+		}
+		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
+			AllottedGeometry.ToPaintGeometry(FVector2f(PillW, PillH), FSlateLayoutTransform(FVector2f(Rect.Left, Rect.Top))), PillBrush,
+			ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
+		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
+			AllottedGeometry.ToPaintGeometry(FVector2f(220.f, 24.f), FSlateLayoutTransform(LabelPos)),
+			Stations[Label.Index].Name, LabelFont, ESlateDrawEffect::None, Label.bSelected ? C.Primary : C.Ink);
 	}
 	return LayerId + 6;
 }
