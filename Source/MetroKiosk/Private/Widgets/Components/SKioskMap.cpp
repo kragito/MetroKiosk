@@ -3,6 +3,7 @@
 #include "KioskData.h"
 #include "KioskAutomation.h"
 #include "KioskLoc.h"
+#include "KioskPlaces.h"
 #include "KioskStyle.h"
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
@@ -21,7 +22,9 @@ namespace
 		int32 Index = INDEX_NONE;
 		FVector2f Pos = FVector2f::ZeroVector; // dot centre, widget-local
 		float DotRadius = 0.f;
-		float Width = 0.f;
+		float Width = 0.f; // measured text width plus slack for complex scripts
+		float Slack = 0.f; // extra width inside Width; the text is shifted by half of it to stay centred
+		FString Text;      // active-language station name (English when there is no local name)
 		int32 Priority = 4; // 0 selected, 1 lit, 2 on highlighted line, 3 interchange, 4 rest
 		bool bPreferLeft = false;
 		bool bSelected = false;
@@ -157,7 +160,13 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			Label.Index = Index;
 			Label.Pos = Pos;
 			Label.DotRadius = Draw;
-			Label.Width = FontMeasure->Measure(Station.Name, LabelFont).X;
+			// Show the same name the destination list shows; the English name stays the key for LeftLabels above.
+			const FString Local = FKioskPlaces::LocalName(Station.Name);
+			Label.Text = Local.IsEmpty() ? Station.Name : Local;
+			const float TextWidth = FontMeasure->Measure(Label.Text, LabelFont).X;
+			// Same ~6% slack as the "You are here" marker: Tamil shapes wider than it measures.
+			Label.Slack = TextWidth * 0.06f;
+			Label.Width = TextWidth + Label.Slack;
 			Label.bPreferLeft = LeftLabels.Contains(Station.Name);
 			Label.bSelected = bSelected;
 			Label.bMustShow = bSelected || bLit;
@@ -357,8 +366,8 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			AllottedGeometry.ToPaintGeometry(FVector2f(PillW, PillH), FSlateLayoutTransform(FVector2f(Rect.Left, Rect.Top))), PillBrush,
 			ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
 		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
-			AllottedGeometry.ToPaintGeometry(FVector2f(220.f, 24.f), FSlateLayoutTransform(LabelPos)),
-			Stations[Label.Index].Name, LabelFont, ESlateDrawEffect::None, Label.bSelected ? C.Primary : C.Ink);
+			AllottedGeometry.ToPaintGeometry(FVector2f(Label.Width, 24.f), FSlateLayoutTransform(LabelPos + FVector2f(Label.Slack * 0.5f, 0.f))),
+			Label.Text, LabelFont, ESlateDrawEffect::None, Label.bSelected ? C.Primary : C.Ink);
 	}
 	return LayerId + 6;
 }

@@ -66,7 +66,7 @@ Useful names: `Buy a ticket`, `Choose One-way`, `Search`, `Place <name>` (for ex
 `Station <name>`, `Change destination` (map card), `Confirm selected ticket`, `Open metro map view`, `Filter NS|EW|NE|CC|DT|TE` (destination list and map),
 `Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Insert $2`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
 `Keypad 5`, `Amount More`, `SIMULATE: tap card on reader` (on Scan card this is the Student card; the Adult card is `SIMULATE: tap Adult card on reader`), `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
-Names stay in English whatever language is active. The language pills live in the footer, so switch language after the first
+Step names stay in English whatever language is active (the on-screen map labels follow the active language). The language pills live in the footer, so switch language after the first
 screen (`click:Buy a ticket|lang:zh`), not on Home.
 
 ### Journey scripts
@@ -89,6 +89,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `k7_map_back_to_list` | Back from the map returns to the list; leftover search text is cleared |
 | `l5_adult_topup` | adult Metro card top-up: "Adult card", $18.50 balance, no low-balance banner or pass, +$20 to $38.50, done screen |
 | `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, "No pass active", "Go to payment" disabled until a day is picked (`click:Day +3` = three days from today; names are `Day YYYY-MM-DD`), done screen shows the chosen start |
+| `l7_map_labels_languages` | map labels follow the language: selects HarbourFront from search, then switches en, zh, ta and ms on the map and zoomed in (check the shots: labels are painted, not visible to `expect:`), back to the list expects the zh name 港湾, confirm reaches Review |
 
 ## 3D mode (optional)
 `powershell -File Tools/play_3d.ps1` (or add `-Kiosk3D` to a `-game` launch) puts the kiosk in a small metro concourse built
