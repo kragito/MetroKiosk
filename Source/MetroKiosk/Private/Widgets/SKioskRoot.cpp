@@ -203,6 +203,7 @@ TSharedRef<SWidget> SKioskRoot::BuildCallPip(bool bShowLabel)
 		SNew(SKioskButton)
 		.Kind(EKioskButtonKind::Card)
 		.Label(KT("Return to the help call"))
+		.ButtonTag(TEXT("Return to the help call"))
 		.Padding(FMargin(8.f, 6.f, 20.f, 6.f))
 		.OnClicked_Lambda([S]() { S->ResumeCall(); return FReply::Handled(); })
 		[
