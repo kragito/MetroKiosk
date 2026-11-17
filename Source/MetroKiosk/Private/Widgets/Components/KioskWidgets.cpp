@@ -105,6 +105,24 @@ namespace KioskUI
 		return SNew(SKioskIcon).Icon(Which).Size(Size).Color(Color).Thickness(Thickness);
 	}
 
+	TSharedRef<SWidget> Badge(EKioskIcon Which, float Size, const FLinearColor& Fill, const FLinearColor& IconColor, float Thickness)
+	{
+		return SNew(SBox)
+			.WidthOverride(Size)
+			.HeightOverride(Size)
+			[
+				SNew(SBorder)
+				.BorderImage(FKioskStyle::Get().Round(Fill, Size * 0.5f))
+				.BorderBackgroundColor(FLinearColor::White)
+				.HAlign(HAlign_Center)
+				.VAlign(VAlign_Center)
+				.Padding(0.f)
+				[
+					Icon(Which, Size * 0.55f, IconColor, Thickness)
+				]
+			];
+	}
+
 	TSharedRef<SWidget> Dot(const FLinearColor& Color, float Diameter)
 	{
 		return SNew(SBox)

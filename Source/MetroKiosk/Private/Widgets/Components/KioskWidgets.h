@@ -36,6 +36,8 @@ namespace KioskUI
 		const FLinearColor& Border = FLinearColor::Transparent, const FMargin& Padding = FMargin(20.f, 8.f));
 
 	TSharedRef<SWidget> Icon(EKioskIcon Which, float Size, const FLinearColor& Color, float Thickness = 0.f);
+	/** The one status badge / icon disc: always a circle (radius Size / 2) with the icon centred at 0.55 x Size. Thickness 0 = icon default. */
+	TSharedRef<SWidget> Badge(EKioskIcon Which, float Size, const FLinearColor& Fill, const FLinearColor& IconColor = KC().White, float Thickness = 0.f);
 	TSharedRef<SWidget> Dot(const FLinearColor& Color, float Diameter);
 	TSharedRef<SWidget> Gap(float Width, float Height = 0.f);
 	/** Horizontal hairline. */

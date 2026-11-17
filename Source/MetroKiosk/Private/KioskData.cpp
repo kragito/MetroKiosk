@@ -170,8 +170,46 @@ int32 FKioskData::FindStation(const FString& Name)
 
 int32 FKioskData::CityHallIndex()
 {
-	static const int32 Index = FindStation(TEXT("City Hall"));
+	static const int32 Index = FindStation(OriginName());
 	return Index;
+}
+
+const FString& FKioskData::OriginName()
+{
+	static const FString Name = TEXT("City Hall");
+	return Name;
+}
+
+const TArray<FKioskCashDenom>& FKioskData::CashDenominations()
+{
+	static const TArray<FKioskCashDenom> Data = {
+		{ 200, false, TEXT("$2") }, { 500, false, TEXT("$5") }, { 1000, false, TEXT("$10") }, { 5000, false, TEXT("$50") },
+		{ 10, true, TEXT("10¢") }, { 20, true, TEXT("20¢") }, { 50, true, TEXT("50¢") }, { 100, true, TEXT("$1") } };
+	return Data;
+}
+
+bool FKioskData::IsAcceptedCash(int32 Cents)
+{
+	for (const FKioskCashDenom& Denom : CashDenominations())
+	{
+		if (Denom.Cents == Cents)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+const TArray<int32>& FKioskData::QuickTopUpAmounts()
+{
+	static const TArray<int32> Data = { 1000, 2000, 5000 };
+	return Data;
+}
+
+const TArray<int32>& FKioskData::TopUpAmounts()
+{
+	static const TArray<int32> Data = { 1000, 2000, 3000, 5000, 10000 };
+	return Data;
 }
 
 const TArray<int32>& FKioskData::PopularStations()

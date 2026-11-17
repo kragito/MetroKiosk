@@ -126,6 +126,7 @@ FKioskColors::FKioskColors()
 	, OnBrandSoft(1.f, 1.f, 1.f, 0.88f)
 	, MapLabelBg(1.f, 1.f, 1.f, 0.82f)
 	, DeviceDark(Hex(TEXT("0D1424")))
+	, Scrim(0.05f, 0.08f, 0.15f, 0.62f)
 {
 	Line[0] = Hex(TEXT("D42E12"));
 	Line[1] = Hex(TEXT("009645"));

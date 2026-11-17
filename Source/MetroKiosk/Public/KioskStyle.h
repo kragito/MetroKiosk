@@ -42,6 +42,7 @@ struct FKioskColors
 	FLinearColor OnBrandSoft;   // secondary text on the teal header
 	FLinearColor MapLabelBg;    // translucent pill behind map labels
 	FLinearColor DeviceDark;    // card-slot slit in illustrations
+	FLinearColor Scrim;         // dim layer behind the idle prompt and other modal overlays
 };
 
 enum class EKioskButtonKind : uint8
@@ -79,6 +80,10 @@ namespace KioskType
 	constexpr float BtnStd = 26.f;
 	constexpr float BtnPill = 22.f;
 	constexpr float BtnKey = 28.f;
+	constexpr float Logo = 56.f;     // the "M" in the header logo mark
+	// Rule: wrapped text uses one of two line heights (STextBlock LineHeightPercentage). Single-line text needs neither.
+	constexpr float LineBody = 1.1f;    // wrapped body / caption text
+	constexpr float LineCompact = 1.f;  // wrapped text in tight spots (tiles, buttons, headings)
 }
 
 /** Shared metrics: grid, radii, button heights per role, icon sizes. */
@@ -92,6 +97,11 @@ namespace KioskLayout
 	constexpr float CardRadius = 26.f;
 	constexpr float InnerRadius = 16.f;
 	constexpr float CardPad = 34.f;
+	// Rule: card padding is one of three sizes: Tight (small tiles and rows), CardPad (standard), Wide (large panels). All are FMargin(x, y).
+	const FMargin CardPadTight = FMargin(24.f, 14.f);
+	const FMargin CardPadWide = FMargin(36.f, 30.f);
+	// Rule: every screen H1 sits PageTop below the header and has TitleGap before its content.
+	constexpr float TitleGap = 18.f;
 	constexpr float BtnPrimaryH = 104.f; // green: proceed / pay
 	constexpr float BtnStdH = 88.f;      // navy choose, outlined secondary, help
 	// Rule: each button role has one height (KioskButtonRoleHeight). The one exception is a secondary button that shares a row
@@ -104,6 +114,19 @@ namespace KioskLayout
 	constexpr float IconSm = 34.f;
 	constexpr float IconMd = 62.f;
 	constexpr float IconLg = 96.f;
+	constexpr float IconXl = 56.f;       // large glyph inside a disc (54 and 56 px literals)
+	// Rule: an icon disc is IconDisc across, or IconDiscLg for the hero icon of a screen.
+	constexpr float IconDisc = 62.f;
+	constexpr float IconDiscLg = 76.f;
+	// Rule: footer and primary button widths come from these (min, max) pairs; text grows the button between them.
+	constexpr float FooterBtnMinW = 200.f;  // Back and Start over share one width pair
+	constexpr float FooterBtnMaxW = 320.f;
+	constexpr float HelpBtnMinW = 300.f;
+	constexpr float HelpBtnMaxW = 400.f;
+	constexpr float PrimaryMinW = 380.f;    // the main forward action (Continue, Pay, Done)
+	constexpr float PrimaryMaxW = 640.f;
+	constexpr float ToggleBtnMinW = 340.f;  // open map / open list
+	constexpr float ToggleBtnMaxW = 620.f;
 	constexpr float FooterH = 128.f;
 }
 

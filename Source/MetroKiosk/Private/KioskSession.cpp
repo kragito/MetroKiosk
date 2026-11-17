@@ -778,6 +778,43 @@ namespace
 	}
 }
 
+namespace
+{
+	FText DayMonthText(const FDateTime& Date, bool bWithYear)
+	{
+		const FText Short = FText::Format(KT("{0} {1}"), FText::AsNumber(Date.GetDay()), MonthName(Date.GetMonth()));
+		return bWithYear ? FText::Format(KT("{0} {1}"), Short, FText::FromString(FString::FromInt(Date.GetYear()))) : Short;
+	}
+}
+
+FText FKioskSession::OriginLabel()
+{
+	return FKioskLoc::Tr(FText::FromString(FKioskData::OriginName()));
+}
+
+FText FKioskSession::CurrentPassEndText(bool bWithYear) const
+{
+	const FKioskCardInfo& Info = CardInfo();
+	if (!Info.bHasActivePass || Info.PassEndDay <= 0)
+	{
+		return FText::GetEmpty();
+	}
+	return DayMonthText(FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay), bWithYear);
+}
+
+FText FKioskSession::RenewalRangeText(bool bWithYear) const
+{
+	const FKioskCardInfo& Info = CardInfo();
+	if (!Info.bHasActivePass || Info.PassEndDay <= 0)
+	{
+		return FText::GetEmpty();
+	}
+	const FDateTime Start = FDateTime(Info.PassEndYear, Info.PassEndMonth, Info.PassEndDay) + FTimespan::FromDays(1);
+	const FDateTime End = Start + FTimespan::FromDays(29); // 30 days in all, same rule as PassEndDate()
+	const FText Range = FText::Format(KT("{0} – {1}"), DayMonthText(Start, false), DayMonthText(End, false));
+	return bWithYear ? FText::Format(KT("{0} {1}"), Range, FText::FromString(FString::FromInt(End.GetYear()))) : Range;
+}
+
 FText FKioskSession::TimeOfDayText(const FDateTime& Time)
 {
 	if (FKioskLoc::GetLanguage() == EKioskLanguage::English)

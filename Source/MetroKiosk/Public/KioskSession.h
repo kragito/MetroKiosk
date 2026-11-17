@@ -127,6 +127,13 @@ public:
 	FDateTime PassStartDate() const;
 	/** Last day of that pass: start + 29 days (30 days in all). */
 	FDateTime PassEndDate() const;
+	/** This kiosk's station: English name from the data, and the same name in the active language. */
+	static FString OriginName() { return FKioskData::OriginName(); }
+	static FText OriginLabel();
+	/** Last day of the tapped card's active pass ("14 Nov", or "14 Nov 2026" with bWithYear). Empty when it has no pass. */
+	FText CurrentPassEndText(bool bWithYear = false) const;
+	/** Dates of the renewal pass that follows the active one ("15 Nov – 14 Dec", or with the year appended). Empty when no pass. */
+	FText RenewalRangeText(bool bWithYear = false) const;
 	/** Price of a concession pass for the tapped card: student concession price or the adult price. */
 	int32 PassPriceCents(int32 ConcessionIndex) const;
 	/** QA: which card the reader detects when no SIMULATE card is chosen (the -KioskCard=Student|Adult switch). */
