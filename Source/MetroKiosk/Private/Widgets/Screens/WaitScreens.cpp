@@ -1,6 +1,7 @@
 // Waiting-for-payment screens (tap / chip / cash / processing) and the receipt.
 #include "KioskScreens.h"
 
+#include "KioskData.h"
 #include "KioskLoc.h"
 #include "KioskRoutes.h"
 #include "Widgets/Components/KioskWidgets.h"
@@ -105,9 +106,9 @@ namespace
 		{
 			return Panel(
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Label, KioskType::Caption, false, LabelColor, 1.05f) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Label, KioskType::Caption, false, LabelColor, KioskType::LineCompact) ]
 				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(Value, KioskType::Figure, true, Ink) ],
-				Fill, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(22.f, 16.f));
+				Fill, KioskLayout::InnerRadius, C.Transparent, 0.f, KioskLayout::CardPadTight);
 		};
 
 		const bool bShowChange = bProcessing && Change > 0;
@@ -118,12 +119,33 @@ namespace
 				.Label(Label)
 				.ButtonTag(*FString::Printf(TEXT("Insert %s"), *Label.ToString()))
 				.FontPx(KioskType::BtnStd)
-				.MinWidth(100.f).MinHeight(KioskLayout::KeyH)
+				.MinWidth(KioskLayout::ChipMinW).MinHeight(KioskLayout::KeyH)
 				.Padding(FMargin(8.f, 4.f))
 				.Enabled(!bProcessing)
 				.OnClicked_Lambda([Session, Cents]() { Session->InsertCash(Cents); return FReply::Handled(); });
 		};
-		auto Money = [](const TCHAR* Text) { return FText::FromString(Text); };
+		// The accepted notes or coins from the shared denomination list, two chips per row.
+		auto ChipGrid = [&](bool bCoin)
+		{
+			TSharedRef<SVerticalBox> Grid = SNew(SVerticalBox);
+			TSharedPtr<SHorizontalBox> Row;
+			int32 InRow = 0;
+			for (const FKioskCashDenom& Denom : FKioskData::CashDenominations())
+			{
+				if (Denom.bCoin != bCoin)
+				{
+					continue;
+				}
+				if (InRow % 2 == 0)
+				{
+					Row = SNew(SHorizontalBox);
+					Grid->AddSlot().AutoHeight().Padding(0.f, InRow == 0 ? 10.f : 12.f, 0.f, 0.f)[ Row.ToSharedRef() ];
+				}
+				Row->AddSlot().AutoWidth().Padding(InRow % 2 == 0 ? 0.f : 12.f, 0.f, 0.f, 0.f)[ Chip(FText::FromString(Denom.Label), Denom.Cents, bCoin) ];
+				++InRow;
+			}
+			return Grid;
+		};
 
 		const float Progress = Total > 0 ? static_cast<float>(FMath::Min(Inserted, Total)) / Total : 0.f;
 
@@ -149,18 +171,7 @@ namespace
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::Cash, KioskLayout::IconSm, C.Ink, 3.f) ]
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)[ Text(KT("Notes"), KioskType::Body, true, C.Ink) ]
 						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ Chip(Money(TEXT("$2")), 200, false) ]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(Money(TEXT("$5")), 500, false) ]
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ Chip(Money(TEXT("$10")), 1000, false) ]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(Money(TEXT("$50")), 5000, false) ]
-						]
+						+ SVerticalBox::Slot().AutoHeight()[ ChipGrid(false) ]
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(20.f, 0.f, 0.f, 0.f)
 					[
@@ -171,18 +182,7 @@ namespace
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).Padding(FMargin(0.f, 0.f, 12.f, 0.f))[ Icon(EKioskIcon::Coin, KioskLayout::IconSm, C.Ink, 3.f) ] ]
 							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("Coins"), KioskType::Body, true, C.Ink) ]
 						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ Chip(Money(TEXT("10¢")), 10, true) ]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(Money(TEXT("20¢")), 20, true) ]
-						]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth()[ Chip(Money(TEXT("50¢")), 50, true) ]
-							+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Chip(Money(TEXT("$1")), 100, true) ]
-						]
+						+ SVerticalBox::Slot().AutoHeight()[ ChipGrid(true) ]
 					]
 				]
 			];
@@ -220,11 +220,11 @@ namespace
 					+ SVerticalBox::Slot().AutoHeight()[ HardwareHint(Mask(EHardware::CashSlots, EHardware::Tray), 0.5f) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 					[
-						TextWrap(KT("Change and any note the kiosk can't take come out in the collection tray."), KioskType::Caption, false, C.Ink, 1.15f)
+						TextWrap(KT("Change and any note the kiosk can't take come out in the collection tray."), KioskType::Caption, false, C.Ink, KioskType::LineBody)
 					],
-					C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, FMargin(20.f, 14.f))
+					C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, KioskLayout::CardPadTight)
 			],
-			C.Surface, C.Transparent, 0.f, FMargin(30.f, 28.f));
+			C.Surface, C.Transparent, 0.f, KioskLayout::CardPadWide);
 	}
 }
 
@@ -264,7 +264,7 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 	TSharedRef<SVerticalBox> TipBox = SNew(SVerticalBox);
 	for (const FText& Tip : Tips)
 	{
-		TipBox->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ TextWrap(Tip, KioskType::Caption, false, C.Muted, 1.2f) ];
+		TipBox->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ TextWrap(Tip, KioskType::Caption, false, C.Muted, KioskType::LineBody) ];
 	}
 
 	TSharedRef<SWidget> Hardware = SNullWidget::NullWidget;
@@ -279,7 +279,7 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 	TSharedRef<SWidget> Illustration = bChip ? CardIllustrationChip() : CardIllustrationTap();
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 34.f, KioskLayout::PageX, 34.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.45f).Padding(0.f, 0.f, 48.f, 0.f)
@@ -291,11 +291,11 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 					SNew(SHorizontalBox)
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("Paying"), KioskType::H3, false, C.Ink) ]
 					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(10.f, 0.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->TotalCents()), KioskType::H3, true, C.Ink) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(10.f, 0.f, 0.f, 0.f)[ TextWrap(Session->PaymentTail(), KioskType::H3, false, C.Ink, 1.f) ],
+					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(10.f, 0.f, 0.f, 0.f)[ TextWrap(Session->PaymentTail(), KioskType::H3, false, C.Ink, KioskType::LineCompact) ],
 					C.Surface, 34.f, C.BorderStrong, 2.f, FMargin(32.f, 14.f))
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 30.f, 0.f, 0.f)[ TextWrap(Heading, KioskType::H1, true, C.Ink, 1.0f) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(Body, KioskType::Body, false, C.Ink, 1.2f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 30.f, 0.f, 0.f)[ TextWrap(Heading, KioskType::H1, true, C.Ink, KioskType::LineCompact) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, KioskLayout::TitleGap, 0.f, 0.f)[ TextWrap(Body, KioskType::Body, false, C.Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f).HAlign(HAlign_Left)[ StatusPill(Session, bProcessing, bCash) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)[ TipBox ]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
@@ -315,7 +315,7 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 						]
 					]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ HardwareHint(Lit, 0.8f) ],
-					C.Band, C.Transparent, 0.f, FMargin(KioskLayout::CardPad, 24.f))
+					C.Band, C.Transparent, 0.f, KioskLayout::CardPadWide)
 		]
 	];
 }
@@ -329,7 +329,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 
 	const FText Trip = State.Ticket == ETicketType::DayPass
 		? KT("All lines")
-		: FText::Format(KT("City Hall → {0}"), Session->DestinationLabel());
+		: FText::Format(KT("{0} → {1}"), FKioskSession::OriginLabel(), Session->DestinationLabel());
 
 	const FKioskRoute& Route = FKioskRoutes::FromCityHall(State.Destination);
 	const FText RouteNote = (State.Ticket == ETicketType::DayPass || !Route.bValid)
@@ -337,7 +337,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 		: FText::Format(KT("{0} · {1}"), FKioskRoutes::Detail(Route), FKioskRoutes::Summary(Route));
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 26.f, KioskLayout::PageX, 26.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.52f).Padding(0.f, 0.f, KioskLayout::Gutter, 0.f)
@@ -348,14 +348,11 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 				[
-					SNew(SBox).WidthOverride(96.f).HeightOverride(96.f)
-					[
-						Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Check, 54.f, C.White, 6.f) ], C.Primary, 48.f)
-					]
+					Badge(EKioskIcon::Check, KioskLayout::IconLg, C.Primary, C.White, 6.f)
 				]
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Payment approved"), KioskType::Display, true, C.Ink, 1.f) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 0.f, 0.f, 0.f)[ TextWrap(KT("Payment approved"), KioskType::Display, true, C.Ink, KioskType::LineCompact) ]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)[ TextWrap(KT("Your ticket is printing. Take it from the collection tray."), KioskType::H3, true, C.Ink, 1.1f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)[ TextWrap(KT("Your ticket is printing. Take it from the collection tray."), KioskType::H3, true, C.Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ HardwareHint(Mask(EHardware::Tray), 0.42f) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)
 			[
@@ -364,19 +361,19 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 					+ SVerticalBox::Slot().AutoHeight()
 					[
 						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Session->ReceiptKind(), KioskType::Caption, true, C.Muted, 1.f) ]
+						+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Session->ReceiptKind(), KioskType::Caption, true, C.Muted, KioskType::LineCompact) ]
 						+ SHorizontalBox::Slot().AutoWidth().Padding(12.f, 0.f, 0.f, 0.f)[ Text(FKioskSession::DateShortText(), KioskType::Caption, false, C.Muted) ]
 					]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(Trip, KioskType::H1, true, C.Ink, 1.f) ]
-					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(RouteNote, KioskType::Caption, false, C.Muted, 1.15f) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(Trip, KioskType::H1, true, C.Ink, KioskType::LineCompact) ]
+					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(RouteNote, KioskType::Caption, false, C.Muted, KioskType::LineBody) ]
 					+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 					[
 						SNew(SHorizontalBox)
 						+ SHorizontalBox::Slot().FillWidth(1.f)
 						[
 							SNew(SVerticalBox)
-							+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Session->ReceiptValidText(), KioskType::Body, true, C.Ink, 1.1f) ]
-							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ State.Ticket == ETicketType::OneWay ? StaticCastSharedRef<SWidget>(SNew(SSpacer)) : StaticCastSharedRef<SWidget>(TextWrap(FKioskSession::ValidityRule(State.Ticket), KioskType::Caption, false, C.Muted, 1.1f)) ]
+							+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Session->ReceiptValidText(), KioskType::Body, true, C.Ink, KioskType::LineBody) ]
+							+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)[ State.Ticket == ETicketType::OneWay ? StaticCastSharedRef<SWidget>(SNew(SSpacer)) : StaticCastSharedRef<SWidget>(TextWrap(FKioskSession::ValidityRule(State.Ticket), KioskType::Caption, false, C.Muted, KioskType::LineBody)) ]
 						]
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(12.f, 0.f, 0.f, 0.f)[ Text(FKioskSession::Money(Session->TicketTotalCents()), KioskType::H3, true, C.Ink) ]
 					]
@@ -386,7 +383,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 							? StaticCastSharedRef<SWidget>(TextWrap(FText::Format(KT("Change in the tray: {0}"), FKioskSession::Money(Session->ChangeCents())), KioskType::Body, true, C.Primary))
 							: StaticCastSharedRef<SWidget>(SNew(SSpacer))
 					],
-					C.Surface, C.Ink, 3.f, FMargin(32.f, 26.f))
+					C.Surface, C.Ink, 3.f, KioskLayout::CardPadWide)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
@@ -409,7 +406,7 @@ void SReceiptScreen::Construct(const FArguments& InArgs, const TSharedRef<FKiosk
 					.ButtonTag(TEXT("No receipt · I'm done"))
 					.OnClicked_Lambda([Session]() { Session->ReturnHome(true); return FReply::Handled(); })
 				],
-				C.Surface, C.BorderStrong, 2.f, FMargin(KioskLayout::CardPad + 4.f))
+				C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide)
 		]
 	];
 }

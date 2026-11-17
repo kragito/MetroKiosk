@@ -11,7 +11,7 @@ using namespace KioskUI;
 
 namespace
 {
-	TSharedRef<SWidget> ActionCard(const TSharedRef<FKioskSession>& Session, EKioskIcon IconType, const FText& Label, const FName& Tag, bool bActive, TFunction<void()> Toggle)
+	TSharedRef<SWidget> ActionCard(const TSharedRef<FKioskSession>& Session, EKioskIcon IconType, const FText& Label, const FName& Tag, bool bActive, TFunction<void()> Toggle, bool bStatus = false)
 	{
 		const FKioskColors& C = KC();
 		return SNew(SBox).MinDesiredHeight(100.f)
@@ -25,10 +25,10 @@ namespace
 				.OnClicked_Lambda([Toggle]() { Toggle(); return FReply::Handled(); })
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconSm, C.Ink, 3.f) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 10.f, 0.f, 10.f)[ TextWrap(Label, KioskType::H3, true, C.Ink, 1.f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconSm, bStatus ? C.Muted : C.Ink, 3.f) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(24.f, 10.f, 0.f, 10.f)[ TextWrap(Label, bStatus ? KioskType::Body : KioskType::H3, !bStatus, bStatus ? C.Muted : C.Ink, KioskType::LineCompact) ]
 				],
-				bActive ? C.HelpTint : C.Surface, KioskLayout::InnerRadius, bActive ? C.Ink : C.BorderStrong, bActive ? 3.f : 2.f, FMargin(28.f, 0.f))
+				bActive ? C.HelpTint : C.Surface, KioskLayout::InnerRadius, bStatus ? C.Band : (bActive ? C.Ink : C.BorderStrong), bActive ? 3.f : 2.f, FMargin(28.f, 0.f))
 		];
 	}
 }
@@ -63,13 +63,13 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 		+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Icon(EKioskIcon::Person, 90.f, C.White, 4.f) ]
+			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Icon(EKioskIcon::Person, KioskLayout::IconLg, C.White, 4.f) ]
 			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 22.f, 0.f, 0.f)[ Text(KT("[Staff video feed]"), KioskType::Caption, false, C.White) ]
 		],
 		C.Video, KioskLayout::CardRadius);
 
 	ChildSlot
-	.Padding(KioskLayout::PageX, 44.f, KioskLayout::PageX, 36.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().FillWidth(0.58f).Padding(0.f, 0.f, 46.f, 0.f)
@@ -89,10 +89,10 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 								? StaticCastSharedRef<SWidget>(
 									SNew(SHorizontalBox)
 									+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ Text(KT("Staff:"), KioskType::Body, true, C.Help) ]
-									+ SHorizontalBox::Slot().FillWidth(1.f).Padding(20.f, 0.f, 0.f, 0.f)[ TextWrap(Caption, KioskType::Body, false, C.Ink, 1.4f) ])
+									+ SHorizontalBox::Slot().FillWidth(1.f).Padding(20.f, 0.f, 0.f, 0.f)[ TextWrap(Caption, KioskType::Body, false, C.Ink, KioskType::LineBody) ])
 								: StaticCastSharedRef<SWidget>(Text(KT("Captions are off."), KioskType::Body, false, C.Muted))
 						],
-						C.Surface, C.BorderStrong, 2.f, FMargin(34.f, 26.f))
+						C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide)
 				]
 			]
 		]
@@ -107,13 +107,13 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 					+ SHorizontalBox::Slot().FillWidth(1.f)
 					[
 						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Your purchase is paused."), KioskType::H2, true, C.Ink, 1.f) ]
+						+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Your purchase is paused."), KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 						[
-							TextWrap(Session->HelpPausedBody(), KioskType::Body, false, C.Ink, 1.25f)
+							TextWrap(Session->HelpPausedBody(), KioskType::Body, false, C.Ink, KioskType::LineBody)
 						]
 					],
-					C.HelpTint, C.Transparent, 0.f, FMargin(30.f, 26.f))
+					C.HelpTint, C.Transparent, 0.f, KioskLayout::CardPadWide)
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
 			[
@@ -128,12 +128,12 @@ void SHelpCallScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
 				ActionCard(Session, EKioskIcon::Captions, Session->bCaptionsOn ? KT("Captions are on") : KT("Captions are off"), TEXT("Captions"), false,
-					[Session]() { Session->bCaptionsOn = !Session->bCaptionsOn; Session->NotifyChanged(); })
+					[Session]() { Session->bCaptionsOn = !Session->bCaptionsOn; Session->NotifyChanged(); }, true)
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight()
 			[
-				TextWrap(KT("Or visit the staffed office at Gate B, or use the Help button on the front of the kiosk."), KioskType::Caption, false, C.Muted, 1.15f, ETextJustify::Right)
+				TextWrap(KT("Or visit the staffed office at Gate B, or use the Help button on the front of the kiosk."), KioskType::Caption, false, C.Muted, KioskType::LineBody, ETextJustify::Right)
 			]
 		]
 	];
