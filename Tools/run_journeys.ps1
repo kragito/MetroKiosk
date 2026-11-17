@@ -8,7 +8,7 @@ $Files = Get-ChildItem (Join-Path $PSScriptRoot "journeys") -Filter *.txt | Wher
 $Failed = 0
 foreach ($File in $Files) {
     $Out = Join-Path $Root ("Saved\Journeys\" + $File.BaseName)
-    $Script = (Get-Content $File.FullName -Raw).Trim()
+    $Script = (Get-Content $File.FullName -Raw -Encoding UTF8).Trim()
     $Log = & "$PSScriptRoot\journey.ps1" -Script $Script -Out $Out -NoBuild:$NoBuild | Out-String
     $Done = ($Log -split "`n" | Where-Object { $_ -match "^DONE:" } | Select-Object -First 1)
     if ($Done -match "DONE: \d+ steps, 0 failed") { Write-Output "PASS  $($File.BaseName)  ($Out)" }

@@ -285,7 +285,9 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		+ SHorizontalBox::Slot().FillWidth(0.45f).Padding(0.f, 0.f, 48.f, 0.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
+			// Latin chips hug their content. Chinese can break between any two glyphs, so a hugging chip
+			// re-wraps against its own shrinking width and collapses; it fills the column instead.
+			+ SVerticalBox::Slot().AutoHeight().HAlign(FKioskLoc::GetLanguage() == EKioskLanguage::Chinese ? HAlign_Fill : HAlign_Left)
 			[
 				Panel(
 					SNew(SHorizontalBox)

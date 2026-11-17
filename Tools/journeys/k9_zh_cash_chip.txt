@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|lang:zh|click:Station HarbourFront|click:Confirm selected ticket|click:Go to payment|click:Pay with cash|click:Insert $1|expect:前往港湾的单程|shot:cash_zh_fresh|lang:en|wait:1|shot:cash_en_back|lang:zh|wait:1|expect:前往港湾的单程|shot:cash_zh_switched
