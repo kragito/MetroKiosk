@@ -202,22 +202,18 @@ void SCardOptionsScreen::Construct(const FArguments& InArgs, const TSharedRef<FK
 
 	auto OptionCard = [&](EKioskIcon IconType, const FText& Title, const FText& Sub, const FText& Action, const FName& ButtonName, TFunction<void()> OnPick)
 	{
-		return Card(
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Card)
-			.Label(Title)
-			.ButtonTag(ButtonName)
-			.Padding(FMargin(0.f))
-			.OnClicked_Lambda([OnPick]() { OnPick(); return FReply::Handled(); })
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()[ Icon(IconType, KioskLayout::IconLg, C.Ink, 4.f) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ TextWrap(Sub, KioskType::Body, false, C.Muted, KioskType::LineBody) ]
-				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ ActionBar(Action, true) ]
-			],
-			C.Surface, C.Ink, 3.f, KioskLayout::CardPadTight);
+		FChoiceCardArgs A;
+		A.Icon = IconType;
+		A.Title = Title;
+		A.Description = Sub;
+		A.DescColor = C.Muted;
+		A.Footer = ActionBar(Action, true);
+		A.Border = C.Ink;
+		A.BorderWidth = 3.f;
+		A.Padding = KioskLayout::CardPadTight; // compact card: keeps the row short enough for the quick top-up tiles above
+		A.OnPick = OnPick;
+		A.Tag = ButtonName;
+		return ChoiceCard(A);
 	};
 
 	ChildSlot

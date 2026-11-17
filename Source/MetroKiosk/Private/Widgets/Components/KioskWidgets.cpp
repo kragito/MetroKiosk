@@ -183,6 +183,71 @@ namespace KioskUI
 		];
 	}
 
+	TSharedRef<SWidget> ChoiceCard(const FChoiceCardArgs& A)
+	{
+		TSharedRef<SVerticalBox> Col = SNew(SVerticalBox);
+		if (A.bIconBesideTitle)
+		{
+			Col->AddSlot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(A.Icon, A.IconSize, A.Ink, A.IconThickness) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(22.f, 0.f, 0.f, 0.f)
+				[
+					TextWrap(A.Title, A.TitlePx, true, A.Ink, KioskType::LineCompact)
+				]
+			];
+		}
+		else
+		{
+			TSharedRef<SWidget> BadgeWidget = A.Badge.IsValid() ? A.Badge.ToSharedRef() : SNullWidget::NullWidget;
+			Col->AddSlot().AutoHeight()
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(A.Icon, A.IconSize, A.Ink, A.IconThickness) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)[ BadgeWidget ]
+			];
+			Col->AddSlot().AutoHeight().Padding(0.f, ChoiceTitleGap, 0.f, 0.f)[ TextWrap(A.Title, A.TitlePx, true, A.Ink, KioskType::LineCompact) ];
+		}
+		if (!A.Description.IsEmpty())
+		{
+			Col->AddSlot().AutoHeight().Padding(0.f, ChoiceTextGap, A.DescInset, 0.f)[ TextWrap(A.Description, KioskType::Body, false, A.DescColor, KioskType::LineBody) ];
+		}
+		if (A.Details.IsValid())
+		{
+			Col->AddSlot().AutoHeight().Padding(0.f, ChoiceTextGap, 0.f, 0.f)[ A.Details.ToSharedRef() ];
+		}
+		if (A.Body.IsValid())
+		{
+			Col->AddSlot().FillHeight(1.f).Padding(0.f, ChoiceTextGap, 0.f, 0.f)[ A.Body.ToSharedRef() ];
+		}
+		else
+		{
+			Col->AddSlot().FillHeight(1.f)[ SNew(SSpacer) ];
+		}
+		if (A.Footer.IsValid())
+		{
+			Col->AddSlot().AutoHeight().Padding(0.f, ChoiceFooterGap, 0.f, 0.f)[ A.Footer.ToSharedRef() ];
+		}
+
+		TSharedRef<SWidget> Content = Col;
+		if (A.OnPick)
+		{
+			TFunction<void()> OnPick = A.OnPick;
+			Content = SNew(SKioskButton)
+				.Kind(EKioskButtonKind::Card)
+				.Label(A.Label.IsEmpty() ? A.Title : A.Label)
+				.ButtonTag(A.Tag)
+				.Padding(FMargin(0.f))
+				.OnClicked_Lambda([OnPick]() { OnPick(); return FReply::Handled(); })
+				[
+					Col
+				];
+		}
+		return Card(Content, A.Fill, A.Border, A.BorderWidth, A.Padding);
+	}
+
 	TSharedRef<SWidget> ChangeButton(FOnClicked OnClicked, const FName& Tag)
 	{
 		return SNew(SKioskButton)

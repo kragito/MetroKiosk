@@ -50,6 +50,45 @@ namespace KioskUI
 	/** Navy full-width bar that looks like a "choose" button, for use inside a tile that is itself the touch target. */
 	TSharedRef<SWidget> ActionBar(const FText& Label, bool bArrow = false);
 
+	/** The one set of gaps inside a choice card: icon row to title, text to text, content to footer. */
+	constexpr float ChoiceTitleGap = 16.f;
+	constexpr float ChoiceTextGap = 10.f;
+	constexpr float ChoiceFooterGap = 14.f;
+
+	/** What a choice card (home tile, ticket card, pay method, card option) is made of. Only Icon and Title are required. */
+	struct FChoiceCardArgs
+	{
+		EKioskIcon Icon = EKioskIcon::None;
+		float IconSize = KioskLayout::IconLg;
+		float IconThickness = 4.f;
+		/** true: icon on the left with the title beside it (Badge is not shown). false: icon row (icon left, Badge right), title below. */
+		bool bIconBesideTitle = false;
+		TSharedPtr<SWidget> Badge;
+		FText Title;
+		float TitlePx = KioskType::H2;
+		FText Description;
+		/** Right inset on the description so a two-line wrap breaks mid-sentence. */
+		float DescInset = 0.f;
+		FLinearColor Ink = KC().Ink;
+		FLinearColor DescColor = KC().Ink;
+		/** Auto-height content under the description (info lines, rules, warnings, hardware location). */
+		TSharedPtr<SWidget> Details;
+		/** Fills the height left over, between Details and Footer. Wrap it in an SBox to align it (e.g. bottom centre). Empty: blank space. */
+		TSharedPtr<SWidget> Body;
+		/** Pinned to the bottom: an ActionBar, a price row. */
+		TSharedPtr<SWidget> Footer;
+		FLinearColor Fill = KC().Surface;
+		FLinearColor Border = KC().BorderStrong;
+		float BorderWidth = 2.f;
+		FMargin Padding = KioskLayout::CardPadWide;
+		/** Set: the whole card is one Card-role button named Tag (Label is its text for the harness; Title when empty). Unset: the card is plain, the Footer has its own control. */
+		TFunction<void()> OnPick;
+		FText Label;
+		FName Tag;
+	};
+	/** Card surface + header (icon, optional badge, title) + description + details + fill body + footer. */
+	TSharedRef<SWidget> ChoiceCard(const FChoiceCardArgs& Args);
+
 	/** The single "Change" control used on Review and Destination. */
 	TSharedRef<SWidget> ChangeButton(FOnClicked OnClicked, const FName& Tag = TEXT("Change"));
 

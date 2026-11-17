@@ -26,32 +26,29 @@ namespace
 		const FText& ActionLabel, const FName& Tag, TFunction<void()> OnPick)
 	{
 		const FKioskColors& C = KC();
-		TSharedRef<SWidget> Content = SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconLg, Ink, 4.f) ]
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(22.f, 0.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H1, true, Ink, KioskType::LineCompact) ]
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, TileDescInset, 0.f)[ TextWrap(Description, KioskType::Body, false, Ink, KioskType::LineBody) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ Info ]
-			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
-			[
-				ActionBar(ActionLabel, true)
-			];
-
-		return Panel(
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Card)
-			.Label(ActionLabel)
-			.ButtonTag(Tag)
-			.Padding(FMargin(0.f))
-			.OnClicked_Lambda([OnPick]() { OnPick(); return FReply::Handled(); })
-			[
-				Content
-			],
-			Fill, KioskLayout::CardRadius, bOutlined ? C.Ink : C.Transparent, bOutlined ? 3.f : 0.f, KioskLayout::CardPadWide);
+		FChoiceCardArgs A;
+		A.Icon = IconType;
+		A.IconSize = KioskLayout::IconLg;
+		A.IconThickness = 4.f;
+		A.bIconBesideTitle = true;
+		A.Title = Title;
+		A.TitlePx = KioskType::H1;
+		A.Ink = Ink;
+		A.DescColor = Ink;
+		A.Description = Description;
+		A.DescInset = TileDescInset;
+		if (&Info.Get() != &SNullWidget::NullWidget.Get())
+		{
+			A.Details = Info;
+		}
+		A.Footer = ActionBar(ActionLabel, true);
+		A.Fill = Fill;
+		A.Border = bOutlined ? C.Ink : C.Transparent;
+		A.BorderWidth = bOutlined ? 3.f : 0.f;
+		A.OnPick = OnPick;
+		A.Label = ActionLabel;
+		A.Tag = Tag;
+		return ChoiceCard(A);
 	}
 }
 
@@ -245,49 +242,43 @@ namespace
 			]
 			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Price, KioskType::Figure, true, C.Ink, KioskType::LineCompact) ];
 
-		return Card(
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()
+		TSharedRef<SVerticalBox> Details = SNew(SVerticalBox)
+			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(FKioskSession::ValidityRule(Type), KioskType::Body, true, C.Ink, KioskType::LineBody) ];
+		if (!Warning.IsEmpty())
+		{
+			Details->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconMd, C.Ink, 3.5f) ]
-				+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
-				[
-					bBestValue
-						? Pill(KT("Best for 3+ rides"), C.PrimaryTint, C.Ink, KioskType::Caption, true, C.Transparent, FMargin(20.f, 8.f))
-						: StaticCastSharedRef<SWidget>(SNew(SSpacer))
-				]
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 20.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(Description, KioskType::Body, false, C.Ink, KioskType::LineBody) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(FKioskSession::ValidityRule(Type), KioskType::Body, true, C.Ink, KioskType::LineBody) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, Warning.IsEmpty() ? 0.f : 14.f, 0.f, 0.f)
+				Panel(
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 5.f, 12.f, 0.f)[ Dot(C.AmberStrong, 14.f) ]
+					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Warning, KioskType::Caption, true, C.Ink, KioskType::LineBody) ],
+					C.AmberFill, KioskLayout::InnerRadius, C.AmberStroke, 2.f, FMargin(16.f, 12.f))
+			];
+		}
+
+		FChoiceCardArgs A;
+		A.Icon = IconType;
+		A.IconSize = KioskLayout::IconMd;
+		A.IconThickness = 3.5f;
+		if (bBestValue)
+		{
+			A.Badge = Pill(KT("Best for 3+ rides"), C.PrimaryTint, C.Ink, KioskType::Caption, true, C.Transparent, FMargin(20.f, 8.f));
+		}
+		A.Title = Title;
+		A.Description = Description;
+		A.Details = Details;
+		A.Footer = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 16.f, 0.f)[ PriceBlock ]
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
 			[
-				Warning.IsEmpty()
-					? StaticCastSharedRef<SWidget>(SNew(SSpacer))
-					: StaticCastSharedRef<SWidget>(Panel(
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 5.f, 12.f, 0.f)[ Dot(C.AmberStrong, 14.f) ]
-						+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Warning, KioskType::Caption, true, C.Ink, KioskType::LineBody) ],
-						C.AmberFill, KioskLayout::InnerRadius, C.AmberStroke, 2.f, FMargin(16.f, 12.f)))
-			]
-			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight()
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 16.f, 0.f)[ PriceBlock ]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
-				[
-					SNew(SKioskButton)
-					.Kind(EKioskButtonKind::Strong)
-					.Label(KT("Choose"))
-					.ButtonTag(Tag)
-					.MinWidth(KioskLayout::CompactBtnMinW)
-					.OnClicked_Lambda([Session, Type]() { Session->ChooseTicket(Type); return FReply::Handled(); })
-				]
-			],
-			C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide);
+				SNew(SKioskButton)
+				.Kind(EKioskButtonKind::Strong)
+				.Label(KT("Choose"))
+				.ButtonTag(Tag)
+				.MinWidth(KioskLayout::CompactBtnMinW)
+				.OnClicked_Lambda([Session, Type]() { Session->ChooseTicket(Type); return FReply::Handled(); })
+			];
+		return ChoiceCard(A);
 	}
 }
 

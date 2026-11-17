@@ -229,39 +229,23 @@ namespace
 		const FText& Body, EHardware Where, const FText& ButtonLabel, const FName& Tag, bool bFastest)
 	{
 		const FKioskColors& C = KC();
-		return Card(
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Card)
-			.Label(ButtonLabel)
-			.ButtonTag(Tag)
-			.Padding(FMargin(0.f))
-			.OnClicked_Lambda([Session, Method]() { Session->ChoosePayMethod(Method); return FReply::Handled(); })
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight()
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth()[ Icon(IconType, KioskLayout::IconLg, C.Ink, 4.f) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
-					[
-						bFastest
-							? Pill(KT("Fastest"), C.PrimaryTint, C.Ink, KioskType::Caption, true, C.Transparent, FMargin(22.f, 8.f))
-							: StaticCastSharedRef<SWidget>(SNew(SSpacer))
-					]
-				]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 20.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(Body, KioskType::Body, false, C.Ink, KioskType::LineBody) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 6.f, 12.f, 0.f)[ Dot(C.Primary, 14.f) ]
-					+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Where), KioskType::Caption, true, C.Muted, KioskType::LineBody) ]
-				]
-				+ SVerticalBox::Slot().FillHeight(1.f).VAlign(VAlign_Bottom).HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ HardwareDiagram(Mask(Where), 0.6f) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)[ ActionBar(ButtonLabel) ]
-			],
-			C.Surface, C.BorderStrong, 2.f, FMargin(KioskLayout::CardPad));
+		FChoiceCardArgs A;
+		A.Icon = IconType;
+		if (bFastest)
+		{
+			A.Badge = Pill(KT("Fastest"), C.PrimaryTint, C.Ink, KioskType::Caption, true, C.Transparent, FMargin(22.f, 8.f));
+		}
+		A.Title = Title;
+		A.Description = Body;
+		A.Details = SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 6.f, 12.f, 0.f)[ Dot(C.Primary, 14.f) ]
+			+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(HardwareName(Where), KioskType::Caption, true, C.Muted, KioskType::LineBody) ];
+		A.Body = SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Bottom)[ HardwareDiagram(Mask(Where), 0.6f) ];
+		A.Footer = ActionBar(ButtonLabel);
+		A.OnPick = [Session, Method]() { Session->ChoosePayMethod(Method); };
+		A.Label = ButtonLabel;
+		A.Tag = Tag;
+		return ChoiceCard(A);
 	}
 }
 
