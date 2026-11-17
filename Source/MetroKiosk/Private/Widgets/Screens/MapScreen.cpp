@@ -240,28 +240,23 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 		[
 			Panel(
 				SNew(SVerticalBox)
+				// A strip of its own above the drawing: the count badge while typing (it gets the full row, so long text
+				// wraps to at most two lines) or the usage hint otherwise. Neither covers a station.
+				+ SVerticalBox::Slot().AutoHeight().Padding(22.f, 22.f, 22.f, 4.f).HAlign(bTyped ? HAlign_Left : HAlign_Right)
+				[
+					bTyped
+						? CountNote
+						: TSharedRef<SWidget>(Panel(TextWrap(KT("Tap a station · drag to move · +/- to zoom"), KioskType::Caption, true, C.Ink), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, KioskLayout::CardPadTight))
+				]
 				+ SVerticalBox::Slot().FillHeight(1.f)
 				[
-					SNew(SOverlay)
-					+ SOverlay::Slot()
-					[
-						SNew(SKioskMap)
-						.SelectedStation(Session->State.Destination)
-						.Zoom(Session->MapZoom)
-						.Session(Session)
-						.LitStations(Lit)
-						.bDimOthers(!Lit.IsEmpty())
-						.OnStationTapped(FOnKioskStationTapped::CreateLambda([Session](int32 Index) { Session->SelectDestination(Index); }))
-					]
-					+ SOverlay::Slot().HAlign(HAlign_Fill).VAlign(VAlign_Top).Padding(22.f, 22.f, 22.f, 0.f)
-					[
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().FillWidth(1.f).HAlign(HAlign_Left).Padding(0.f, 0.f, 16.f, 0.f)[ CountNote ]
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top)
-						[
-							Panel(Text(KT("Tap a station · drag to move · +/- to zoom"), KioskType::Caption, true, C.Ink), C.Band, KioskLayout::InnerRadius, C.Transparent, 0.f, KioskLayout::CardPadTight)
-						]
-					]
+					SNew(SKioskMap)
+					.SelectedStation(Session->State.Destination)
+					.Zoom(Session->MapZoom)
+					.Session(Session)
+					.LitStations(Lit)
+					.bDimOthers(!Lit.IsEmpty())
+					.OnStationTapped(FOnKioskStationTapped::CreateLambda([Session](int32 Index) { Session->SelectDestination(Index); }))
 				]
 				// A strip of its own under the drawing: the highlighter and zoom buttons never overlap a station.
 				+ SVerticalBox::Slot().AutoHeight().Padding(18.f, 4.f, 18.f, 12.f)

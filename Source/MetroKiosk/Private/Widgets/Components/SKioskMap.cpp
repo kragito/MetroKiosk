@@ -169,6 +169,45 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	// Label collision avoidance: highest priority first (stable by station index), first free candidate wins.
 	Pending.StableSort([](const FPendingLabel& A, const FPendingLabel& B) { return A.Priority < B.Priority; });
 	const FSlateBrush* PillBrush = Style.Round(C.MapLabelBg, 5.f);
+	TArray<TPair<FVector2f, FVector2f>> PlacedLeaders; // leader segments already drawn (dot centre to pill edge)
+	// True when the segment A-B passes through Rect (Liang-Barsky clip against the rectangle shrunk by 1 px).
+	auto SegmentHitsRect = [](const FVector2f& A, const FVector2f& B, const FSlateRect& Rect)
+	{
+		const float MinX = Rect.Left + 1.f, MaxX = Rect.Right - 1.f, MinY = Rect.Top + 1.f, MaxY = Rect.Bottom - 1.f;
+		if (MinX >= MaxX || MinY >= MaxY)
+		{
+			return false;
+		}
+		const float D[2] = { B.X - A.X, B.Y - A.Y };
+		const float P[4] = { -D[0], D[0], -D[1], D[1] };
+		const float Q[4] = { A.X - MinX, MaxX - A.X, A.Y - MinY, MaxY - A.Y };
+		float T0 = 0.f, T1 = 1.f;
+		for (int32 Edge = 0; Edge < 4; ++Edge)
+		{
+			if (FMath::IsNearlyZero(P[Edge]))
+			{
+				if (Q[Edge] < 0.f)
+				{
+					return false;
+				}
+				continue;
+			}
+			const float T = Q[Edge] / P[Edge];
+			if (P[Edge] < 0.f)
+			{
+				T0 = FMath::Max(T0, T);
+			}
+			else
+			{
+				T1 = FMath::Min(T1, T);
+			}
+			if (T0 > T1)
+			{
+				return false;
+			}
+		}
+		return true;
+	};
 	for (const FPendingLabel& Label : Pending)
 	{
 		const float PillW = Label.Width + 8.f;
@@ -216,9 +255,38 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			const FVector2f Min = Label.Pos + Offset + FVector2f(-4.f, -2.f);
 			return FSlateRect(Min.X, Min.Y, Min.X + PillW, Min.Y + PillH);
 		};
-		auto Overlap = [&](const FSlateRect& Rect)
+		auto Overlap = [&](const FSlateRect& Rect, bool bLeader)
 		{
 			float Total = 0.f;
+			// A leader line from the dot to a detached pill must not run through another label or a full-strength dot,
+			// and this pill must not sit on a leader that an earlier label already drew.
+			constexpr float LeaderHit = 100000.f;
+			if (bLeader)
+			{
+				const FVector2f A = Label.Pos;
+				const FVector2f B(FMath::Clamp(A.X, Rect.Left, Rect.Right), FMath::Clamp(A.Y, Rect.Top, Rect.Bottom));
+				for (const FSlateRect& Other : Placed)
+				{
+					if (SegmentHitsRect(A, B, Other))
+					{
+						Total += LeaderHit;
+					}
+				}
+				for (int32 DotSlot = 0; DotSlot < DotRects.Num(); ++DotSlot)
+				{
+					if (DotRects[DotSlot].Key != Label.Index && DotFull[DotSlot] && SegmentHitsRect(A, B, DotRects[DotSlot].Value))
+					{
+						Total += LeaderHit;
+					}
+				}
+			}
+			for (const TPair<FVector2f, FVector2f>& Leader : PlacedLeaders)
+			{
+				if (SegmentHitsRect(Leader.Key, Leader.Value, Rect))
+				{
+					Total += LeaderHit;
+				}
+			}
 			for (const FSlateRect& Other : Placed)
 			{
 				const float W = FMath::Min(Rect.Right, Other.Right) - FMath::Max(Rect.Left, Other.Left);
@@ -254,7 +322,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		float LeastValue = TNumericLimits<float>::Max();
 		for (int32 Slot = 0; Slot < Candidates.Num(); ++Slot)
 		{
-			const float Value = Overlap(PillRect(Candidates[Slot]));
+			const float Value = Overlap(PillRect(Candidates[Slot]), Gaps[Slot] > 10.f);
 			if (Value <= 0.f)
 			{
 				Chosen = Slot;
@@ -281,6 +349,7 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		{
 			// Detached label: thin leader from the dot to the nearest point of the pill so it still reads as belonging to the dot.
 			const FVector2f Anchor(FMath::Clamp(Label.Pos.X, Rect.Left, Rect.Right), FMath::Clamp(Label.Pos.Y, Rect.Top, Rect.Bottom));
+			PlacedLeaders.Emplace(Label.Pos, Anchor);
 			FSlateDrawElement::MakeLines(OutDrawElements, LayerId + 1, Paint, TArray<FVector2f>({ Label.Pos, Anchor }),
 				ESlateDrawEffect::None, C.Ink, true, 1.5f);
 		}
