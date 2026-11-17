@@ -17,6 +17,9 @@ namespace
 		return Text(Label, KioskType::Body, true, KC().Muted);
 	}
 
+	/** Right inset on tile descriptions so a two-line wrap breaks mid-sentence instead of leaving one word (e.g. "pass") alone on line two. */
+	constexpr float TileDescInset = 40.f;
+
 	/** The one action tile used for ticket / top up / concession: icon, title, description, optional info, full-width action button. */
 	TSharedRef<SWidget> ActionTile(const TSharedRef<FKioskSession>& Session, const FLinearColor& Fill, const FLinearColor& Ink, bool bOutlined,
 		EKioskIcon IconType, const FText& Title, const FText& Description, const TSharedRef<SWidget>& Info,
@@ -28,9 +31,9 @@ namespace
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(IconType, KioskLayout::IconLg, Ink, 4.f) ]
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(22.f, 0.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H1, true, Ink, 1.f) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(22.f, 0.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H1, true, Ink, KioskType::LineCompact) ]
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ TextWrap(Description, KioskType::Body, false, Ink, 1.15f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, TileDescInset, 0.f)[ TextWrap(Description, KioskType::Body, false, Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ Info ]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
@@ -48,7 +51,7 @@ namespace
 			[
 				Content
 			],
-			Fill, KioskLayout::CardRadius, bOutlined ? C.Ink : C.Transparent, bOutlined ? 3.f : 0.f, FMargin(30.f, 26.f, 30.f, 26.f));
+			Fill, KioskLayout::CardRadius, bOutlined ? C.Ink : C.Transparent, bOutlined ? 3.f : 0.f, KioskLayout::CardPadWide);
 	}
 }
 
@@ -94,7 +97,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				]
 			]
 		]
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 14.f, 0.f, 0.f).VAlign(VAlign_Bottom)
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 14.f, 0.f, 0.f).VAlign(VAlign_Center)
 		[
 			SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
@@ -110,7 +113,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				+ SHorizontalBox::Slot().FillWidth(1.f).Padding(7.f, 7.f, 0.f, 0.f)[ MakeLanguagePill(Session, EKioskLanguage::Tamil, true) ]
 			]
 		],
-		C.Surface, C.BorderStrong, 2.f, FMargin(30.f, 26.f));
+		C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide);
 
 	TSharedRef<SWidget> CallCard = Panel(
 		SNew(SKioskButton)
@@ -131,13 +134,12 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			+ SOverlay::Slot().VAlign(VAlign_Fill)
 			[
 				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)[ Icon(EKioskIcon::Headset, KioskLayout::IconLg, C.White, 4.f) ]
-				+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-				+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Call for assistance"), KioskType::H1, true, C.White, 1.f) ]
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ TextWrap(KT("Video call with station staff"), KioskType::Body, false, C.White, 1.15f) ]
+				+ SVerticalBox::Slot().FillHeight(1.f).HAlign(HAlign_Left).VAlign(VAlign_Center)[ Icon(EKioskIcon::Headset, KioskLayout::IconHero, C.White, 5.f) ]
+				+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Call for assistance"), KioskType::H1, true, C.White, KioskType::LineCompact) ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ TextWrap(KT("Video call with station staff"), KioskType::Body, false, C.White, KioskType::LineBody) ]
 			]
 		],
-		C.Help, KioskLayout::CardRadius, C.Transparent, 0.f, FMargin(30.f, 26.f));
+		C.Help, KioskLayout::CardRadius, C.Transparent, 0.f, KioskLayout::CardPadWide);
 
 	auto Column = [&](const FText& Label, const TSharedRef<SWidget>& Body)
 	{
@@ -150,23 +152,20 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(60.f, 0.f, 0.f, 0.f)
 		[
-			SNew(SBox).WidthOverride(94.f).HeightOverride(94.f)
-			[
-				Panel(SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Contactless, 48.f, C.Primary, 4.f) ], C.PrimaryTint, 47.f)
-			]
+			Badge(EKioskIcon::Contactless, KioskLayout::IconDiscLg, C.PrimaryTint, C.Primary, 4.f)
 		]
 		+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(28.f, 14.f, 24.f, 14.f)
 		[
 			SNew(SVerticalBox)
-			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Or place your Metro card on the reader below the screen to begin"), KioskType::H2, true, C.Ink, 1.f) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextWrap(KT("We'll show your balance and what you can do with it"), KioskType::Body, false, C.Muted, 1.1f) ]
+			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(KT("Or place your Metro card on the reader below the screen to begin"), KioskType::H2, true, C.Ink, KioskType::LineCompact) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ TextWrap(KT("We'll show your balance and what you can do with it"), KioskType::Body, false, C.Muted, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::DoubleChevronDown, 30.f, C.Primary, 4.f) ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::DoubleChevronDown, KioskLayout::IconSm, C.Primary, 4.f) ]
 				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)
 				[
-					TextWrap(HardwareName(EHardware::MetroReader), KioskType::Caption, true, C.Ink, 1.1f)
+					TextWrap(HardwareName(EHardware::MetroReader), KioskType::Caption, true, C.Ink, KioskType::LineBody)
 				]
 			]
 		]
@@ -180,7 +179,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 	ChildSlot
 	[
 		SNew(SVerticalBox)
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(110.f, 20.f, 110.f, 18.f)
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 17.f, 0.f)
@@ -224,15 +223,27 @@ namespace
 		const FKioskColors& C = KC();
 		FKioskStyle& Style = FKioskStyle::Get();
 
+		// Price (with optional struck-through list price above) sits left; the compact Choose button sits right on the same row.
 		TSharedRef<SWidget> PriceBlock = SNew(SVerticalBox)
 			+ SVerticalBox::Slot().AutoHeight()
 			[
 				StrikePrice.IsEmpty()
 					? StaticCastSharedRef<SWidget>(SNew(SSpacer).Size(FVector2D(1.f, KioskType::Caption + 4.f)))
 					: StaticCastSharedRef<SWidget>(
-						SNew(STextBlock).Text(StrikePrice).Font(Style.Font(KioskType::Caption)).ColorAndOpacity(C.Muted).StrikeBrush(Style.Solid(C.Muted)))
+						// The text's own strike brush rendered too faint, so the line is drawn explicitly across the middle of the text.
+						// Wrapped in an AutoWidth slot so the overlay (and the line) is only as wide as the text.
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth()
+						[
+							SNew(SOverlay)
+							+ SOverlay::Slot()[ Text(StrikePrice, KioskType::Caption, false, C.Muted) ]
+							+ SOverlay::Slot().VAlign(VAlign_Center)
+							[
+								SNew(SBox).HeightOverride(2.f)[ SNew(SBorder).BorderImage(Style.Solid(C.Ink)) ]
+							]
+						])
 			]
-			+ SVerticalBox::Slot().AutoHeight()[ Text(Price, KioskType::Figure, true, C.Ink) ];
+			+ SVerticalBox::Slot().AutoHeight()[ TextWrap(Price, KioskType::Figure, true, C.Ink, KioskType::LineCompact) ];
 
 		return Card(
 			SNew(SVerticalBox)
@@ -249,8 +260,8 @@ namespace
 				]
 			]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 20.f, 0.f, 0.f)[ TextWrap(Title, KioskType::H2, true, C.Ink) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(Description, KioskType::Body, false, C.Ink, 1.2f) ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(FKioskSession::ValidityRule(Type), KioskType::Body, true, C.Ink, 1.2f) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ TextWrap(Description, KioskType::Body, false, C.Ink, KioskType::LineBody) ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 10.f, 0.f, 0.f)[ TextWrap(FKioskSession::ValidityRule(Type), KioskType::Body, true, C.Ink, KioskType::LineBody) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, Warning.IsEmpty() ? 0.f : 14.f, 0.f, 0.f)
 			[
 				Warning.IsEmpty()
@@ -258,20 +269,25 @@ namespace
 					: StaticCastSharedRef<SWidget>(Panel(
 						SNew(SHorizontalBox)
 						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Top).Padding(0.f, 5.f, 12.f, 0.f)[ Dot(C.AmberStrong, 14.f) ]
-						+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Warning, KioskType::Caption, true, C.Ink, 1.15f) ],
+						+ SHorizontalBox::Slot().FillWidth(1.f)[ TextWrap(Warning, KioskType::Caption, true, C.Ink, KioskType::LineBody) ],
 						C.AmberFill, KioskLayout::InnerRadius, C.AmberStroke, 2.f, FMargin(16.f, 12.f)))
 			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight()[ PriceBlock ]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
+			+ SVerticalBox::Slot().AutoHeight()
 			[
-				SNew(SKioskButton)
-				.Kind(EKioskButtonKind::Strong)
-				.Label(KT("Choose"))
-				.ButtonTag(Tag)
-				.OnClicked_Lambda([Session, Type]() { Session->ChooseTicket(Type); return FReply::Handled(); })
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Bottom).Padding(0.f, 0.f, 16.f, 0.f)[ PriceBlock ]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Bottom)
+				[
+					SNew(SKioskButton)
+					.Kind(EKioskButtonKind::Strong)
+					.Label(KT("Choose"))
+					.ButtonTag(Tag)
+					.MinWidth(KioskLayout::CompactBtnMinW)
+					.OnClicked_Lambda([Session, Type]() { Session->ChooseTicket(Type); return FReply::Handled(); })
+				]
 			],
-			C.Surface, C.BorderStrong, 2.f, FMargin(34.f, 30.f, 34.f, 30.f));
+			C.Surface, C.BorderStrong, 2.f, KioskLayout::CardPadWide);
 	}
 }
 
@@ -280,11 +296,11 @@ void STicketTypeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 	const FKioskColors& C = KC();
 	const FText Late = FKioskSession::DayPassWarning();
 	ChildSlot
-	.Padding(KioskLayout::PageX, 30.f, KioskLayout::PageX, 0.f)
+	.Padding(KioskLayout::PageX, KioskLayout::PageTop, KioskLayout::PageX, KioskLayout::PageBottom)
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot().AutoHeight()[ Text(KT("Choose a ticket"), KioskType::H1, true, C.Ink) ]
-		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, 26.f, 0.f, 0.f)
+		+ SVerticalBox::Slot().FillHeight(1.f).Padding(0.f, KioskLayout::TitleGap, 0.f, 0.f)
 		[
 			SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().FillWidth(1.f).Padding(0.f, 0.f, 18.f, 0.f)
@@ -308,7 +324,7 @@ void STicketTypeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKi
 					FText::GetEmpty(), FKioskSession::Money(FKioskFares::DayPassCents), TEXT("Choose Day pass"), Late.IsEmpty(), Late)
 			]
 		]
-		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 18.f)
+		+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 16.f, 0.f, 0.f)
 		[
 			Text(KT("Prices are for one adult. Add children or seniors on the Review step."), KioskType::Caption, false, C.Muted)
 		]
