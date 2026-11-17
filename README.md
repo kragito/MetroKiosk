@@ -70,7 +70,7 @@ Names stay in English whatever language is active. The language pills live in th
 screen (`click:Buy a ticket|lang:zh`), not on Home.
 
 ### Journey scripts
-`Tools/journeys/*.txt` hold one script per file; `powershell -File Tools/run_journeys.ps1` runs them all (or `-Name a,b`)
+`Tools/journeys/*.txt` hold one script per file; `powershell -File Tools/run_journeys.ps1` runs them all (or `-Name a,b`, comma-separated, no spaces)
 and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (git-ignored).
 
 | File | Journey |

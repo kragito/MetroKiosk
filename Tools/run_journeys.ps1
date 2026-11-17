@@ -4,7 +4,11 @@
 param([string[]]$Name, [switch]$NoBuild)
 
 $Root = Split-Path $PSScriptRoot
-$Files = Get-ChildItem (Join-Path $PSScriptRoot "journeys") -Filter *.txt | Where-Object { -not $Name -or $Name -contains $_.BaseName }
+$Wanted = @($Name | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$All = Get-ChildItem (Join-Path $PSScriptRoot "journeys") -Filter *.txt
+$Unknown = @($Wanted | Where-Object { $All.BaseName -notcontains $_ })
+if ($Unknown.Count -gt 0) { Write-Output ("Unknown journey name(s): " + ($Unknown -join ", ") + " (see Tools\journeys\*.txt)"); exit 2 }
+$Files = $All | Where-Object { $Wanted.Count -eq 0 -or $Wanted -contains $_.BaseName }
 $Failed = 0
 foreach ($File in $Files) {
     $Out = Join-Path $Root ("Saved\Journeys\" + $File.BaseName)
