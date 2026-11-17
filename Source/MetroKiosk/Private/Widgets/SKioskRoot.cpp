@@ -160,7 +160,11 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 
 	if (S->IsCallActive() && !bHelp)
 	{
-		Canvas->AddSlot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, 0.f, 14.f, 0.f)[ BuildCallPip() ];
+		// Sits in the empty right end of the step bar band, centred vertically in it.
+		Canvas->AddSlot().HAlign(HAlign_Right).VAlign(VAlign_Top).Padding(0.f, KioskLayout::HeaderH, KioskLayout::PageX, 0.f)
+		[
+			SNew(SBox).HeightOverride(KioskLayout::StepBarH).VAlign(VAlign_Center)[ BuildCallPip(S->StepInfo().Labels.Num() <= KioskLayout::PipLabelMaxSteps) ]
+		];
 	}
 	if (S->IsIdlePrompt() && !bHelp)
 	{
@@ -169,42 +173,42 @@ TSharedRef<SWidget> SKioskRoot::BuildCanvas()
 	return Canvas;
 }
 
-TSharedRef<SWidget> SKioskRoot::BuildCallPip()
+TSharedRef<SWidget> SKioskRoot::BuildCallPip(bool bShowLabel)
 {
 	using namespace KioskUI;
 	const FKioskColors& C = KC();
 	const TSharedRef<FKioskSession> S = Session.ToSharedRef();
 
-	return SNew(SBox).WidthOverride(360.f).HeightOverride(194.f)
-	[
-		Panel(
-			SNew(SKioskButton)
-			.Kind(EKioskButtonKind::Card)
-			.Label(KT("Return to the help call"))
-			.Padding(FMargin(0.f))
-			.OnClicked_Lambda([S]() { S->ResumeCall(); return FReply::Handled(); })
+	TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox)
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			SNew(SBox).WidthOverride(KioskLayout::PipW).HeightOverride(KioskLayout::PipH)
 			[
-				SNew(SOverlay)
-				+ SOverlay::Slot().HAlign(HAlign_Left).VAlign(VAlign_Top).Padding(14.f, 12.f, 0.f, 0.f)
-				[
-					Panel(
-						SNew(SHorizontalBox)
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 8.f, 0.f)[ Dot(C.Primary, 11.f) ]
-						+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-						[
-							TextDyn([S]() { return FText::FromString(FString::Printf(TEXT("%d:%02d"), S->CallSeconds() / 60, S->CallSeconds() % 60)); }, KioskType::Caption, true, C.Ink)
-						],
-						C.White, 14.f, C.Transparent, 0.f, FMargin(14.f, 5.f))
-				]
-				+ SOverlay::Slot().HAlign(HAlign_Center).VAlign(VAlign_Center)
-				[
-					SNew(SVerticalBox)
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center)[ Icon(EKioskIcon::Person, 48.f, C.White, 3.f) ]
-					+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Center).Padding(0.f, 12.f, 0.f, 0.f)[ Text(KT("[Staff video feed]"), KioskType::Caption, false, C.White) ]
-				]
-			],
-			C.Video, KioskLayout::InnerRadius)
-	];
+				Panel(
+					SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)[ Icon(EKioskIcon::Person, KioskLayout::IconSm, C.White, 3.f) ],
+					C.Ink, KioskLayout::PipRadius)
+			]
+		]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 8.f, 0.f)[ Dot(C.Primary, 11.f) ]
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+		[
+			TextDyn([S]() { return FText::FromString(FString::Printf(TEXT("%d:%02d"), S->CallSeconds() / 60, S->CallSeconds() % 60)); }, KioskType::Caption, true, C.White)
+		];
+	if (bShowLabel)
+	{
+		Row->AddSlot().AutoWidth().VAlign(VAlign_Center).Padding(14.f, 0.f, 0.f, 0.f)[ Text(KT("Staff on call"), KioskType::Caption, false, C.White) ];
+	}
+
+	return Panel(
+		SNew(SKioskButton)
+		.Kind(EKioskButtonKind::Card)
+		.Label(KT("Return to the help call"))
+		.Padding(FMargin(8.f, 6.f, 20.f, 6.f))
+		.OnClicked_Lambda([S]() { S->ResumeCall(); return FReply::Handled(); })
+		[
+			Row
+		],
+		C.Video, KioskLayout::InnerRadius);
 }
 
 TSharedRef<SWidget> SKioskRoot::BuildIdlePrompt()

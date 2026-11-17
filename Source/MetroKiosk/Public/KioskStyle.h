@@ -89,6 +89,12 @@ namespace KioskType
 /** Shared metrics: grid, radii, button heights per role, icon sizes. */
 namespace KioskLayout
 {
+	constexpr float HeaderH = 107.f;     // header band; the step bar starts below it
+	constexpr float StepBarH = 78.f;     // step bar band
+	constexpr float PipW = 72.f;         // minimised help call: video thumbnail
+	constexpr float PipH = 48.f;
+	constexpr float PipRadius = 10.f;
+	constexpr int32 PipLabelMaxSteps = 3; // the pill drops its label when the step bar has more steps than this
 	constexpr float PageX = 75.f;        // left/right screen margin
 	constexpr float PageTop = 28.f;
 	constexpr float PageBottom = 28.f;

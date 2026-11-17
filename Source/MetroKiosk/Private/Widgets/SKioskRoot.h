@@ -25,7 +25,7 @@ public:
 private:
 	void Rebuild();
 	TSharedRef<SWidget> BuildCanvas();
-	TSharedRef<SWidget> BuildCallPip();
+	TSharedRef<SWidget> BuildCallPip(bool bShowLabel);
 	TSharedRef<SWidget> BuildIdlePrompt();
 	EActiveTimerReturnType OnFrame(double InCurrentTime, float InDeltaTime);
 

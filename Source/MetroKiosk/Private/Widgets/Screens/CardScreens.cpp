@@ -928,7 +928,7 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 					[
 						SNew(SVerticalBox)
 						+ SVerticalBox::Slot().AutoHeight()[ Text(FText::Format(KT("{0} · {1}"), Session->CardLabel(), FText::FromString(FString(TEXT("•••• ")) + Session->CardInfo().Last4)), KioskType::Caption, false, C.Muted) ]
-						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(KT("Current Balance"), KioskType::Caption, false, C.Muted) ]
+						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 6.f, 0.f, 0.f)[ Text(KT("Balance"), KioskType::Caption, false, C.Muted) ]
 						+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)[ Text(FKioskSession::Money(Balance), KioskType::Figure, true, C.Ink) ]
 					]
 					+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(40.f, 0.f, 0.f, 0.f)[ BalanceDetail ],
