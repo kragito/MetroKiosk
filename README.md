@@ -100,8 +100,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `l10_review_figma` | Review per Figma 78:4631: "Valid for 2 hours after use." plus the trip sentence, Change link opens the destination list and returns, riders swap (child in, adult out) and keep at least one rider, direct trip "on the ... Line" sentence in ta and en |
 
 ## 3D mode (the default)
-`powershell -File Tools/play_3d.ps1` (or any `-game` launch without `-Kiosk2D`) puts the kiosk in a small metro concourse built
-at runtime from engine basic shapes only (`/Engine/BasicShapes`, no assets under `Content/`). `-Kiosk2D` opens the flat full-screen
+`powershell -File Tools/play_3d.ps1` (or any `-game` launch without `-Kiosk2D`) puts the kiosk in a small metro concourse: the level `Content/Maps/Concourse.umap`, made of engine basic shapes only (`/Engine/BasicShapes`). The level is the source of truth: every block, light, the kiosk (with all its parts as components) and the visitor are placed in it and can be moved or recoloured in the editor (blocks and parts take a colour token name such as `Muted` or `Brand`); the game spawns nothing at runtime. `-Kiosk2D` opens the flat full-screen
 kiosk instead; `Tools/journey.ps1` and `Tools/capture.ps1` always pass it. `-Kiosk3D` is still accepted and does nothing extra.
 - The kiosk cabinet follows `Docs/ref/figma/64-75_kiosk_hardware.png`: the touch screen, then (to its right) the contactless
   reader, the chip card / NETS slot, the note slot and the coin slot, the round Metro card pad under the screen, the ticket and
@@ -123,8 +122,8 @@ kiosk instead; `Tools/journey.ps1` and `Tools/capture.ps1` always pass it. `-Kio
   collects the ticket and change from the tray, buys a day pass with the bank card on the contactless reader, then presses
   Esc and walks into the kiosk to check collision. It logs one line per step and exits 1 unless it ends with `KIOSK3D SELFTEST PASS`;
   with `-ShotDir` it also saves a screenshot at each stage.
-- Code: `Source/MetroKiosk/Private/World/` (`KioskEnvironment` scene and kiosk parts, `KioskVisitorPawn` first-person pawn and camera
-  lock-on, `KioskWorld` cursor, parts, tray and self-test, `KioskWallet` wallet items and which part takes what).
+- Code: `Source/MetroKiosk/Private/World/` (`KioskCabinet` the kiosk and its parts, `KioskBlock` placed shapes with a colour token, `KioskVisitorPawn` first-person pawn and lock-on, `KioskWorld` finds the placed actors, cursor, tray and self-test, `KioskWallet` wallet items and which part takes what).
+- Level generator (one-off): `powershell -File Tools/make_concourse_level.ps1` built the level from the old runtime layout. Do not rerun it unless you want to throw away editor changes; it refuses to overwrite the level without `-Force`. `Tools/journey.ps1` and `Tools/capture.ps1` start on `/Engine/Maps/Entry` with `-Kiosk2D`, so 2D runs never load the level.
 
 ## Automation tests
 ```powershell

@@ -1,4 +1,4 @@
-// Runs the default 3D mode: spawns the concourse, lets the visitor walk up to the kiosk (E), lock the camera on it and use its screen, parts and wallet like the real thing.
+// Runs the default 3D mode: finds the concourse placed in the level, lets the visitor walk up to the kiosk (E), lock the camera on it and use its screen, parts and wallet like the real thing.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -7,7 +7,7 @@
 #include "KioskTypes.h"
 #include "KioskWallet.h"
 
-class AKioskEnvironment;
+class AKioskCabinet;
 class AKioskVisitorPawn;
 class FKioskSession;
 class IInputProcessor;
@@ -26,7 +26,8 @@ public:
 	~FKioskWorld();
 
 	/** Takes over from the 2D viewport hosting: the kiosk root is shown on the 3D screen instead of the viewport. */
-	void Start();
+	/** Finds the kiosk and the visitor placed in the level and hooks up the kiosk root. False (nothing started) when the level has no kiosk cabinet or visitor. */
+	bool Start();
 	void Shutdown();
 
 	/** Step up to the kiosk: the camera locks on its front, the cursor is shown and moves over the screen and the parts. */
@@ -76,7 +77,7 @@ private:
 	TWeakObjectPtr<UGameViewportClient> Viewport;
 	TSharedPtr<SKioskRoot> Root;
 	TSharedPtr<FKioskSession> Session;
-	TWeakObjectPtr<AKioskEnvironment> Environment;
+	TWeakObjectPtr<AKioskCabinet> Environment;
 	TWeakObjectPtr<AKioskVisitorPawn> Pawn;
 	TSharedPtr<IInputProcessor> InputProcessor;
 	TSharedPtr<SWidget> Hud;

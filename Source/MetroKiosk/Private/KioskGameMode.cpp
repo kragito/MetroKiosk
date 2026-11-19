@@ -14,7 +14,8 @@
 
 AKioskGameMode::AKioskGameMode()
 {
-	DefaultPawnClass = FKioskWorld::IsRequested() ? TSubclassOf<APawn>(AKioskVisitorPawn::StaticClass()) : TSubclassOf<APawn>(ASpectatorPawn::StaticClass());
+	// 3D mode: the visitor is placed in the level (nothing is spawned for the player); the flat kiosk uses a spectator pawn.
+	DefaultPawnClass = FKioskWorld::IsRequested() ? nullptr : TSubclassOf<APawn>(ASpectatorPawn::StaticClass());
 	HUDClass = nullptr;
 }
 
@@ -33,13 +34,18 @@ void AKioskGameMode::BeginPlay()
 	Root = SNew(SKioskRoot, Session.ToSharedRef());
 	HostViewport = Viewport;
 
-	if (FKioskWorld::IsRequested())
+	bool bFlat = !FKioskWorld::IsRequested();
+	if (!bFlat)
 	{
-		// 3D mode (the default; -Kiosk2D opts out): the kiosk UI lives on the screen of a kiosk in a walkable concourse (see World/KioskWorld.cpp).
+		// 3D mode (the default; -Kiosk2D opts out): the kiosk UI lives on the screen of the kiosk placed in the concourse level (see World/KioskWorld.cpp).
 		World3D = MakeShared<FKioskWorld>(GetWorld(), Viewport, Root.ToSharedRef(), Session.ToSharedRef());
-		World3D->Start();
+		if (!World3D->Start())
+		{
+			World3D.Reset();
+			bFlat = true; // the loaded level has no kiosk: show the flat kiosk instead of an empty view
+		}
 	}
-	else
+	if (bFlat)
 	{
 		Viewport->AddViewportWidgetContent(Root.ToSharedRef(), 100);
 

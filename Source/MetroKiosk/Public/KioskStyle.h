@@ -11,6 +11,9 @@ struct FKioskColors
 {
 	FKioskColors();
 
+	/** Colour by token name ("Muted", "Brand", "Line0".."Line5", ...) for actors placed in the level, which store the name. False for an unknown name. Safe without Slate (editor viewport, commandlets). */
+	static bool Lookup(const FName& Token, FLinearColor& OutColour);
+
 	FLinearColor Bg;            // --k-bg
 	FLinearColor Surface;       // --k-surface
 	FLinearColor BorderStrong;  // --k-border-strong

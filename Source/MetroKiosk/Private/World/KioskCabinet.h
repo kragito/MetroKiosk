@@ -1,29 +1,28 @@
-// Actor that builds the 3D metro concourse and the kiosk cabinet (screen, readers, slots, tray, card pad) at runtime from engine basic shapes only.
+// The kiosk cabinet placed in the concourse level: screen, reader, slots, card pad and collection tray as editable components.
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "KioskWallet.h"
-#include "KioskEnvironment.generated.h"
+#include "KioskCabinet.generated.h"
 
 class SBox;
 class SWidget;
-class UMaterialInterface;
+class UKioskBlockComponent;
 class UPrimitiveComponent;
-class UStaticMesh;
-class UStaticMeshComponent;
 class UWidgetComponent;
 
+/**
+ * The kiosk. Its parts are default subobjects with the layout of the Figma hardware frame (centimetres, front face at X = 0, screen facing +X);
+ * a placed instance can move, scale or recolour any of them in the editor and the game follows.
+ */
 UCLASS()
-class AKioskEnvironment : public AActor
+class AKioskCabinet : public AActor
 {
 	GENERATED_BODY()
 
 public:
-	AKioskEnvironment();
-
-	/** Creates every mesh, light and the screen component. Call once after spawning. */
-	void Build();
+	AKioskCabinet();
 
 	/** Shows a Slate widget on the kiosk screen face (the widget may only have one parent at a time). */
 	void SetScreenContent(const TSharedRef<SWidget>& Content);
@@ -34,8 +33,6 @@ public:
 	FVector CanvasToWorld(const FVector2D& Pixel, float SignU = 1.f, float SignV = 1.f) const;
 	/** True while Widget is the content shown on the 3D screen. */
 	bool ScreenContentIs(const TSharedRef<SWidget>& Widget) const;
-	/** Where the visitor starts: a few metres in front of the kiosk, facing it. */
-	FTransform GetVisitorStart() const;
 	/** World transform of the camera when the visitor has stepped up to the kiosk: square on, the whole front in view. */
 	FTransform GetLockOnView() const;
 	/** Camera for the -Kiosk3DShotView=kiosk hardware close-up. */
@@ -56,40 +53,33 @@ public:
 	/** What lies in the collection tray: printed ticket, receipt and returned change (coins / notes drawn for the amount). */
 	void SetTrayContents(bool bTicket, bool bReceipt, int32 ChangeCents);
 
+protected:
+	virtual void BeginPlay() override;
+
 private:
-	UStaticMeshComponent* AddBlock(UStaticMesh* Mesh, const FName& Name, const FVector& Centre, const FVector& SizeCm, const FLinearColor& Colour);
-	UStaticMeshComponent* AddPart(EKioskPart Part, UStaticMesh* Mesh, const FName& Name, const FVector& Centre, const FVector& SizeCm, const FLinearColor& Colour);
-	void AddLightBar(EKioskPart Part, const FVector& Centre, const FVector& SizeCm);
-	void AddLight(const FName& Name, const FVector& Location);
-	void BuildKiosk();
-	void BuildTrayItems();
-	void SetBlockColour(UStaticMeshComponent* Block, const FLinearColor& Colour) const;
+	UKioskBlockComponent* AddBlock(const TCHAR* Name, bool bCylinder, const FVector& Centre, const FVector& SizeCm, const TCHAR* Token);
+	UKioskBlockComponent* AddPart(EKioskPart Part, const TCHAR* Name, bool bCylinder, const FVector& Centre, const FVector& SizeCm, const TCHAR* Token);
+	void AddLightBar(EKioskPart Part, const TCHAR* Name, const FVector& Centre, const FVector& SizeCm);
 	void RefreshPartColour(EKioskPart Part);
 
-	UPROPERTY(Transient)
-	TObjectPtr<UStaticMesh> CubeMesh;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UStaticMesh> CylinderMesh;
-
-	UPROPERTY(Transient)
-	TObjectPtr<UMaterialInterface> BaseMaterial;
-
-	UPROPERTY(Transient)
+	UPROPERTY(VisibleAnywhere, Category = "Kiosk")
 	TObjectPtr<UWidgetComponent> Screen;
+
+	/** Every block of the cabinet. Listed here so the level saves what you change on them (a component nothing points at is not saved with the level). */
+	UPROPERTY(VisibleAnywhere, Category = "Kiosk")
+	TArray<TObjectPtr<UKioskBlockComponent>> Blocks;
 
 	TSharedPtr<SBox> ScreenHost;
 
-	// Hardware (plain pointers: the actor owns every component).
-	TMap<EKioskPart, UStaticMeshComponent*> PartBlocks;
-	TMap<EKioskPart, FLinearColor> PartBaseColours;
-	TMap<EKioskPart, UStaticMeshComponent*> LightBars;
+	// Plain pointers: the actor owns every component.
+	TMap<EKioskPart, UKioskBlockComponent*> PartBlocks;
+	TMap<EKioskPart, UKioskBlockComponent*> LightBars;
 	TSet<EKioskPart> LitParts;
 	EKioskPart HoverPart = EKioskPart::None;
-	UStaticMeshComponent* CardOnPad = nullptr;
-	UStaticMeshComponent* TicketMesh = nullptr;
-	UStaticMeshComponent* ReceiptMesh = nullptr;
-	TArray<UStaticMeshComponent*> ChangeCoins; // one slot = one coin cylinder ...
-	TArray<UStaticMeshComponent*> ChangeNotes; // ... or one note, drawn at the same place
+	UKioskBlockComponent* CardOnPad = nullptr;
+	UKioskBlockComponent* TicketMesh = nullptr;
+	UKioskBlockComponent* ReceiptMesh = nullptr;
+	TArray<UKioskBlockComponent*> ChangeCoins; // one slot = one coin cylinder ...
+	TArray<UKioskBlockComponent*> ChangeNotes; // ... or one note, drawn at the same place
 	bool bCardOnPad = false;
 };

@@ -287,3 +287,42 @@ const FButtonStyle& FKioskStyle::ButtonStyle(EKioskButtonKind Kind)
 	ButtonCache.Add(static_cast<uint8>(Kind), Style);
 	return *Style;
 }
+
+bool FKioskColors::Lookup(const FName& Token, FLinearColor& OutColour)
+{
+	static const FKioskColors Colours;
+	if (Token == TEXT("Bg")) { OutColour = Colours.Bg; return true; }
+	if (Token == TEXT("Surface")) { OutColour = Colours.Surface; return true; }
+	if (Token == TEXT("BorderStrong")) { OutColour = Colours.BorderStrong; return true; }
+	if (Token == TEXT("Ink")) { OutColour = Colours.Ink; return true; }
+	if (Token == TEXT("Muted")) { OutColour = Colours.Muted; return true; }
+	if (Token == TEXT("Brand")) { OutColour = Colours.Brand; return true; }
+	if (Token == TEXT("Logo")) { OutColour = Colours.Logo; return true; }
+	if (Token == TEXT("Primary")) { OutColour = Colours.Primary; return true; }
+	if (Token == TEXT("PrimaryTint")) { OutColour = Colours.PrimaryTint; return true; }
+	if (Token == TEXT("PrimaryChip")) { OutColour = Colours.PrimaryChip; return true; }
+	if (Token == TEXT("Help")) { OutColour = Colours.Help; return true; }
+	if (Token == TEXT("HelpTint")) { OutColour = Colours.HelpTint; return true; }
+	if (Token == TEXT("Band")) { OutColour = Colours.Band; return true; }
+	if (Token == TEXT("Disabled")) { OutColour = Colours.Disabled; return true; }
+	if (Token == TEXT("DisabledInk")) { OutColour = Colours.DisabledInk; return true; }
+	if (Token == TEXT("Danger")) { OutColour = Colours.Danger; return true; }
+	if (Token == TEXT("AmberFill")) { OutColour = Colours.AmberFill; return true; }
+	if (Token == TEXT("AmberStroke")) { OutColour = Colours.AmberStroke; return true; }
+	if (Token == TEXT("AmberStrong")) { OutColour = Colours.AmberStrong; return true; }
+	if (Token == TEXT("Video")) { OutColour = Colours.Video; return true; }
+	if (Token == TEXT("Transparent")) { OutColour = Colours.Transparent; return true; }
+	if (Token == TEXT("White")) { OutColour = Colours.White; return true; }
+	if (Token == TEXT("Black")) { OutColour = Colours.Black; return true; }
+	if (Token == TEXT("Chip")) { OutColour = Colours.Chip; return true; }
+	if (Token == TEXT("OnBrandDivider")) { OutColour = Colours.OnBrandDivider; return true; }
+	if (Token == TEXT("OnBrandSoft")) { OutColour = Colours.OnBrandSoft; return true; }
+	if (Token == TEXT("MapLabelBg")) { OutColour = Colours.MapLabelBg; return true; }
+	if (Token == TEXT("DeviceDark")) { OutColour = Colours.DeviceDark; return true; }
+	if (Token == TEXT("Scrim")) { OutColour = Colours.Scrim; return true; }
+	for (int32 Index = 0; Index < 6; ++Index)
+	{
+		if (Token == FName(*FString::Printf(TEXT("Line%d"), Index))) { OutColour = Colours.Line[Index]; return true; }
+	}
+	return false;
+}

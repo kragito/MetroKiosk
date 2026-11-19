@@ -1,4 +1,4 @@
-// Runs the default 3D mode: spawns the concourse, locks the camera on the kiosk (E / Esc), drives the cursor, the hardware parts, the wallet and the collection tray, and hosts the self-test.
+// Runs the default 3D mode: finds the concourse placed in the level, locks the camera on the kiosk (E / Esc), drives the cursor, the hardware parts, the wallet and the collection tray, and hosts the self-test.
 #include "KioskWorld.h"
 
 #include "Engine/Engine.h"
@@ -10,7 +10,10 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
-#include "KioskEnvironment.h"
+#include "EngineUtils.h"
+#include "Engine/Light.h"
+#include "KioskBlock.h"
+#include "KioskCabinet.h"
 #include "KioskLoc.h"
 #include "KioskStyle.h"
 #include "KioskSession.h"
@@ -80,48 +83,65 @@ FKioskWorld::~FKioskWorld()
 	Shutdown();
 }
 
-void FKioskWorld::Start()
+bool FKioskWorld::Start()
 {
 	UWorld* PlayWorld = World.Get();
 	UGameViewportClient* GameViewport = Viewport.Get();
 	if (!PlayWorld || !GameViewport || bStarted)
 	{
-		return;
+		return false;
+	}
+
+	// The scene is the level (Content/Maps/Concourse.umap): find what is placed there, spawn nothing.
+	int32 ActorsBefore = 0;
+	for (TActorIterator<AActor> It(PlayWorld); It; ++It)
+	{
+		++ActorsBefore;
+	}
+	AKioskCabinet* Env = nullptr;
+	for (TActorIterator<AKioskCabinet> It(PlayWorld); It; ++It)
+	{
+		Env = *It;
+		break;
+	}
+	AKioskVisitorPawn* Visitor = nullptr;
+	for (TActorIterator<AKioskVisitorPawn> It(PlayWorld); It; ++It)
+	{
+		Visitor = *It;
+		break;
+	}
+	if (!Env || !Visitor)
+	{
+		UE_LOG(LogKiosk3D, Error, TEXT("KIOSK3D scene: the level '%s' has no %s; falling back to the flat 2D kiosk (open /Game/Maps/Concourse)"), *PlayWorld->GetMapName(), Env ? TEXT("visitor pawn") : TEXT("kiosk cabinet"));
+		return false;
 	}
 	bStarted = true;
-
-	AKioskEnvironment* Env = PlayWorld->SpawnActor<AKioskEnvironment>(FVector::ZeroVector, FRotator::ZeroRotator);
 	Environment = Env;
-	if (Env)
-	{
-		Env->Build();
-		Env->SetScreenContent(Root.ToSharedRef());
-	}
+	Env->SetScreenContent(Root.ToSharedRef());
 
 	APlayerController* Controller = PlayWorld->GetFirstPlayerController();
 	if (Controller)
 	{
-		AKioskVisitorPawn* Visitor = Cast<AKioskVisitorPawn>(Controller->GetPawn());
-		if (!Visitor)
+		if (Controller->GetPawn() != Visitor)
 		{
-			FActorSpawnParameters Params;
-			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-			Visitor = PlayWorld->SpawnActor<AKioskVisitorPawn>(FVector::ZeroVector, FRotator::ZeroRotator, Params);
-			if (Visitor)
-			{
-				Controller->Possess(Visitor);
-			}
+			Controller->Possess(Visitor); // normally the placed pawn's AutoPossessPlayer has done this already
 		}
 		Pawn = Visitor;
-		if (Visitor && Env)
-		{
-			const FTransform StartTransform = Env->GetVisitorStart();
-			Visitor->SetActorLocation(StartTransform.GetLocation(), false, nullptr, ETeleportType::TeleportPhysics);
-			FRotator Look = StartTransform.Rotator();
-			Look.Pitch = -4.f; // the screen centre is a little below eye height
-			Controller->SetControlRotation(Look);
-		}
+		FRotator Look = Visitor->GetActorRotation();
+		Look.Pitch = -4.f; // the screen centre is a little below eye height
+		Controller->SetControlRotation(Look);
 	}
+
+	int32 ActorsAfter = 0;
+	int32 Blocks = 0;
+	int32 Lights = 0;
+	for (TActorIterator<AActor> It(PlayWorld); It; ++It)
+	{
+		++ActorsAfter;
+		Blocks += Cast<AKioskBlock>(*It) ? 1 : 0;
+		Lights += Cast<ALight>(*It) ? 1 : 0;
+	}
+	UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D scene: found %d placed actors (%d blocks, %d lights, 1 kiosk cabinet, 1 visitor), spawned %d"), ActorsAfter, Blocks, Lights, ActorsAfter - ActorsBefore);
 
 	FString ShotView;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-Kiosk3DShotView="), ShotView) && Pawn.IsValid() && Controller && Env)
@@ -187,6 +207,7 @@ void FKioskWorld::Start()
 		ShotTimer = ShotDelaySeconds;
 	}
 	TickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateRaw(this, &FKioskWorld::Tick));
+	return true;
 }
 
 void FKioskWorld::Shutdown()
@@ -219,7 +240,7 @@ void FKioskWorld::Shutdown()
 	}
 	Hud.Reset();
 	WalletHud.Reset();
-	if (AKioskEnvironment* Env = Environment.Get())
+	if (AKioskCabinet* Env = Environment.Get())
 	{
 		Env->ClearScreenContent();
 	}
@@ -245,7 +266,7 @@ void FKioskWorld::EnterKioskView()
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	if (bKioskView || !Controller || !Visitor || !Env)
 	{
 		return;
@@ -277,7 +298,7 @@ void FKioskWorld::ExitKioskView()
 	bSyntheticCursor = false;
 	SyntheticClickFrames = 0;
 	Visitor->ReleaseView();
-	if (AKioskEnvironment* Env = Environment.Get())
+	if (AKioskCabinet* Env = Environment.Get())
 	{
 		Env->SetPartHighlight(EKioskPart::None);
 	}
@@ -287,7 +308,7 @@ void FKioskWorld::ExitKioskView()
 
 bool FKioskWorld::IsNearKiosk() const
 {
-	const AKioskEnvironment* Env = Environment.Get();
+	const AKioskCabinet* Env = Environment.Get();
 	const AKioskVisitorPawn* Visitor = Pawn.Get();
 	if (!Env || !Visitor)
 	{
@@ -348,7 +369,7 @@ void FKioskWorld::ShowToast(const FText& Text)
 
 void FKioskWorld::SyncTray()
 {
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	const EKioskScreen Now = Session->Current();
 	if (Now == LastScreen || !Env)
 	{
@@ -384,7 +405,7 @@ void FKioskWorld::SyncTray()
 
 void FKioskWorld::PickUpFromTray()
 {
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	const int32 Change = TrayChangeCents;
 	bTrayTicket = false;
 	bTrayReceipt = false;
@@ -443,7 +464,7 @@ void FKioskWorld::OnPartClicked(EKioskPart Part)
 void FKioskWorld::TickKiosk(float DeltaSeconds)
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	if (!Visitor || !Env || !Controller || !Session.IsValid())
@@ -967,7 +988,7 @@ void FKioskWorld::BuildSelfTestPlan()
 
 int32 FKioskWorld::StepClickPart(EKioskPart Part)
 {
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	switch (TestSub)
 	{
 	case 0:
@@ -1003,7 +1024,7 @@ int32 FKioskWorld::StepClickPart(EKioskPart Part)
 int32 FKioskWorld::StepSelfTest()
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	const FTestAct& Act = TestPlan[TestStep];
@@ -1268,7 +1289,7 @@ int32 FKioskWorld::StepSelfTest()
 bool FKioskWorld::TickSelfTest(float DeltaSeconds)
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskEnvironment* Env = Environment.Get();
+	AKioskCabinet* Env = Environment.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	if (!Visitor || !Env || !Controller)

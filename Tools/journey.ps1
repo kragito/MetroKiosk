@@ -1,4 +1,5 @@
 # Runs a scripted UX journey in a standalone -game process (no editor, no PIE) and prints its log.
+# 2D runs open the engine Entry map on the command line so they do not load the 3D concourse level (Content/Maps/Concourse.umap).
 # Usage: powershell -File Tools\journey.ps1 -Script "click:Buy a ticket|wait:1|shot:tickets" -Out C:\path\to\out
 # Step reference: see README.md ("Scripted journeys").
 param(
@@ -34,7 +35,7 @@ if ($NoBuild -and (Test-Path $Dll)) {
 New-Item -ItemType Directory -Force $Out | Out-Null
 Remove-Item (Join-Path $Out "*") -Include *.png, *.txt -ErrorAction SilentlyContinue
 
-$launchArgs = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
+$launchArgs = @("`"$Project`"", "/Engine/Maps/Entry", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
           "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"", "-Kiosk2D")
 if ($Extra) { $launchArgs += $Extra.Split(" ", [StringSplitOptions]::RemoveEmptyEntries) }
 # Let any previous -game process (ours: started with -KioskScript) exit completely so its window cannot interfere.
