@@ -37,7 +37,7 @@ private:
 		FString Label;
 		bool bEnabled = true;
 	};
-	enum class EPhase : uint8 { Starting, Next, Waiting, VerifyClick, SettleBeforeShot, WaitingForShot, Settle, Done };
+	enum class EPhase : uint8 { Starting, Next, Waiting, VerifyClick, SettleBeforeShot, WaitingForShot, Settle, PollExpect, Done };
 
 	bool Tick(float DeltaSeconds);
 	void ParseScript(const FString& Script);
@@ -52,6 +52,10 @@ private:
 	bool DoClick(const FString& Label, FString& OutWhy);
 	bool DoScroll(const FString& Label, float DesignDy, FString& OutWhy);
 	void FailStep(const FString& Why);
+	/** Evaluates an Expect/Absent step against the current screen. */
+	bool CheckExpect(const FStep& Step, FString& OutWhy) const;
+	/** Restores and raises the game window if the desktop minimised it. Returns true if it was minimised. */
+	bool RestoreWindowIfMinimised();
 	bool DoDrag(const FString& Label, const FVector2f& DesignDelta, FString& OutWhy);
 	void DoDump();
 	void QueueShot(const FString& Name);
@@ -81,6 +85,11 @@ private:
 	bool bInputOverrideActive = false;
 	bool bKeepGoing = false;
 	bool bFinishAfterShot = false;
+	// expect:/absent: poll for a few seconds before failing (a screen change can lag the click by a timer or a slow frame)
+	FStep PollStep;
+	float PollSeconds = 0.f;
+	int32 MinimisedRestores = 0;
+	bool bWasMinimised = false;
 	int32 StableFrames = 0;
 	float StartupSeconds = 0.f;
 	FVector2f LastRootSize = FVector2f::ZeroVector;

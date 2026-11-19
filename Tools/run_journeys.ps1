@@ -14,6 +14,11 @@ foreach ($File in $Files) {
     $Out = Join-Path $Root ("Saved\Journeys\" + $File.BaseName)
     $Script = (Get-Content $File.FullName -Raw -Encoding UTF8).Trim()
     $Log = & "$PSScriptRoot\journey.ps1" -Script $Script -Out $Out -NoBuild:$NoBuild | Out-String
+    if ($Log -match "START FAIL") {
+        # The window never became ready (e.g. the desktop minimised it): nothing of the journey ran, so one retry is safe.
+        Write-Output "RETRY $($File.BaseName): the game window did not start ready ($(($Log -split "`n" | Where-Object { $_ -match 'START FAIL' } | Select-Object -First 1).Trim())); starting it once more"
+        $Log = & "$PSScriptRoot\journey.ps1" -Script $Script -Out $Out -NoBuild:$NoBuild | Out-String
+    }
     $Done = ($Log -split "`n" | Where-Object { $_ -match "^DONE:" } | Select-Object -First 1)
     if ($Done -match "DONE: \d+ steps, 0 failed") { Write-Output "PASS  $($File.BaseName)  ($Out)" }
     else { Write-Output "FAIL  $($File.BaseName)  ($Out)"; $Failed++; $Log -split "`n" | Where-Object { $_ -match "FAIL|ABORT" } | Select-Object -First 5 }

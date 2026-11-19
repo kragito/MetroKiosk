@@ -26,6 +26,7 @@ namespace
 	constexpr int32 ScriptSettleFrames = 8;
 	constexpr int32 ShotSettleFrames = 10;
 	constexpr int32 MaxShotWaitFrames = 900;
+	constexpr float ExpectPollSeconds = 4.f; // expect:/absent: keep re-checking this long before failing
 	constexpr float CanvasW = 1917.f;
 	constexpr float CanvasH = 1105.f;
 
@@ -610,12 +611,16 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 		break;
 	}
 	case EStepKind::Expect:
-		bOk = VisibleTextContains(Step.Text);
-		Why = FString::Printf(TEXT("no visible text contains '%s'"), *Step.Text);
-		break;
 	case EStepKind::Absent:
-		bOk = !VisibleTextContains(Step.Text);
-		Why = FString::Printf(TEXT("visible text still contains '%s'"), *Step.Text);
+		bOk = CheckExpect(Step, Why);
+		if (!bOk)
+		{
+			// Not there (or still there) yet: poll for a few seconds, the screen may be a timer or a slow frame behind.
+			PollStep = Step;
+			PollSeconds = 0.f;
+			Phase = EPhase::PollExpect;
+			return;
+		}
 		break;
 	}
 
@@ -631,6 +636,43 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 	}
 	FrameCounter = 0;
 	Phase = EPhase::Settle;
+}
+
+bool FKioskScriptRunner::CheckExpect(const FStep& Step, FString& OutWhy) const
+{
+	if (Step.Kind == EStepKind::Expect)
+	{
+		OutWhy = FString::Printf(TEXT("no visible text contains '%s'"), *Step.Text);
+		return VisibleTextContains(Step.Text);
+	}
+	OutWhy = FString::Printf(TEXT("visible text still contains '%s'"), *Step.Text);
+	return !VisibleTextContains(Step.Text);
+}
+
+bool FKioskScriptRunner::RestoreWindowIfMinimised()
+{
+	const TSharedPtr<SWindow> Window = Root.IsValid() ? FSlateApplication::Get().FindWidgetWindow(Root.ToSharedRef()) : nullptr;
+	const bool bMinimised = Window.IsValid() && Window->IsWindowMinimized();
+	if (bMinimised)
+	{
+		// Slate stops ticking and drawing a minimised window, so session timers and screenshots stall. Put it back.
+		if (!bWasMinimised)
+		{
+			Log(TEXT("WARN: the game window was minimised (screen locked, desktop switched or another app minimised it); restoring it"));
+		}
+		if (FrameCounter % 30 == 0 || !bWasMinimised)
+		{
+			++MinimisedRestores;
+			Window->Restore();
+			Window->BringToFront(true);
+		}
+	}
+	else if (bWasMinimised)
+	{
+		Log(FString::Printf(TEXT("WARN: the game window is restored again (restore attempts: %d)"), MinimisedRestores));
+	}
+	bWasMinimised = bMinimised;
+	return bMinimised;
 }
 
 void FKioskScriptRunner::FailStep(const FString& Why)
@@ -662,6 +704,10 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		return false;
 	}
 	++FrameCounter;
+	if (Phase != EPhase::Done)
+	{
+		RestoreWindowIfMinimised();
+	}
 
 	switch (Phase)
 	{
@@ -750,7 +796,8 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		}
 		else if (StartupSeconds > 90.f)
 		{
-			Log(FString::Printf(TEXT("START FAIL: window not ready (%s)"), NotReady.IsEmpty() ? TEXT("layout never stayed stable") : *NotReady));
+			Log(FString::Printf(TEXT("START FAIL: window not ready (%s)%s"), NotReady.IsEmpty() ? TEXT("layout never stayed stable") : *NotReady,
+				MinimisedRestores > 0 ? *FString::Printf(TEXT(" - the desktop kept minimising the game window (%d restore attempts); is the screen locked or the session disconnected?"), MinimisedRestores) : TEXT("")));
 			++FailCount;
 			Finish();
 			return false;
@@ -837,6 +884,24 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 			Phase = EPhase::Settle;
 		}
 		break;
+
+	case EPhase::PollExpect:
+	{
+		FString Why;
+		PollSeconds += DeltaSeconds;
+		if (CheckExpect(PollStep, Why))
+		{
+			Log(FString::Printf(TEXT("STEP %d OK: %s (after %.1f s)"), StepIndex, *PollStep.Source, PollSeconds));
+			FrameCounter = 0;
+			Phase = EPhase::Settle;
+		}
+		else if (PollSeconds >= ExpectPollSeconds)
+		{
+			Log(FString::Printf(TEXT("STEP %d FAIL: %s - %s (waited %.1f s, screen %s)"), StepIndex, *PollStep.Source, *Why, PollSeconds, ScreenName(Session->Visible())));
+			FailStep(Why);
+		}
+		break;
+	}
 
 	default:
 		return false;

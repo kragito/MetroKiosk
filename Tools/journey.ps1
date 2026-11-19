@@ -56,6 +56,10 @@ if (-not $prevCleared) {
     }
     Start-Sleep -Seconds 2
 }
+# A locked screen (LogonUI) or a disconnected remote session makes Windows minimise or never show the game window.
+if (Get-Process LogonUI -ErrorAction SilentlyContinue) {
+    Write-Output "WARN: the Windows screen is locked (LogonUI is running); the game window may be minimised by the desktop and the journey can fail to start. Unlock the screen."
+}
 Start-Sleep -Seconds 3
 $proc = Start-Process -FilePath "$Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList $launchArgs -PassThru
 $np = $null
