@@ -35,7 +35,7 @@ void AKioskGameMode::BeginPlay()
 
 	if (FKioskWorld::IsRequested())
 	{
-		// 3D mode: the kiosk UI lives on the screen of a kiosk in a walkable concourse (see World/KioskWorld.cpp).
+		// 3D mode (the default; -Kiosk2D opts out): the kiosk UI lives on the screen of a kiosk in a walkable concourse (see World/KioskWorld.cpp).
 		World3D = MakeShared<FKioskWorld>(GetWorld(), Viewport, Root.ToSharedRef(), Session.ToSharedRef());
 		World3D->Start();
 	}

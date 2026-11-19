@@ -1,12 +1,14 @@
-// Runs the optional -Kiosk3D mode: spawns the concourse, switches between walking and the full-screen kiosk view, shows the hints.
+// Runs the default 3D mode: spawns the concourse, locks the camera on the kiosk (E / Esc), drives the cursor, the hardware parts, the wallet and the collection tray, and hosts the self-test.
 #include "KioskWorld.h"
 
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
+#include "Engine/HitResult.h"
 #include "Engine/World.h"
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/PlayerController.h"
+#include "HAL/PlatformTime.h"
 #include "InputCoreTypes.h"
 #include "KioskEnvironment.h"
 #include "KioskLoc.h"
@@ -16,9 +18,11 @@
 #include "Widgets/Components/KioskAutomation.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Misc/Paths.h"
 #include "UnrealClient.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/SKioskRoot.h"
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
@@ -31,8 +35,17 @@ namespace
 	constexpr float NearFacingDot = 0.6f;
 	constexpr float ShotDelaySeconds = 4.f;
 	constexpr float QuitAfterShotSeconds = 3.f;
+	constexpr float LockOnFov = 90.f;
+	constexpr double ToastSeconds = 4.0;
 
-	/** Sees E and Esc before the viewport does, so they work in both walking (game input) and kiosk (UI-only) modes. */
+	/** Wallet item i is chosen with number key i + 1 (the tenth with 0). */
+	const FKey& NumberKey(int32 Index)
+	{
+		static const FKey Keys[10] = { EKeys::One, EKeys::Two, EKeys::Three, EKeys::Four, EKeys::Five, EKeys::Six, EKeys::Seven, EKeys::Eight, EKeys::Nine, EKeys::Zero };
+		return Keys[FMath::Clamp(Index, 0, 9)];
+	}
+
+	/** Sees E, Esc and the number keys before the viewport does, so they work in both walking and locked-on modes. */
 	class FKioskWorldInput : public IInputProcessor
 	{
 	public:
@@ -51,7 +64,7 @@ namespace
 
 bool FKioskWorld::IsRequested()
 {
-	return FParse::Param(FCommandLine::Get(), TEXT("Kiosk3D"));
+	return !FParse::Param(FCommandLine::Get(), TEXT("Kiosk2D"));
 }
 
 FKioskWorld::FKioskWorld(UWorld* InWorld, UGameViewportClient* InViewport, const TSharedRef<SKioskRoot>& InRoot, const TSharedRef<FKioskSession>& InSession)
@@ -111,17 +124,49 @@ void FKioskWorld::Start()
 	}
 
 	FString ShotView;
-	if (FParse::Value(FCommandLine::Get(), TEXT("-Kiosk3DShotView="), ShotView) && ShotView.Equals(TEXT("wide"), ESearchCase::IgnoreCase) && Pawn.IsValid() && Controller)
+	if (FParse::Value(FCommandLine::Get(), TEXT("-Kiosk3DShotView="), ShotView) && Pawn.IsValid() && Controller && Env)
 	{
-		// Overview for the screenshot: back and to the side, raised, wide lens, so one frame shows the kiosk, floor, pillar, benches, lights and platform edge.
-		Pawn->SetActorLocation(FVector(620.f, -720.f, 150.f), false, nullptr, ETeleportType::TeleportPhysics);
-		Controller->SetControlRotation(FRotator(-14.f, 96.f, 0.f));
-		Pawn->SetFieldOfView(105.f);
+		if (ShotView.Equals(TEXT("wide"), ESearchCase::IgnoreCase))
+		{
+			// Overview for the screenshot: back and to the side, raised, wide lens, so one frame shows the kiosk, floor, pillar, benches, lights and platform edge.
+			Pawn->SetActorLocation(FVector(620.f, -720.f, 150.f), false, nullptr, ETeleportType::TeleportPhysics);
+			Controller->SetControlRotation(FRotator(-14.f, 96.f, 0.f));
+			Pawn->SetFieldOfView(105.f);
+		}
+		else if (ShotView.Equals(TEXT("kiosk"), ESearchCase::IgnoreCase))
+		{
+			// Hardware close-up: a card on the pad, the guide lights on and the tray holding a ticket, a receipt and change.
+			bHardwareDemo = true;
+			Pawn->SetWalkingEnabled(false);
+			Pawn->LockView(Env->GetHardwareShotView(), 80.f);
+			bCardOnPad = true;
+			Env->SetCardOnPad(true);
+			Env->SetTrayContents(true, true, 1310);
+			for (const EKioskPart Part : { EKioskPart::Contactless, EKioskPart::ChipSlot, EKioskPart::NoteSlot, EKioskPart::CoinSlot, EKioskPart::CardPad, EKioskPart::ChangeTray })
+			{
+				Env->SetPartLight(Part, true);
+			}
+		}
 	}
 	bSelfTest = FParse::Param(FCommandLine::Get(), TEXT("Kiosk3DSelfTest"));
+	if (FParse::Value(FCommandLine::Get(), TEXT("-Kiosk3DShotDir="), ShotDir))
+	{
+		ShotDir = ShotDir.TrimQuotes();
+	}
+	if (bSelfTest)
+	{
+		BuildSelfTestPlan();
+	}
 
 	Hud = BuildHud();
 	GameViewport->AddViewportWidgetContent(Hud.ToSharedRef(), 200);
+	WalletHud = BuildWallet();
+	GameViewport->AddViewportWidgetContent(WalletHud.ToSharedRef(), 210);
+	if (bHardwareDemo)
+	{
+		Hud->SetVisibility(EVisibility::Collapsed);
+		WalletHud->SetVisibility(EVisibility::Collapsed);
+	}
 
 	InputProcessor = MakeShared<FKioskWorldInput>(this);
 	FSlateApplication::Get().RegisterInputPreProcessor(InputProcessor);
@@ -163,16 +208,17 @@ void FKioskWorld::Shutdown()
 	InputProcessor.Reset();
 	if (UGameViewportClient* GameViewport = Viewport.Get())
 	{
-		if (bKioskView && Root.IsValid())
-		{
-			GameViewport->RemoveViewportWidgetContent(Root.ToSharedRef());
-		}
 		if (Hud.IsValid())
 		{
 			GameViewport->RemoveViewportWidgetContent(Hud.ToSharedRef());
 		}
+		if (WalletHud.IsValid())
+		{
+			GameViewport->RemoveViewportWidgetContent(WalletHud.ToSharedRef());
+		}
 	}
 	Hud.Reset();
+	WalletHud.Reset();
 	if (AKioskEnvironment* Env = Environment.Get())
 	{
 		Env->ClearScreenContent();
@@ -197,48 +243,46 @@ void FKioskWorld::SetWalkingInput()
 void FKioskWorld::EnterKioskView()
 {
 	UWorld* PlayWorld = World.Get();
-	UGameViewportClient* GameViewport = Viewport.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
-	if (bKioskView || !GameViewport || !Controller || !Root.IsValid())
+	AKioskVisitorPawn* Visitor = Pawn.Get();
+	AKioskEnvironment* Env = Environment.Get();
+	if (bKioskView || !Controller || !Visitor || !Env)
 	{
 		return;
 	}
-	// A Slate widget has one parent: take it off the 3D screen before putting it in the viewport.
-	if (AKioskEnvironment* Env = Environment.Get())
-	{
-		Env->ClearScreenContent();
-	}
-	GameViewport->AddViewportWidgetContent(Root.ToSharedRef(), 100);
 	bKioskView = true;
-	if (AKioskVisitorPawn* Visitor = Pawn.Get())
-	{
-		Visitor->SetWalkingEnabled(false);
-	}
+	Visitor->SetWalkingEnabled(false);
+	Visitor->LockView(Env->GetLockOnView(), LockOnFov);
+	// The mouse moves a cursor over the 3D screen and the kiosk parts; the viewport keeps the clicks that Slate (the wallet) does not take.
 	Controller->bShowMouseCursor = true;
-	FInputModeUIOnly InputMode;
-	InputMode.SetWidgetToFocus(Root);
+	FInputModeGameAndUI InputMode;
 	InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	InputMode.SetHideCursorDuringCapture(false);
 	Controller->SetInputMode(InputMode);
 }
 
 void FKioskWorld::ExitKioskView()
 {
-	UGameViewportClient* GameViewport = Viewport.Get();
-	if (!bKioskView || !GameViewport || !Root.IsValid())
+	AKioskVisitorPawn* Visitor = Pawn.Get();
+	if (!bKioskView || !Visitor)
 	{
 		return;
 	}
-	GameViewport->RemoveViewportWidgetContent(Root.ToSharedRef());
 	bKioskView = false;
+	if (bScreenPressed)
+	{
+		Visitor->InjectPointer(false);
+		bScreenPressed = false;
+	}
+	bSyntheticCursor = false;
+	SyntheticClickFrames = 0;
+	Visitor->ReleaseView();
 	if (AKioskEnvironment* Env = Environment.Get())
 	{
-		Env->SetScreenContent(Root.ToSharedRef());
+		Env->SetPartHighlight(EKioskPart::None);
 	}
-	if (AKioskVisitorPawn* Visitor = Pawn.Get())
-	{
-		Visitor->SetWalkingEnabled(true);
-	}
-	SetWalkingInput();
+	CursorPart = EKioskPart::None;
+	SetWalkingInput(); // walking itself resumes once the camera is back at the eye (TickKiosk)
 }
 
 bool FKioskWorld::IsNearKiosk() const
@@ -260,6 +304,10 @@ bool FKioskWorld::IsNearKiosk() const
 
 bool FKioskWorld::HandleKey(const FKey& Key)
 {
+	if (bHardwareDemo)
+	{
+		return false;
+	}
 	if (bKioskView)
 	{
 		if (Key == EKeys::Escape)
@@ -267,7 +315,15 @@ bool FKioskWorld::HandleKey(const FKey& Key)
 			ExitKioskView();
 			return true;
 		}
-		return false; // every other key goes to the kiosk (search box typing, etc.)
+		for (int32 Index = 0; Index < KioskWallet::Items().Num() && Index < 10; ++Index)
+		{
+			if (Key == NumberKey(Index))
+			{
+				SelectWalletItem(Index);
+				return true;
+			}
+		}
+		return false;
 	}
 	if (Key == EKeys::E && IsNearKiosk())
 	{
@@ -277,8 +333,231 @@ bool FKioskWorld::HandleKey(const FKey& Key)
 	return false;
 }
 
+void FKioskWorld::SelectWalletItem(int32 Index)
+{
+	SelectedItem = KioskWallet::Items().IsValidIndex(Index) ? Index : INDEX_NONE;
+}
+
+// --- parts, cursor, tray ---------------------------------------------------------------------
+
+void FKioskWorld::ShowToast(const FText& Text)
+{
+	ToastText = Text;
+	ToastUntil = FPlatformTime::Seconds() + ToastSeconds;
+}
+
+void FKioskWorld::SyncTray()
+{
+	AKioskEnvironment* Env = Environment.Get();
+	const EKioskScreen Now = Session->Current();
+	if (Now == LastScreen || !Env)
+	{
+		return;
+	}
+	LastScreen = Now;
+	if (Now == EKioskScreen::Home)
+	{
+		SelectedItem = INDEX_NONE; // a new visitor starts with empty hands
+	}
+	if (Now == EKioskScreen::Receipt)
+	{
+		bTrayTicket = true; // the printed ticket and the receipt drop into the tray
+		bTrayReceipt = true;
+		TrayChangeCents += Session->ChangeCents();
+	}
+	else if (Now == EKioskScreen::DoneLiftCard)
+	{
+		bTrayReceipt = true;
+		TrayChangeCents += Session->ChangeCents();
+	}
+	else
+	{
+		return;
+	}
+	Env->SetTrayContents(bTrayTicket, bTrayReceipt, TrayChangeCents);
+}
+
+void FKioskWorld::PickUpFromTray()
+{
+	AKioskEnvironment* Env = Environment.Get();
+	const int32 Change = TrayChangeCents;
+	bTrayTicket = false;
+	bTrayReceipt = false;
+	TrayChangeCents = 0;
+	if (Env)
+	{
+		Env->SetTrayContents(false, false, 0);
+	}
+	ShowToast(Change > 0 ? FText::Format(KT("You collected your things and {0} change"), FKioskSession::Money(Change)) : KT("You collected your things from the tray"));
+}
+
+void FKioskWorld::OnPartClicked(EKioskPart Part)
+{
+	const TArray<FKioskWalletItem>& Items = KioskWallet::Items();
+	const FKioskWalletItem* Item = Items.IsValidIndex(SelectedItem) ? &Items[SelectedItem] : nullptr;
+	++UseCount;
+
+	if (Session->IsIdlePrompt() || Session->IsCallActive())
+	{
+		bLastUseAccepted = false;
+		ShowToast(KT("Answer the message on the screen first."));
+		return;
+	}
+
+	if (Part == EKioskPart::ChangeTray && !Item)
+	{
+		bLastUseAccepted = TrayHasContents();
+		if (bLastUseAccepted)
+		{
+			PickUpFromTray();
+		}
+		else
+		{
+			ShowToast(KT("The tray is empty."));
+		}
+		return;
+	}
+
+	const bool bWasLift = Session->Current() == EKioskScreen::DoneLiftCard;
+	const KioskWallet::FUseResult Result = KioskWallet::Use(*Session, Item, Part);
+	bLastUseAccepted = Result.bAccepted;
+	if (!Result.Message.IsEmpty())
+	{
+		ShowToast(Result.Message);
+	}
+	if (Result.bAccepted)
+	{
+		Session->NoteActivity();
+	}
+	if (Result.bAccepted && Part == EKioskPart::CardPad)
+	{
+		bCardOnPad = !bWasLift; // tapped on: the card rests on the pad; lifted: it is back in the hand
+	}
+}
+
+void FKioskWorld::TickKiosk(float DeltaSeconds)
+{
+	AKioskVisitorPawn* Visitor = Pawn.Get();
+	AKioskEnvironment* Env = Environment.Get();
+	UWorld* PlayWorld = World.Get();
+	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
+	if (!Visitor || !Env || !Controller || !Session.IsValid())
+	{
+		return;
+	}
+
+	// Back from the kiosk: walking resumes once the camera has returned to the eye.
+	if (!bKioskView && !bHardwareDemo && !Visitor->IsWalkingEnabled() && Visitor->IsViewFree())
+	{
+		Visitor->SetWalkingEnabled(true);
+		Visitor->ResetPointerAim();
+	}
+
+	// Guide lights, the card on the pad and the tray contents follow the session.
+	if (!bHardwareDemo)
+	{
+		SyncTray();
+		const EKioskScreen Screen = Session->Current();
+		if (Screen == EKioskScreen::Home)
+		{
+			bCardOnPad = false;
+		}
+		if (Env->IsCardOnPad() != bCardOnPad)
+		{
+			Env->SetCardOnPad(bCardOnPad);
+		}
+		for (const EKioskPart Part : { EKioskPart::Contactless, EKioskPart::ChipSlot, EKioskPart::NoteSlot, EKioskPart::CoinSlot, EKioskPart::CardPad })
+		{
+			Env->SetPartLight(Part, KioskWallet::IsPartWanted(*Session, Part));
+		}
+		Env->SetPartLight(EKioskPart::TicketSlot, Screen == EKioskScreen::Processing);
+		Env->SetPartLight(EKioskPart::ChangeTray, TrayHasContents());
+	}
+
+	if (!bKioskView)
+	{
+		Env->SetPartHighlight(EKioskPart::None);
+		CursorPart = EKioskPart::None;
+		return;
+	}
+
+	// The cursor: a ray from the camera through the mouse (or the self-test's synthetic cursor).
+	EKioskPart Hover = EKioskPart::None;
+	FVector Origin = FVector::ZeroVector;
+	FVector Direction = FVector::ForwardVector;
+	bool bHaveRay = false;
+	if (bSyntheticCursor)
+	{
+		Origin = Visitor->GetEyeLocation();
+		Direction = (SyntheticTarget - Origin).GetSafeNormal();
+		bHaveRay = true;
+	}
+	else
+	{
+		bHaveRay = Controller->DeprojectMousePositionToWorld(Origin, Direction);
+	}
+	if (bHaveRay && Visitor->IsViewSettled())
+	{
+		FCollisionQueryParams Params(TEXT("KioskCursor"), false);
+		Params.AddIgnoredActor(Visitor);
+		FHitResult Hit;
+		if (PlayWorld->LineTraceSingleByChannel(Hit, Origin, Origin + Direction * 800.f, ECC_Visibility, Params))
+		{
+			Hover = Env->PartForComponent(Hit.GetComponent());
+			if (Hover == EKioskPart::Screen)
+			{
+				Visitor->AimPointerAt(Hit.ImpactPoint);
+			}
+		}
+	}
+	if (Hover != EKioskPart::Screen)
+	{
+		Visitor->AimPointerAway();
+	}
+	CursorPart = Hover;
+	Env->SetPartHighlight(Hover == EKioskPart::Screen ? EKioskPart::None : Hover);
+
+	// Clicks: on the screen they go to the widget pointer, on a part to the wallet rules.
+	bool bDown = false;
+	bool bUp = false;
+	if (SyntheticClickFrames > 0)
+	{
+		bDown = SyntheticClickFrames == 4;
+		bUp = SyntheticClickFrames == 1;
+		--SyntheticClickFrames;
+	}
+	else if (!bSyntheticCursor)
+	{
+		bDown = Controller->WasInputKeyJustPressed(EKeys::LeftMouseButton);
+		bUp = Controller->WasInputKeyJustReleased(EKeys::LeftMouseButton);
+	}
+	if (bDown && Visitor->IsViewSettled())
+	{
+		if (Hover == EKioskPart::Screen)
+		{
+			Visitor->InjectPointer(true);
+			bScreenPressed = true;
+		}
+		else if (Hover != EKioskPart::None)
+		{
+			OnPartClicked(Hover);
+		}
+	}
+	if (bUp && bScreenPressed)
+	{
+		Visitor->InjectPointer(false);
+		bScreenPressed = false;
+	}
+	const float Wheel = bSyntheticCursor ? 0.f : Controller->GetInputAnalogKeyState(EKeys::MouseWheelAxis);
+	if (Wheel != 0.f && Hover == EKioskPart::Screen)
+	{
+		Visitor->ScrollPointer(Wheel);
+	}
+}
+
 bool FKioskWorld::Tick(float DeltaSeconds)
 {
+	TickKiosk(DeltaSeconds);
 	if (bSelfTest && !TickSelfTest(DeltaSeconds))
 	{
 		return false;
@@ -305,6 +584,8 @@ bool FKioskWorld::Tick(float DeltaSeconds)
 	return true;
 }
 
+// --- HUD and wallet --------------------------------------------------------------------------
+
 TSharedRef<SWidget> FKioskWorld::BuildHud()
 {
 	FKioskStyle& Style = FKioskStyle::Get();
@@ -326,7 +607,7 @@ TSharedRef<SWidget> FKioskWorld::BuildHud()
 				.BorderImage(Style.Round(C.White, 4.f, C.Ink, 1.f))
 			]
 		]
-		// Hint pill at the bottom.
+		// Hint pill at the bottom while walking.
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Bottom)
@@ -350,7 +631,7 @@ TSharedRef<SWidget> FKioskWorld::BuildHud()
 				})
 			]
 		]
-		// In the full-screen kiosk view the hint sits in the empty middle of the header, clear of the screen content.
+		// While stepped up to the kiosk the way back sits at the top, clear of the kiosk.
 		+ SOverlay::Slot()
 		.HAlign(HAlign_Center)
 		.VAlign(VAlign_Top)
@@ -369,6 +650,105 @@ TSharedRef<SWidget> FKioskWorld::BuildHud()
 		];
 }
 
+TSharedRef<SWidget> FKioskWorld::BuildWallet()
+{
+	const TArray<FKioskWalletItem>& Items = KioskWallet::Items();
+	TSharedRef<SHorizontalBox> Row = SNew(SHorizontalBox);
+	for (int32 Index = 0; Index < Items.Num(); ++Index)
+	{
+		const FKioskWalletItem& Item = Items[Index];
+		const FString Number = FString::FromInt((Index + 1) % 10);
+		Row->AddSlot()
+		.AutoWidth()
+		.Padding(4.f, 0.f)
+		[
+			SNew(SBorder)
+			.BorderImage_Lambda([this, Index]()
+			{
+				FKioskStyle& Style = FKioskStyle::Get();
+				const FKioskColors& C = Style.C;
+				return SelectedItem == Index ? Style.Round(C.PrimaryTint, 12.f, C.Primary, 4.f) : Style.Round(C.White, 12.f, C.BorderStrong, 2.f);
+			})
+			.Padding(FMargin(14.f, 8.f))
+			.OnMouseButtonDown_Lambda([this, Index](const FGeometry&, const FPointerEvent& Event)
+			{
+				if (Event.GetEffectingButton() != EKeys::LeftMouseButton)
+				{
+					return FReply::Unhandled();
+				}
+				SelectWalletItem(SelectedItem == Index ? INDEX_NONE : Index);
+				return FReply::Handled();
+			})
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SNew(STextBlock)
+					.Font(FKioskStyle::Get().Font(KioskType::Caption))
+					.ColorAndOpacity(KC().Muted)
+					.Text(FText::FromString(Number))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.HAlign(HAlign_Center)
+				[
+					SNew(STextBlock)
+					.Font(FKioskStyle::Get().Font(KioskType::Body, true))
+					.ColorAndOpacity(KC().Ink)
+					.Text(KioskWallet::ItemLabel(Item))
+				]
+			]
+		];
+	}
+
+	return SNew(SOverlay)
+		.Visibility(EVisibility::SelfHitTestInvisible)
+		+ SOverlay::Slot()
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Bottom)
+		.Padding(0.f, 0.f, 0.f, 24.f)
+		[
+			SNew(SVerticalBox)
+			.Visibility_Lambda([this]() { return bKioskView ? EVisibility::SelfHitTestInvisible : EVisibility::Collapsed; })
+			// What to do next, or why a part refused.
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Center)
+			.Padding(0.f, 0.f, 0.f, 10.f)
+			[
+				SNew(SBorder)
+				.Visibility(EVisibility::HitTestInvisible)
+				.BorderImage(FKioskStyle::Get().Round(KC().Scrim, 14.f))
+				.Padding(FMargin(22.f, 10.f))
+				[
+					SNew(STextBlock)
+				.Font(FKioskStyle::Get().Font(KioskType::Body, true))
+				.ColorAndOpacity(KC().White)
+				.WrapTextAt(900.f)
+				.Justification(ETextJustify::Center)
+				.Text_Lambda([this]()
+				{
+					return FPlatformTime::Seconds() < ToastUntil ? ToastText : KT("Choose an item from your wallet, then click the kiosk part to use it");
+				})
+				]
+			]
+			// The wallet: one tile per item.
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.HAlign(HAlign_Center)
+			[
+				SNew(SBorder)
+				.BorderImage(FKioskStyle::Get().Round(KC().Scrim, 16.f))
+				.Padding(FMargin(10.f))
+				[
+					Row
+				]
+			]
+		];
+}
+
 // --- self-test -------------------------------------------------------------------------------
 
 void FKioskWorld::SelfTestOk(const FString& Step, const FString& Detail)
@@ -376,6 +756,9 @@ void FKioskWorld::SelfTestOk(const FString& Step, const FString& Detail)
 	UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D SELFTEST step %d %s: ok (%s)"), TestStep, *Step, *Detail);
 	++TestStep;
 	TestFrames = 0;
+	TestPhase = 0;
+	TestSub = 0;
+	SubFrames = 0;
 	TestTime = 0.f;
 }
 
@@ -423,6 +806,460 @@ bool FKioskWorld::FindButtonPixel(const FString& Name, FVector2D& OutPixel) cons
 	return bFound;
 }
 
+void FKioskWorld::PressKeyThroughProcessor(const FKey& Key)
+{
+	const FKeyEvent Event(Key, FModifierKeysState(), 0, false, 0, 0);
+	if (InputProcessor.IsValid())
+	{
+		InputProcessor->HandleKeyDownEvent(FSlateApplication::Get(), Event);
+	}
+}
+
+void FKioskWorld::SetSyntheticCursor(const FVector& WorldTarget)
+{
+	bSyntheticCursor = true;
+	SyntheticTarget = WorldTarget;
+}
+
+void FKioskWorld::RequestShot(const FString& FilePath)
+{
+	FScreenshotRequest::RequestScreenshot(FilePath, true, false);
+	UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D SELFTEST screenshot requested: %s"), *FilePath);
+}
+
+void FKioskWorld::BuildSelfTestPlan()
+{
+	TestPlan.Reset();
+	auto Add = [this](ETestAct Type, const FString& Name = FString(), int32 A = 0, EKioskPart PartArg = EKioskPart::None)
+	{
+		FTestAct Act;
+		Act.Type = Type;
+		Act.Name = Name;
+		Act.A = A;
+		Act.PartArg = PartArg;
+		TestPlan.Add(Act);
+	};
+
+	Add(ETestAct::Spawn);
+	Add(ETestAct::Walk);
+	Add(ETestAct::LockOn);
+	Add(ETestAct::Shot, TEXT("1_locked_on"));
+
+	// One-way ticket paid with notes through the wallet and the note slot.
+	for (const TCHAR* Button : { TEXT("Buy a ticket"), TEXT("Choose One-way"), TEXT("Station HarbourFront"), TEXT("Confirm selected ticket"), TEXT("Go to payment"), TEXT("Pay with cash") })
+	{
+		Add(ETestAct::Click, Button);
+	}
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::WaitCash));
+	Add(ETestAct::Select, FString(), 0); // the Metro card does not fit the note slot
+	Add(ETestAct::Part, FString(), 0, EKioskPart::NoteSlot);
+	Add(ETestAct::ExpectUse, FString(), 0);
+	Add(ETestAct::Shot, TEXT("2_cash_refused"));
+	Add(ETestAct::Select, FString(), 2); // $2 note
+	Add(ETestAct::CashUntilPaid);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Receipt));
+	Add(ETestAct::ExpectTray, FString(), 1);
+	Add(ETestAct::Shot, TEXT("3_cash_receipt_tray"));
+	Add(ETestAct::Select, FString(), -1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChangeTray);
+	Add(ETestAct::ExpectTray, FString(), 0);
+	Add(ETestAct::Click, TEXT("No receipt · I'm done"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	// Day pass paid with a card tap on the contactless reader.
+	for (const TCHAR* Button : { TEXT("Buy a ticket"), TEXT("Choose Day pass"), TEXT("Go to payment"), TEXT("Pay with card") })
+	{
+		Add(ETestAct::Click, Button);
+	}
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::WaitTapCard));
+	Add(ETestAct::Shot, TEXT("4_card_waiting"));
+	Add(ETestAct::Select, FString(), 1); // the bank card
+	Add(ETestAct::Part, FString(), 0, EKioskPart::Contactless);
+	Add(ETestAct::ExpectUse, FString(), 1);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Receipt));
+	Add(ETestAct::ExpectTray, FString(), 1);
+	Add(ETestAct::Shot, TEXT("5_card_receipt_tray"));
+	Add(ETestAct::Select, FString(), -1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChangeTray);
+	Add(ETestAct::ExpectTray, FString(), 0);
+
+	Add(ETestAct::Click, TEXT("No receipt · I'm done"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	// One-way part-paid with a coin through the coin slot, the rest with notes.
+	for (const TCHAR* Button : { TEXT("Buy a ticket"), TEXT("Choose One-way"), TEXT("Station HarbourFront"), TEXT("Confirm selected ticket"), TEXT("Go to payment"), TEXT("Pay with cash") })
+	{
+		Add(ETestAct::Click, Button);
+	}
+	Add(ETestAct::Select, FString(), 9); // $1 coin
+	Add(ETestAct::Part, FString(), 0, EKioskPart::CoinSlot);
+	Add(ETestAct::ExpectUse, FString(), 1);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::WaitCash));
+	Add(ETestAct::Select, FString(), 2);
+	Add(ETestAct::CashUntilPaid);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Receipt));
+	Add(ETestAct::Select, FString(), -1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChangeTray);
+	Add(ETestAct::ExpectTray, FString(), 0);
+	Add(ETestAct::Click, TEXT("No receipt · I'm done"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	// One-way paid with the bank card in the chip slot.
+	for (const TCHAR* Button : { TEXT("Buy a ticket"), TEXT("Choose One-way"), TEXT("Station HarbourFront"), TEXT("Confirm selected ticket"), TEXT("Go to payment"), TEXT("Pay with chip card/NETs") })
+	{
+		Add(ETestAct::Click, Button);
+	}
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::WaitChipCard));
+	Add(ETestAct::Select, FString(), 1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChipSlot);
+	Add(ETestAct::ExpectUse, FString(), 1);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Receipt));
+	Add(ETestAct::ExpectTray, FString(), 1);
+	Add(ETestAct::Select, FString(), -1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChangeTray);
+	Add(ETestAct::ExpectTray, FString(), 0);
+	Add(ETestAct::Click, TEXT("No receipt · I'm done"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	// Top-up: Metro card on the pad, an amount, paid with a card tap, then the card is lifted off the pad.
+	Add(ETestAct::Click, TEXT("Top up"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::ScanCard));
+	Add(ETestAct::Select, FString(), 0);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::CardPad);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::CardOptions));
+	Add(ETestAct::Click, TEXT("Top up another amount"));
+	Add(ETestAct::Click, TEXT("Amount $20"));
+	Add(ETestAct::Click, TEXT("Continue"));
+	Add(ETestAct::Click, TEXT("Pay with card"));
+	Add(ETestAct::Select, FString(), 1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::Contactless);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::DoneLiftCard));
+	Add(ETestAct::Shot, TEXT("6_topup_done"));
+	Add(ETestAct::Part, FString(), 0, EKioskPart::CardPad); // lift the card
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	// Concession pass paid through the chip slot.
+	Add(ETestAct::Click, TEXT("Concession"));
+	Add(ETestAct::Select, FString(), 0);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::CardPad);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Concession));
+	Add(ETestAct::Click, TEXT("Pass Bus + Train"));
+	Add(ETestAct::Click, TEXT("Continue · check dates"));
+	Add(ETestAct::Click, FString(TEXT("Day ")) + (FKioskSession::Today() + FTimespan::FromDays(3)).ToString(TEXT("%Y-%m-%d")));
+	Add(ETestAct::Click, TEXT("Go to payment"));
+	Add(ETestAct::Click, TEXT("Pay with chip card/NETs"));
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::WaitChipCard));
+	Add(ETestAct::Select, FString(), 1);
+	Add(ETestAct::Part, FString(), 0, EKioskPart::ChipSlot);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::DoneLiftCard));
+	Add(ETestAct::Shot, TEXT("7_concession_chip_done"));
+	Add(ETestAct::Part, FString(), 0, EKioskPart::CardPad);
+	Add(ETestAct::ExpectScreen, FString(), static_cast<int32>(EKioskScreen::Home));
+
+	Add(ETestAct::Unlock);
+	Add(ETestAct::Collide);
+}
+
+int32 FKioskWorld::StepClickPart(EKioskPart Part)
+{
+	AKioskEnvironment* Env = Environment.Get();
+	switch (TestSub)
+	{
+	case 0:
+		SetSyntheticCursor(Env->GetPartLocation(Part));
+		TestSub = 1;
+		SubFrames = 0;
+		return 0;
+	case 1:
+		++SubFrames;
+		if (CursorPart == Part)
+		{
+			QueueSyntheticClick();
+			TestSub = 2;
+			SubFrames = 0;
+		}
+		else if (SubFrames > 90)
+		{
+			TestDetail = FString::Printf(TEXT("the cursor never reached part %d (it is over part %d)"), static_cast<int32>(Part), static_cast<int32>(CursorPart));
+			return -1;
+		}
+		return 0;
+	default:
+		++SubFrames;
+		if (SubFrames >= 8)
+		{
+			TestSub = 0;
+			return 1;
+		}
+		return 0;
+	}
+}
+
+int32 FKioskWorld::StepSelfTest()
+{
+	AKioskVisitorPawn* Visitor = Pawn.Get();
+	AKioskEnvironment* Env = Environment.Get();
+	UWorld* PlayWorld = World.Get();
+	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
+	const FTestAct& Act = TestPlan[TestStep];
+
+	switch (Act.Type)
+	{
+	case ETestAct::Spawn: // wait for the kiosk screen to be drawn so the button has a position
+	{
+		if (TestTime <= 3.f)
+		{
+			return 0;
+		}
+		FVector2D Pixel;
+		if (!FindButtonPixel(TEXT("Buy a ticket"), Pixel))
+		{
+			TestDetail = TEXT("the Buy a ticket button has no layout on the 3D screen");
+			return -1;
+		}
+		TestDetail = FString::Printf(TEXT("pawn at %s, Buy a ticket at canvas px %.0f,%.0f"), *Visitor->GetActorLocation().ToCompactString(), Pixel.X, Pixel.Y);
+		Visitor->SetInjectedMove(1.f, 0.f);
+		return 1;
+	}
+
+	case ETestAct::Walk: // walk until the "Press E" condition holds
+		if (IsNearKiosk())
+		{
+			Visitor->SetInjectedMove(0.f, 0.f);
+			TestDetail = FString::Printf(TEXT("near the kiosk after %.1f s at %s"), TestTotal, *Visitor->GetActorLocation().ToCompactString());
+			return 1;
+		}
+		if (TestTime > 5.f)
+		{
+			TestDetail = TEXT("still not near the kiosk after 5 s of forward movement");
+			return -1;
+		}
+		return 0;
+
+	case ETestAct::LockOn: // E through the input processor: the camera locks on the kiosk front, cursor shown, walking off
+		if (TestFrames == 1)
+		{
+			PressKeyThroughProcessor(EKeys::E);
+			if (!bKioskView)
+			{
+				TestDetail = TEXT("the input processor did not use E near the kiosk");
+				return -1;
+			}
+			return 0;
+		}
+		if (bKioskView && Visitor->IsViewSettled() && Controller->bShowMouseCursor && !Visitor->IsWalkingEnabled())
+		{
+			TestDetail = TEXT("camera locked on the kiosk front, cursor shown, walking off, Root still on the 3D screen");
+			return Env->ScreenContentIs(Root.ToSharedRef()) ? 1 : -1;
+		}
+		if (TestTime > 3.f)
+		{
+			TestDetail = FString::Printf(TEXT("kioskView=%d settled=%d cursor=%d"), bKioskView, Visitor->IsViewSettled(), Controller->bShowMouseCursor);
+			return -1;
+		}
+		return 0;
+
+	case ETestAct::Unlock: // Esc through the input processor
+		if (TestFrames == 1)
+		{
+			bSyntheticCursor = false;
+			PressKeyThroughProcessor(EKeys::Escape);
+			if (bKioskView)
+			{
+				TestDetail = TEXT("the input processor did not use Esc in the locked view");
+				return -1;
+			}
+			return 0;
+		}
+		if (!bKioskView && Visitor->IsViewFree() && Visitor->IsWalkingEnabled() && !Controller->bShowMouseCursor)
+		{
+			TestDetail = TEXT("camera back at the eye, walking enabled, cursor hidden");
+			Visitor->ResetPointerAim();
+			Controller->SetControlRotation(FRotator(0.f, 180.f, 0.f)); // face the kiosk wall straight on
+			Visitor->SetInjectedMove(1.f, 0.f);
+			return 1;
+		}
+		if (TestTime > 3.f)
+		{
+			TestDetail = FString::Printf(TEXT("kioskView=%d free=%d walking=%d cursor=%d"), bKioskView, Visitor->IsViewFree(), Visitor->IsWalkingEnabled(), Controller->bShowMouseCursor);
+			return -1;
+		}
+		return 0;
+
+	case ETestAct::Collide: // keep walking forward into the kiosk: the capsule must stop at the cabinet or a part
+		if (TestTime >= 2.5f)
+		{
+			Visitor->SetInjectedMove(0.f, 0.f);
+			const float X = Visitor->GetActorLocation().X;
+			constexpr float CapsuleRadius = 34.f;
+			TestDetail = FString::Printf(TEXT("stopped %.0f cm from the cabinet face (capsule radius %.0f cm)"), X, CapsuleRadius);
+			return (X >= CapsuleRadius - 1.f && X < CapsuleRadius + 80.f) ? 1 : -1;
+		}
+		return 0;
+
+	case ETestAct::Click: // click a button on the 3D screen by pointing the cursor at it
+		switch (TestPhase)
+		{
+		case 0:
+			if (TestTime < 0.35f)
+			{
+				return 0;
+			}
+			if (!FindButtonPixel(Act.Name, TestTarget))
+			{
+				if (TestTime > 4.f)
+				{
+					TestDetail = FString::Printf(TEXT("no button named '%s' on screen %d"), *Act.Name, static_cast<int32>(Session->Current()));
+					return -1;
+				}
+				return 0;
+			}
+			SetSyntheticCursor(Env->CanvasToWorld(TestTarget, SignU, SignV));
+			SerialBefore = Session->ChangeSerial();
+			TestPhase = 1;
+			TestFrames = 0;
+			return 0;
+		case 1:
+		{
+			if (TestFrames < 6)
+			{
+				return 0;
+			}
+			FVector2D Hit;
+			if (Visitor->GetPointerHit(Hit) && FVector2D::Distance(Hit, TestTarget) < 8.0)
+			{
+				bSignsKnown = true;
+				QueueSyntheticClick();
+				TestPhase = 2;
+				TestFrames = 0;
+				return 0;
+			}
+			if (!bSignsKnown && ++TestTrial < 4)
+			{
+				SignU = (TestTrial & 1) ? -1.f : 1.f;
+				SignV = (TestTrial & 2) ? -1.f : 1.f;
+				SetSyntheticCursor(Env->CanvasToWorld(TestTarget, SignU, SignV));
+				TestFrames = 0;
+				return 0;
+			}
+			TestDetail = FString::Printf(TEXT("the cursor never reached '%s' at px %.0f,%.0f (cursor part %d)"), *Act.Name, TestTarget.X, TestTarget.Y, static_cast<int32>(CursorPart));
+			return -1;
+		}
+		default:
+			if (TestFrames >= 8 && Session->ChangeSerial() != SerialBefore)
+			{
+				TestDetail = FString::Printf(TEXT("clicked '%s', now screen %d"), *Act.Name, static_cast<int32>(Session->Current()));
+				return 1;
+			}
+			if (TestFrames > 120)
+			{
+				TestDetail = FString::Printf(TEXT("clicking '%s' changed nothing"), *Act.Name);
+				return -1;
+			}
+			return 0;
+		}
+
+	case ETestAct::Part:
+	{
+		const int32 Result = StepClickPart(Act.PartArg);
+		if (Result == 1)
+		{
+			TestDetail = FString::Printf(TEXT("clicked part %d with item %d: accepted=%d, message '%s'"), static_cast<int32>(Act.PartArg), SelectedItem, bLastUseAccepted, *ToastText.ToString());
+		}
+		return Result;
+	}
+
+	case ETestAct::Select:
+		if (TestFrames == 1)
+		{
+			if (Act.A >= 0)
+			{
+				PressKeyThroughProcessor(NumberKey(Act.A));
+			}
+			else
+			{
+				SelectWalletItem(INDEX_NONE);
+			}
+			return 0;
+		}
+		TestDetail = FString::Printf(TEXT("wallet item %d chosen"), SelectedItem);
+		return SelectedItem == (Act.A >= 0 ? Act.A : INDEX_NONE) ? 1 : -1;
+
+	case ETestAct::ExpectScreen:
+		if (static_cast<int32>(Session->Current()) == Act.A)
+		{
+			TestDetail = FString::Printf(TEXT("screen %d"), Act.A);
+			return 1;
+		}
+		if (TestTime > 8.f)
+		{
+			TestDetail = FString::Printf(TEXT("expected screen %d, still on %d"), Act.A, static_cast<int32>(Session->Current()));
+			return -1;
+		}
+		return 0;
+
+	case ETestAct::ExpectUse:
+		TestDetail = FString::Printf(TEXT("accepted=%d, message '%s'"), bLastUseAccepted, *ToastText.ToString());
+		return bLastUseAccepted == (Act.A != 0) ? 1 : -1;
+
+	case ETestAct::CashUntilPaid:
+		if (Session->Current() != EKioskScreen::WaitCash)
+		{
+			TestDetail = FString::Printf(TEXT("paid after %d note clicks, cash inserted %d c, change %d c, now screen %d"), CashClicks, Session->State.CashInsertedCents, Session->ChangeCents(), static_cast<int32>(Session->Current()));
+			const bool bOk = Session->State.CashInsertedCents > 0 && bLastUseAccepted;
+			CashClicks = 0;
+			return bOk ? 1 : -1;
+		}
+		if (CashClicks >= 8)
+		{
+			TestDetail = TEXT("still waiting for cash after 8 notes");
+			return -1;
+		}
+		{
+			const int32 Result = StepClickPart(EKioskPart::NoteSlot);
+			if (Result == 1)
+			{
+				++CashClicks;
+			}
+			return Result < 0 ? -1 : 0;
+		}
+
+	case ETestAct::ExpectTray:
+		if (Act.A != 0 ? (bTrayTicket && bTrayReceipt) : !TrayHasContents())
+		{
+			TestDetail = FString::Printf(TEXT("ticket=%d receipt=%d change=%d c"), bTrayTicket, bTrayReceipt, TrayChangeCents);
+			return 1;
+		}
+		if (TestTime > 2.f)
+		{
+			TestDetail = FString::Printf(TEXT("tray: ticket=%d receipt=%d change=%d c"), bTrayTicket, bTrayReceipt, TrayChangeCents);
+			return -1;
+		}
+		return 0;
+
+	case ETestAct::Shot:
+		if (ShotDir.IsEmpty())
+		{
+			TestDetail = TEXT("skipped (no -Kiosk3DShotDir)");
+			return 1;
+		}
+		if (TestPhase == 0)
+		{
+			if (TestTime < 1.5f)
+			{
+				return 0; // let the screen, the widget render target and the temporal AA history settle after the last change
+			}
+			RequestShot(FPaths::Combine(ShotDir, Act.Name + TEXT(".png")));
+			TestPhase = 1;
+			TestFrames = 0;
+			return 0;
+		}
+		TestDetail = Act.Name;
+		return TestFrames >= 20 ? 1 : 0;
+	}
+	return -1;
+}
+
 bool FKioskWorld::TickSelfTest(float DeltaSeconds)
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
@@ -437,168 +1274,31 @@ bool FKioskWorld::TickSelfTest(float DeltaSeconds)
 	TestTime += DeltaSeconds;
 	TestTotal += DeltaSeconds;
 	++TestFrames;
-	if (TestTotal > 60.f)
+	if (TestTotal > 150.f)
 	{
 		SelfTestFail(TEXT("timeout"), FString::Printf(TEXT("stuck at step %d"), TestStep));
 		return false;
 	}
-
-	switch (TestStep)
+	if (!TestPlan.IsValidIndex(TestStep))
 	{
-	case 0: // spawn: wait for the kiosk screen to be drawn so the button has a position
-		if (TestTime > 3.f)
-		{
-			if (!FindButtonPixel(TEXT("Buy a ticket"), TestTarget))
-			{
-				SelfTestFail(TEXT("spawn"), TEXT("the Buy a ticket button has no layout on the 3D screen"));
-				return false;
-			}
-			SelfTestOk(TEXT("spawn"), FString::Printf(TEXT("pawn at %s, Buy a ticket at canvas px %.0f,%.0f"), *Visitor->GetActorLocation().ToCompactString(), TestTarget.X, TestTarget.Y));
-			Visitor->SetInjectedMove(1.f, 0.f);
-		}
-		break;
-
-	case 1: // walk until the "Press E" condition holds
-		if (IsNearKiosk())
-		{
-			Visitor->SetInjectedMove(0.f, 0.f);
-			SelfTestOk(TEXT("walk and proximity"), FString::Printf(TEXT("near the kiosk after %.1f s at %s"), TestTotal, *Visitor->GetActorLocation().ToCompactString()));
-		}
-		else if (TestTime > 5.f)
-		{
-			SelfTestFail(TEXT("walk and proximity"), TEXT("still not near the kiosk after 5 s of forward movement"));
-			return false;
-		}
-		break;
-
-	case 2: // aim the pointer at the button; find the screen axis mapping by trial
-	{
-		const float SignU = (TestTrial & 1) ? -1.f : 1.f;
-		const float SignV = (TestTrial & 2) ? -1.f : 1.f;
-		if (TestFrames == 1)
-		{
-			Visitor->AimPointerAt(Env->CanvasToWorld(TestTarget, SignU, SignV));
-		}
-		else if (TestFrames >= 6)
-		{
-			FVector2D Hit;
-			if (Visitor->GetPointerHit(Hit) && FVector2D::Distance(Hit, TestTarget) < 6.0)
-			{
-				SelfTestOk(TEXT("aim at Buy a ticket"), FString::Printf(TEXT("pointer hit px %.0f,%.0f for target %.0f,%.0f"), Hit.X, Hit.Y, TestTarget.X, TestTarget.Y));
-				ScreenBeforeClick = Session->Current();
-			}
-			else if (++TestTrial >= 4)
-			{
-				SelfTestFail(TEXT("aim at Buy a ticket"), FString::Printf(TEXT("pointer never reached px %.0f,%.0f"), TestTarget.X, TestTarget.Y));
-				return false;
-			}
-			else
-			{
-				TestFrames = 0;
-			}
-		}
-		break;
-	}
-
-	case 3: // click
-		if (TestFrames == 1)
-		{
-			Visitor->InjectPointer(true);
-		}
-		else if (TestFrames == 4)
-		{
-			Visitor->InjectPointer(false);
-		}
-		else if (TestTime > 1.0f)
-		{
-			if (Session->Current() != ScreenBeforeClick)
-			{
-				SelfTestOk(TEXT("click on the 3D screen"), FString::Printf(TEXT("screen moved off Home (now screen id %d)"), static_cast<int32>(Session->Current())));
-			}
-			else
-			{
-				SelfTestFail(TEXT("click on the 3D screen"), TEXT("the screen is still Home after press and release"));
-				return false;
-			}
-		}
-		break;
-
-	case 4: // E through the input processor
-		if (TestFrames == 1)
-		{
-			const FKeyEvent Event(EKeys::E, FModifierKeysState(), 0, false, 0, 0);
-			if (!InputProcessor.IsValid() || !InputProcessor->HandleKeyDownEvent(FSlateApplication::Get(), Event))
-			{
-				SelfTestFail(TEXT("E key"), TEXT("the input processor did not use E near the kiosk"));
-				return false;
-			}
-		}
-		else if (TestFrames >= 8)
-		{
-			UGameViewportClient* GameViewport = Viewport.Get();
-			const TSharedPtr<SWindow> RootWindow = FSlateApplication::Get().FindWidgetWindow(Root.ToSharedRef());
-			const bool bInViewportWindow = RootWindow.IsValid() && GameViewport && RootWindow == GameViewport->GetWindow();
-			if (bKioskView && Controller->bShowMouseCursor && bInViewportWindow && !Env->ScreenContentIs(Root.ToSharedRef()))
-			{
-				SelfTestOk(TEXT("E key to full-screen kiosk"), TEXT("Root is in the game viewport window, UI-only input with cursor shown, 3D screen released it"));
-			}
-			else
-			{
-				SelfTestFail(TEXT("E key to full-screen kiosk"), FString::Printf(TEXT("kioskView=%d cursor=%d inViewportWindow=%d"), bKioskView, Controller->bShowMouseCursor, bInViewportWindow));
-				return false;
-			}
-		}
-		break;
-
-	case 5: // Esc through the input processor
-		if (TestFrames == 1)
-		{
-			const FKeyEvent Event(EKeys::Escape, FModifierKeysState(), 0, false, 27, 27);
-			if (!InputProcessor.IsValid() || !InputProcessor->HandleKeyDownEvent(FSlateApplication::Get(), Event))
-			{
-				SelfTestFail(TEXT("Esc key"), TEXT("the input processor did not use Esc in the kiosk view"));
-				return false;
-			}
-		}
-		else if (TestFrames >= 8)
-		{
-			if (!bKioskView && Visitor->IsWalkingEnabled() && !Controller->bShowMouseCursor && Env->ScreenContentIs(Root.ToSharedRef()))
-			{
-				SelfTestOk(TEXT("Esc key back to walking"), TEXT("Root is back on the 3D screen, walking enabled, cursor hidden"));
-				Visitor->ResetPointerAim();
-				Controller->SetControlRotation(FRotator(0.f, 180.f, 0.f)); // face the kiosk wall straight on
-				Visitor->SetInjectedMove(1.f, 0.f);
-			}
-			else
-			{
-				SelfTestFail(TEXT("Esc key back to walking"), FString::Printf(TEXT("kioskView=%d walking=%d cursor=%d onScreen=%d"), bKioskView, Visitor->IsWalkingEnabled(), Controller->bShowMouseCursor, Env->ScreenContentIs(Root.ToSharedRef())));
-				return false;
-			}
-		}
-		break;
-
-	case 6: // keep walking forward into the kiosk for 2 s: the capsule must stop at the cabinet
-		if (TestTime >= 2.f)
-		{
-			Visitor->SetInjectedMove(0.f, 0.f);
-			const float X = Visitor->GetActorLocation().X;
-			constexpr float CapsuleRadius = 34.f;
-			if (X >= CapsuleRadius - 1.f && X < CapsuleRadius + 60.f)
-			{
-				SelfTestOk(TEXT("collision with the kiosk"), FString::Printf(TEXT("stopped %.0f cm from the cabinet face (capsule radius %.0f cm)"), X, CapsuleRadius));
-			}
-			else
-			{
-				SelfTestFail(TEXT("collision with the kiosk"), FString::Printf(TEXT("pawn X is %.0f cm; expected just over %.0f"), X, CapsuleRadius));
-				return false;
-			}
-		}
-		break;
-
-	default:
 		UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D SELFTEST PASS"));
 		bSelfTest = false;
 		FPlatformMisc::RequestExit(false);
+		return false;
+	}
+
+	const FTestAct& Act = TestPlan[TestStep];
+	static const TCHAR* const ActNames[] = { TEXT("spawn"), TEXT("walk up"), TEXT("E lock-on"), TEXT("Esc step back"), TEXT("collision"), TEXT("click on the 3D screen"),
+		TEXT("click kiosk part"), TEXT("wallet item"), TEXT("expect screen"), TEXT("expect part result"), TEXT("notes until paid"), TEXT("expect tray"), TEXT("screenshot") };
+	const FString Label = FString::Printf(TEXT("%s %s"), ActNames[static_cast<int32>(Act.Type)], *Act.Name);
+	const int32 Result = StepSelfTest();
+	if (Result > 0)
+	{
+		SelfTestOk(Label, TestDetail);
+	}
+	else if (Result < 0)
+	{
+		SelfTestFail(Label, TestDetail);
 		return false;
 	}
 	return true;

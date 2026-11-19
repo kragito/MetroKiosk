@@ -14,7 +14,7 @@ if ($Out) { $Dir = if ([System.IO.Path]::IsPathRooted($Out)) { $Out } else { Joi
 else { $Dir = Join-Path $Root "Saved\Captures" }
 New-Item -ItemType Directory -Force $Dir | Out-Null
 Remove-Item "$Dir\*.png" -ErrorAction SilentlyContinue
-$GameArgs = @($Project, "-game", "-windowed", "-ResX=$ResX", "-ResY=$ResY", "-KioskCaptureAll=$Dir", "-KioskFakeTime=10:30", "-log", "-nosplash")
+$GameArgs = @($Project, "-game", "-windowed", "-ResX=$ResX", "-ResY=$ResY", "-KioskCaptureAll=$Dir", "-KioskFakeTime=10:30", "-Kiosk2D", "-log", "-nosplash")
 if ($ResX -ne 1917 -or $ResY -ne 1105) { $GameArgs += "-KioskCaptureRes=${ResX}x${ResY}" }
 & "$Engine\Binaries\Win64\UnrealEditor.exe" @GameArgs | Out-Null
 Get-ChildItem $Dir -Filter *.png | Select-Object -ExpandProperty Name

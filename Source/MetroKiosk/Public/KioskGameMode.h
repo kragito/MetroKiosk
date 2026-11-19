@@ -1,4 +1,4 @@
-// Game mode that hosts the kiosk UI in the game viewport (UI-only input, visible cursor), or in the 3D concourse with -Kiosk3D.
+// Game mode that hosts the kiosk UI in the 3D concourse by default, or in the game viewport (UI-only input, visible cursor) with -Kiosk2D.
 #pragma once
 
 #include "CoreMinimal.h"

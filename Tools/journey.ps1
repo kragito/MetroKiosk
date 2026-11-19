@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Out,
     [int]$TimeoutSeconds = 300,
     [switch]$NoBuild,            # run against the binaries as they are, even if sources are newer (other work in progress)
-    [string]$Extra = "",         # extra launch arguments, e.g. "-Kiosk3D -Kiosk3DStart=kiosk"
+    [string]$Extra = "",         # extra launch arguments, e.g. "-KioskFakeTime=10:30" (journeys always run the flat kiosk: -Kiosk2D is added)
     [switch]$StealFocusForTest   # test aid: opens Notepad over the game so it is NOT the active window
 )
 
@@ -35,7 +35,7 @@ New-Item -ItemType Directory -Force $Out | Out-Null
 Remove-Item (Join-Path $Out "*") -Include *.png, *.txt -ErrorAction SilentlyContinue
 
 $launchArgs = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
-          "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"")
+          "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"", "-Kiosk2D")
 if ($Extra) { $launchArgs += $Extra.Split(" ", [StringSplitOptions]::RemoveEmptyEntries) }
 # Let any previous -game process (ours: started with -KioskScript) exit completely so its window cannot interfere.
 $prevDeadline = (Get-Date).AddSeconds(60)

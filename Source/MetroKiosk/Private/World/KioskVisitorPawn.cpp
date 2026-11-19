@@ -12,6 +12,8 @@ namespace
 	constexpr float WalkSpeed = 220.f; // cm per second
 	constexpr float LookDegPerCount = 0.12f;
 	constexpr float ExposureBrightness = 1.f; // min = max pins auto-exposure
+	constexpr float EyeHeight = 70.f;         // camera above the capsule centre
+	constexpr float ViewBlendSeconds = 0.4f;  // stepping up to / back from the kiosk
 }
 
 AKioskVisitorPawn::AKioskVisitorPawn()
@@ -26,12 +28,15 @@ AKioskVisitorPawn::AKioskVisitorPawn()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(Capsule);
-	Camera->SetRelativeLocation(FVector(0.f, 0.f, 70.f));
+	Camera->SetRelativeLocation(FVector(0.f, 0.f, EyeHeight));
 	Camera->bUsePawnControlRotation = true;
 	Camera->SetFieldOfView(80.f);
 	// Fixed exposure so the concourse lighting is the same everywhere and in every screenshot.
 	Camera->PostProcessSettings.bOverride_AutoExposureMethod = true;
 	Camera->PostProcessSettings.AutoExposureMethod = AEM_Histogram;
+	// No bloom: the bright kiosk screen would wash out its own text.
+	Camera->PostProcessSettings.bOverride_BloomIntensity = true;
+	Camera->PostProcessSettings.BloomIntensity = 0.f;
 	Camera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
 	Camera->PostProcessSettings.AutoExposureMinBrightness = ExposureBrightness;
 	Camera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
@@ -55,6 +60,80 @@ void AKioskVisitorPawn::SetWalkingEnabled(bool bEnabled)
 	{
 		Pointer->ReleasePointerKey(EKeys::LeftMouseButton);
 	}
+}
+
+FVector AKioskVisitorPawn::WalkEyeLocation() const
+{
+	return GetActorLocation() + FVector(0.f, 0.f, EyeHeight);
+}
+
+void AKioskVisitorPawn::LockView(const FTransform& View, float FieldOfViewDegrees)
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (ViewPhase == EViewPhase::Locked || ViewPhase == EViewPhase::BlendIn)
+	{
+		return;
+	}
+	if (ViewPhase == EViewPhase::Free)
+	{
+		// From now the camera is positioned by hand, so freeze it where the walking view has it.
+		WalkFov = Camera->FieldOfView;
+		Camera->bUsePawnControlRotation = false;
+		Camera->SetWorldLocationAndRotation(WalkEyeLocation(), PC ? PC->GetControlRotation() : GetActorRotation());
+		BlendAlpha = 0.f;
+	}
+	LockedView = View;
+	LockedFov = FieldOfViewDegrees;
+	ViewPhase = EViewPhase::BlendIn;
+}
+
+void AKioskVisitorPawn::ReleaseView()
+{
+	if (ViewPhase == EViewPhase::Locked || ViewPhase == EViewPhase::BlendIn)
+	{
+		ViewPhase = EViewPhase::BlendOut;
+	}
+}
+
+void AKioskVisitorPawn::TickView(float DeltaSeconds)
+{
+	if (ViewPhase == EViewPhase::Free)
+	{
+		return;
+	}
+	if (ViewPhase == EViewPhase::BlendIn || ViewPhase == EViewPhase::BlendOut)
+	{
+		BlendAlpha = FMath::Clamp(BlendAlpha + (ViewPhase == EViewPhase::BlendIn ? 1.f : -1.f) * DeltaSeconds / ViewBlendSeconds, 0.f, 1.f);
+	}
+	const APlayerController* PC = Cast<APlayerController>(GetController());
+	const FQuat WalkRot = (PC ? PC->GetControlRotation() : GetActorRotation()).Quaternion();
+	const float T = FMath::SmoothStep(0.f, 1.f, BlendAlpha);
+	const FVector Location = FMath::Lerp(WalkEyeLocation(), LockedView.GetLocation(), T);
+	const FQuat Rotation = FQuat::Slerp(WalkRot, LockedView.GetRotation(), T);
+	Camera->SetWorldLocationAndRotation(Location, Rotation);
+	Camera->SetFieldOfView(FMath::Lerp(WalkFov, LockedFov, T));
+	if (ViewPhase == EViewPhase::BlendIn && BlendAlpha >= 1.f)
+	{
+		ViewPhase = EViewPhase::Locked;
+	}
+	else if (ViewPhase == EViewPhase::BlendOut && BlendAlpha <= 0.f)
+	{
+		// Back at the eye: hand the camera to mouse look again.
+		ViewPhase = EViewPhase::Free;
+		Camera->bUsePawnControlRotation = true;
+		Camera->SetRelativeLocation(FVector(0.f, 0.f, EyeHeight));
+		Camera->SetFieldOfView(WalkFov);
+	}
+}
+
+void AKioskVisitorPawn::AimPointerAway()
+{
+	Pointer->SetRelativeRotation(FRotator(0.f, 180.f, 0.f));
+}
+
+void AKioskVisitorPawn::ScrollPointer(float Delta)
+{
+	Pointer->ScrollWheel(Delta);
 }
 
 void AKioskVisitorPawn::AimPointerAt(const FVector& WorldPosition)
@@ -107,6 +186,7 @@ FVector AKioskVisitorPawn::GetEyeForward() const
 void AKioskVisitorPawn::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	TickView(DeltaSeconds);
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC || !bWalking)
 	{
