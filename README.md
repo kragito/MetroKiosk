@@ -92,6 +92,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `l6_adult_concession` | adult Metro card concession: adult prices (no struck price, no student banner), nothing pre-selected, "No pass active", "Go to payment" disabled until a day is picked (`click:Day +3` = three days from today; names are `Day YYYY-MM-DD`), done screen shows the chosen start |
 | `l7_map_labels_languages` | map labels follow the language: selects HarbourFront from search, then switches en, zh, ta and ms on the map and zoomed in (check the shots: labels are painted, not visible to `expect:`), back to the list expects the zh name 港湾, confirm reaches Review |
 | `l8_full_network_routes` | full MRT network routes from City Hall: Woodlands North (44 min, 1 change, $2.24, NS then TE), Changi Airport (38 min, $2.12, EW branch via Tanah Merah), Tuas Link (49 min, direct, $2.54, the maximum), each with map-route and review shots; then zh search "stevens" expects the Chinese name 史蒂芬 on the route and Review |
+| `l9_pinyin_search` | toneless pinyin search: "shidifen" and "shi di fen" find Stevens, joined pinyin finds a station on each line (Marsiling, Jurong East, Farrer Park, Bras Basah, Telok Ayer, Maxwell), then zh "niuchesui" finds Chinatown |
 
 ## 3D mode (optional)
 `powershell -File Tools/play_3d.ps1` (or add `-Kiosk3D` to a `-game` launch) puts the kiosk in a small metro concourse built

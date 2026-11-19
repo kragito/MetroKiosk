@@ -564,4 +564,39 @@ bool FKioskRouteLegsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Pinyin search: stations added after the first alias list are found by toneless pinyin, with or without spaces.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FKioskSearchPinyinTest, "MetroKiosk.Search.Pinyin",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+
+bool FKioskSearchPinyinTest::RunTest(const FString& Parameters)
+{
+	const auto Finds = [](const FString& Query, const FString& Name)
+	{
+		for (const FKioskSearchHit& Hit : FKioskSearch::Run(Query).Hits)
+		{
+			const FString& Found = Hit.bPlace ? FKioskPlaces::All()[Hit.Index].Name : FKioskData::Stations()[Hit.Index].Name;
+			if (Found == Name)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	struct FCase { const TCHAR* Name; const TCHAR* Spaced; const TCHAR* Joined; };
+	const FCase Cases[] = {
+		{ TEXT("Stevens"), TEXT("shi di fen"), TEXT("shidifen") },
+		{ TEXT("Bendemeer"), TEXT("ming di mai"), TEXT("mingdimai") },
+		{ TEXT("Tampines East"), TEXT("dan bin ni dong"), TEXT("danbinnidong") },
+		{ TEXT("Bukit Gombak"), TEXT("wu ji gan bai"), TEXT("wujiganbai") },
+		{ TEXT("Mattar"), TEXT("ma da"), TEXT("mada") },
+		{ TEXT("Chinatown"), TEXT("niu che shui"), TEXT("niuchesui") },
+	};
+	for (const FCase& Case : Cases)
+	{
+		TestTrue(*FString::Printf(TEXT("'%s' finds %s"), Case.Spaced, Case.Name), Finds(Case.Spaced, Case.Name));
+		TestTrue(*FString::Printf(TEXT("'%s' finds %s"), Case.Joined, Case.Name), Finds(Case.Joined, Case.Name));
+	}
+	return true;
+}
+
 #endif
