@@ -354,7 +354,12 @@ void FKioskWorld::SyncTray()
 	{
 		return;
 	}
+	const EKioskScreen Previous = LastScreen;
 	LastScreen = Now;
+	if (Previous == EKioskScreen::Home)
+	{
+		ToastUntil = 0.0; // the next customer has started: drop the last rider's toast
+	}
 	if (Now == EKioskScreen::Home)
 	{
 		SelectedItem = INDEX_NONE; // a new visitor starts with empty hands

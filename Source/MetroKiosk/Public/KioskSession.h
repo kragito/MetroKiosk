@@ -79,7 +79,7 @@ public:
 	void InsertCash(int32 Cents);
 	void SimulateCardTap();   // reader / chip slot "hardware" input
 	void SimulateCardLift();
-	/** The Scan card SIMULATE controls: put a Student or an Adult Metro card on the reader. */
+	/** Put a Student or an Adult Metro card on the reader (QA journey steps and the 3D card reader). */
 	void SimulateMetroCardTap(EKioskCardType Type);
 	void BeginCardFlow(EKioskFlow Flow);
 	void SelectTopUp(int32 Cents);
@@ -146,7 +146,7 @@ public:
 	bool RenewalRange(FDateTime& OutStart, FDateTime& OutEnd) const;
 	/** Price of a concession pass for the tapped card: student concession price or the adult price. */
 	int32 PassPriceCents(int32 ConcessionIndex) const;
-	/** QA: which card the reader detects when no SIMULATE card is chosen (the -KioskCard=Student|Adult switch). */
+	/** QA: which card the reader detects when no card has been put on the reader (the -KioskCard=Student|Adult switch). */
 	static EKioskCardType DefaultCardType();
 	FText TicketLabel() const;
 	FText DestinationLabel() const;

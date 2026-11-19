@@ -126,7 +126,6 @@ namespace KioskLayout
 	constexpr float BadgeSm = 44.f;      // numbered / ticked circle on the step bar and destination tiles
 	// Rule: footer and primary button widths come from these (min, max) pairs; text grows the button between them.
 	constexpr float CompactBtnMinW = 160.f; // compact Choose button on a ticket card
-	constexpr float ChipMinW = 100.f;       // cash-chip buttons
 	constexpr float FooterBtnMinW = 200.f;  // Back and Start over share one width pair
 	constexpr float FooterBtnMaxW = 320.f;
 	constexpr float HelpBtnMinW = 300.f;
