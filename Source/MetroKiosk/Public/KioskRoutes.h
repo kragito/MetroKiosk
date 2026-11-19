@@ -28,7 +28,7 @@ public:
 	/** Walking and waiting time added for every line change, in minutes. */
 	static constexpr int32 TransferMinutes = 5;
 	/** Real-world kilometres per unit of the schematic map. */
-	static constexpr float KmPerMapUnit = 0.05f;
+	static constexpr float KmPerMapUnit = 0.033f; // set so the farthest one-way fare stays just under the $2.57 cap
 
 	/** Fastest route from City Hall to the station (Dijkstra over station/line nodes). Invalid for City Hall itself. */
 	static const FKioskRoute& FromCityHall(int32 StationIndex);

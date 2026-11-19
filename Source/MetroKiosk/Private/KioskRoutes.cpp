@@ -14,10 +14,10 @@ namespace
 		float Km;
 	};
 
-	/** Ride time of one hop: about one minute per 22 map units, never under two. */
+	/** Ride time of one hop: about one minute per 15 map units of drawn line, never under two. */
 	int32 HopMinutes(float MapDistance)
 	{
-		return FMath::Max(2, FMath::RoundToInt(MapDistance / 22.f));
+		return FMath::Max(2, FMath::RoundToInt(MapDistance / 15.f));
 	}
 
 	constexpr int32 MaxServices = 2; // separately-running services per line (East-West has the Changi branch)
@@ -79,7 +79,7 @@ namespace
 					{
 						const int32 A = Path[Index];
 						const int32 B = Path[Index + 1];
-						const float Distance = FVector2f::Distance(Stations[A].MapPos, Stations[B].MapPos);
+						const float Distance = FKioskData::HopLengths(Line, PathIndex)[Index]; // along the drawn line, bends included
 						const int32 Minutes = HopMinutes(Distance);
 						const float Km = Distance * FKioskRoutes::KmPerMapUnit;
 						Adjacency[NodeOf(A, Line, Service)].Add({ NodeOf(B, Line, Service), Minutes, Km });

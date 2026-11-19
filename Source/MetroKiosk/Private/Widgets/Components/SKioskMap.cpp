@@ -12,11 +12,12 @@
 
 namespace
 {
-	const FVector2f GMapMin(40.f, 20.f);
-	const FVector2f GMapMax(930.f, 580.f);
+	const FVector2f GMapMin(30.f, 12.f);
+	const FVector2f GMapMax(900.f, 592.f);
 	constexpr float HitRadius = 30.f;
 	constexpr float SlackDefault = 0.06f; // measured text width can undershoot the shaped width, so leave this fraction spare
 	constexpr float SlackTamil = 0.14f;   // the "You are here" pill in Tamil only; its text shaped tight at 6%
+	constexpr float MarkerFarGap = 40.f;  // longest leader line the "You are here" pill may use
 	constexpr float MarkerNearGap = 12.f; // "You are here" pill stays this close to its dot unless a leader line joins them
 
 	/** Extra width to add to a measured text width so shaped text fits; callers centre the text inside it. */
@@ -60,7 +61,7 @@ void SKioskMap::Construct(const FArguments& InArgs)
 FVector2f SKioskMap::ToLocal(const FVector2f& MapPos, const FVector2f& LocalSize) const
 {
 	const FVector2f MapSize = GMapMax - GMapMin;
-	const float BaseScale = FMath::Min((LocalSize.X - 90.f) / MapSize.X, (LocalSize.Y - 110.f) / MapSize.Y);
+	const float BaseScale = FMath::Min((LocalSize.X - 60.f) / MapSize.X, (LocalSize.Y - 56.f) / MapSize.Y);
 	const FVector2f Center = (GMapMin + GMapMax) * 0.5f;
 	FVector2f Focus = Center;
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
@@ -89,12 +90,12 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	// Lines
 	for (int32 Line = 0; Line < FKioskData::NumLines; ++Line)
 	{
-		for (const TArray<int32>& Path : FKioskData::LinePaths(Line))
+		for (const TArray<FKioskPathPoint>& Shape : FKioskData::LineShapes(Line))
 		{
-			TArray<FVector2f> Points;
-			for (int32 StationIndex : Path)
+			TArray<FVector2f> Points; // stations and bends, so the line follows the system map's shape
+			for (const FKioskPathPoint& Point : Shape)
 			{
-				Points.Add(ToLocal(Stations[StationIndex].MapPos, Size));
+				Points.Add(ToLocal(Point.Pos, Size));
 			}
 			FLinearColor LineColor = C.Line[Line];
 			LineColor.A = (Filter != INDEX_NONE && Filter != Line) ? 0.18f : 1.f; // optional highlighter dims the other lines
@@ -186,14 +187,14 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		const FVector2f BoxSize(TextWidth + Slack + 22.f, 32.f);
 		const float Up = -BoxSize.Y * 0.5f - 14.f;
 		const FVector2f Default(-HereDraw - 8.f - BoxSize.X, Up);
-		// The default spot is kept unless it hides a station dot's centre (so languages that fit today do not move).
+		// The default spot is kept unless the pill overlaps any other station dot (so languages that fit today do not move).
 		auto HidesDotCentre = [&](const FVector2f& Off)
 		{
 			const FVector2f Try = HerePos + Off;
-			const FSlateRect Inner(Try.X + 6.f, Try.Y + 6.f, Try.X + BoxSize.X - 6.f, Try.Y + BoxSize.Y - 6.f);
+			const FSlateRect Box(Try.X, Try.Y, Try.X + BoxSize.X, Try.Y + BoxSize.Y);
 			for (const TPair<int32, FSlateRect>& Dot : DotRects)
 			{
-				if (Dot.Key != HereIndex && Inner.ContainsPoint(Dot.Value.GetCenter()))
+				if (Dot.Key != HereIndex && FSlateRect::DoRectanglesIntersect(Box, Dot.Value))
 				{
 					return true;
 				}
@@ -280,13 +281,13 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			// 2: last resort when nothing above exists: touches no dot, but may leave the widget or cross a dot with its leader.
 			// A neighbour dot can be closer to the pill than City Hall's own dot; the leader line is what ties them together.
 			bool bFound = false;
-			for (int32 Tier = 0; Tier < 3 && !bFound; ++Tier)
+			for (int32 Tier = 0; Tier < 2 && !bFound; ++Tier)
 			{
 				for (const FVector2f& Off : Offsets)
 				{
 					const float Gap = DistToBox(Off, HerePos) - HereDraw;
-					if (TouchesDot(Off) || (Tier < 2 && !InsideWidget(Off)) || (Tier == 0 && Gap > MarkerNearGap)
-						|| (Tier < 2 && Gap > MarkerNearGap && LeaderCrossesDot(Off)))
+					if (TouchesDot(Off) || !InsideWidget(Off) || (Tier == 0 && Gap > MarkerNearGap) || Gap > MarkerFarGap
+						|| (Gap > MarkerNearGap && LeaderCrossesDot(Off)))
 					{
 						continue;
 					}
@@ -294,6 +295,40 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 					bLeader = Gap > MarkerNearGap;
 					bFound = true;
 					break;
+				}
+			}
+			if (!bFound)
+			{
+				// Nothing is clear of every dot: take the spot within MarkerFarGap that covers the least dot area (the default counts too).
+				auto DotArea = [&](const FVector2f& Off)
+				{
+					const FSlateRect R = BoxRect(Off);
+					float Area = 0.f;
+					for (const TPair<int32, FSlateRect>& Dot : DotRects)
+					{
+						const FSlateRect Dr = Dot.Key == HereIndex
+							? FSlateRect(HerePos.X - HereDraw, HerePos.Y - HereDraw, HerePos.X + HereDraw, HerePos.Y + HereDraw) : Dot.Value;
+						const float W = FMath::Min(R.Right, Dr.Right) - FMath::Max(R.Left, Dr.Left);
+						const float H = FMath::Min(R.Bottom, Dr.Bottom) - FMath::Max(R.Top, Dr.Top);
+						Area += (W > 0.f && H > 0.f) ? W * H : 0.f;
+					}
+					return Area;
+				};
+				float BestArea = DotArea(Default);
+				for (const FVector2f& Off : Offsets)
+				{
+					const float Gap = DistToBox(Off, HerePos) - HereDraw;
+					if (Gap > MarkerFarGap || !InsideWidget(Off) || (Gap > MarkerNearGap && LeaderCrossesDot(Off)))
+					{
+						continue;
+					}
+					const float Area = DotArea(Off) + (Gap > MarkerNearGap ? 20.f : 0.f);
+					if (Area + 1.f < BestArea)
+					{
+						BestArea = Area;
+						BoxPos = HerePos + Off;
+						bLeader = Gap > MarkerNearGap;
+					}
 				}
 			}
 		}
@@ -381,8 +416,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			}
 		};
 		AddSides(0.f);
-		if (Label.bMustShow)
+		if (Label.Priority <= 3)
 		{
+			// Interchanges try the diagonals too: the full network is dense and a side-on label often has no free spot.
 			const float D = R * 0.7f + 3.f; // pill corner nearest the dot sits D px diagonally from its centre
 			const FVector2f Corner(4.f, 2.f);
 			Candidates.Add(FVector2f(D, -D - PillH) + Corner);
@@ -393,6 +429,13 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 			{
 				Gaps.Add(0.f);
 			}
+		}
+		if (Label.Priority == 3)
+		{
+			AddSides(11.f); // an interchange that has no clean spot gets a short leader line instead of going unnamed
+		}
+		if (Label.bMustShow)
+		{
 			AddSides(14.f);
 			AddSides(28.f);
 		}
@@ -456,6 +499,26 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 				if (W > 0.f && H > 0.f)
 				{
 					Total += W * H * (DotFull[DotSlot] ? 10.f : 1.f); // dimmed dots are cheap to cover
+				}
+			}
+			// A label must read as its own dot's: reject a spot where another full-strength dot's edge is nearer the pill than its own.
+			{
+				auto EdgeDist = [](const FVector2f& Centre, float Radius, const FSlateRect& R)
+				{
+					const float Dx = FMath::Max3(R.Left - Centre.X, 0.f, Centre.X - R.Right);
+					const float Dy = FMath::Max3(R.Top - Centre.Y, 0.f, Centre.Y - R.Bottom);
+					return FMath::Max(0.f, FMath::Sqrt(Dx * Dx + Dy * Dy) - Radius);
+				};
+				const float Own = EdgeDist(Label.Pos, Label.DotRadius, Rect);
+				for (int32 DotSlot = 0; DotSlot < DotRects.Num(); ++DotSlot)
+				{
+					const FSlateRect& DotRect = DotRects[DotSlot].Value;
+					if (DotRects[DotSlot].Key != Label.Index && DotFull[DotSlot]
+						&& EdgeDist(DotRect.GetCenter(), DotRect.GetSize().X * 0.5f - 2.f, Rect) + 2.f < Own) // 2 px of slack: a label above a row of dots is not ambiguous
+					{
+						Total += 5000.f;
+						break;
+					}
 				}
 			}
 			// Falling outside the map area counts as overlap too.

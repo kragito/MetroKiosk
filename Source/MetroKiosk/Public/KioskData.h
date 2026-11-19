@@ -15,10 +15,17 @@ struct FKioskStation
 {
 	FString Name;
 	uint8 LineMask = 0;
-	FVector2f MapPos = FVector2f::ZeroVector; // schematic map space, 0..1000 x 0..600
+	FVector2f MapPos = FVector2f::ZeroVector; // schematic map space, about 40..890 x 20..580
 
 	bool OnLine(int32 LineIndex) const { return (LineMask & (1 << LineIndex)) != 0; }
 	int32 FirstLine() const;
+};
+
+/** One point on a drawn line: a station (Station is its index) or a bend between stations (Station is INDEX_NONE). */
+struct FKioskPathPoint
+{
+	FVector2f Pos = FVector2f::ZeroVector;
+	int32 Station = INDEX_NONE;
 };
 
 struct FKioskConcession
@@ -73,8 +80,12 @@ public:
 	static const TArray<int32>& TopUpAmounts();
 	/** The fixed "popular from here" shortlist. */
 	static const TArray<int32>& PopularStations();
-	/** Poly-line segments (station indices) used to draw a line on the schematic map. */
+	/** Station-only paths of a line (station indices, in running order; the Circle Line loop repeats its first station at the end). Used for routing. */
 	static const TArray<TArray<int32>>& LinePaths(int32 LineIndex);
+	/** The same paths as drawn on the schematic map: stations and bend points, so lines follow the system map's corners and curves. */
+	static const TArray<TArray<FKioskPathPoint>>& LineShapes(int32 LineIndex);
+	/** Length (map units, along the bends) of each hop of LinePaths(LineIndex)[PathIndex]; element i joins stations i and i + 1. */
+	static const TArray<float>& HopLengths(int32 LineIndex, int32 PathIndex);
 	/** Trains do not run through between services of one line (the East-West Changi branch needs a change at Tanah Merah). */
 	static int32 PathService(int32 LineIndex, int32 PathIndex);
 	static const TArray<FKioskConcession>& Concessions();

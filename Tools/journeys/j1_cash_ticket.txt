@@ -1,1 +1,1 @@
-click:Buy a ticket|click:Choose One-way|click:Station HarbourFront|click:Confirm selected ticket|click:Add Child|shot:review_1adult_1child|click:Go to payment|click:Pay with cash|click:Insert $2|click:Insert $2|wait:4|shot:done|dump
+click:Buy a ticket|click:Choose One-way|click:Station HarbourFront|click:Confirm selected ticket|click:Add Child|expect:$2.69|shot:review_1adult_1child|click:Go to payment|click:Pay with cash|click:Insert $2|click:Insert $2|expect:$1.31|wait:4|shot:done|dump
