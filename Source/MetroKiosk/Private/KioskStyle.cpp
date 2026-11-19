@@ -75,6 +75,9 @@ namespace
 					Tamil.Typeface.Fonts[1].Font.SetSubFaceIndex(1);
 				}
 				Tamil.CharacterRanges.Add(FInt32Range(FInt32RangeBound::Inclusive(0x0B80), FInt32RangeBound::Inclusive(0x0BFF)));
+					// Joiners and the dotted circle stay in the Tamil run so a word is never split between fonts.
+					Tamil.CharacterRanges.Add(FInt32Range(FInt32RangeBound::Inclusive(0x200C), FInt32RangeBound::Inclusive(0x200D)));
+					Tamil.CharacterRanges.Add(FInt32Range(FInt32RangeBound::Inclusive(0x25CC), FInt32RangeBound::Inclusive(0x25CC)));
 				Tamil.ScalingFactor = 0.9f;
 				Font->SubTypefaces.Add(Tamil);
 			}

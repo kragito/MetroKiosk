@@ -5,6 +5,7 @@
 #include "KioskLoc.h"
 #include "KioskPlaces.h"
 #include "KioskStyle.h"
+#include "Fonts/FontCache.h"
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/SlateRenderer.h"
@@ -24,6 +25,20 @@ namespace
 	float TextSlack(float MeasuredWidth, bool bTamilWider = false)
 	{
 		return MeasuredWidth * ((bTamilWider && FKioskLoc::GetLanguage() == EKioskLanguage::Tamil) ? SlackTamil : SlackDefault);
+	}
+
+	/** Draws text through HarfBuzz shaping. FSlateDrawElement::MakeText(FString) draws one glyph per code point with no shaping, which breaks Tamil vowel signs and conjuncts. */
+	void MakeShapedKioskText(FSlateWindowElementList& OutDrawElements, int32 Layer, const FGeometry& AllottedGeometry, const FPaintGeometry& Paint,
+		const FString& Text, const FSlateFontInfo& Font, const FLinearColor& Tint)
+	{
+		if (Text.IsEmpty() || !FSlateApplication::IsInitialized())
+		{
+			return;
+		}
+		const TSharedRef<FSlateFontCache> FontCache = FSlateApplication::Get().GetRenderer()->GetFontCache();
+		const float FontScale = AllottedGeometry.GetAccumulatedLayoutTransform().GetScale();
+		const FShapedGlyphSequenceRef Shaped = FontCache->ShapeUnidirectionalText(Text, Font, FontScale, TextBiDi::ETextDirection::LeftToRight, GetDefaultTextShapingMethod());
+		FSlateDrawElement::MakeShapedText(OutDrawElements, Layer, Paint, Shaped, ESlateDrawEffect::None, Tint, Tint);
 	}
 
 	/** A station label waiting for collision-free placement. */
@@ -343,9 +358,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 4,
 			AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos)), MarkerBrush,
 			ESlateDrawEffect::None, FKioskStyle::BrushTint(MarkerBrush));
-		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 5,
+		MakeShapedKioskText(OutDrawElements, LayerId + 5, AllottedGeometry,
 			AllottedGeometry.ToPaintGeometry(BoxSize, FSlateLayoutTransform(BoxPos + FVector2f(11.f + Slack * 0.5f, 5.f))),
-			Text, MarkerFont, ESlateDrawEffect::None, C.White);
+			Text, MarkerFont, C.White);
 	}
 
 	// Label collision avoidance: highest priority first (stable by station index), first free candidate wins.
@@ -566,9 +581,9 @@ int32 SKioskMap::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 		FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1,
 			AllottedGeometry.ToPaintGeometry(FVector2f(PillW, PillH), FSlateLayoutTransform(FVector2f(Rect.Left, Rect.Top))), PillBrush,
 			ESlateDrawEffect::None, FKioskStyle::BrushTint(PillBrush));
-		FSlateDrawElement::MakeText(OutDrawElements, LayerId + 2,
+		MakeShapedKioskText(OutDrawElements, LayerId + 2, AllottedGeometry,
 			AllottedGeometry.ToPaintGeometry(FVector2f(Label.Width, 24.f), FSlateLayoutTransform(LabelPos + FVector2f(Label.Slack * 0.5f, 0.f))),
-			Label.Text, LabelFont, ESlateDrawEffect::None, Label.bSelected ? C.Primary : C.Ink);
+			Label.Text, LabelFont, Label.bSelected ? C.Primary : C.Ink);
 	}
 	return LayerId + 6;
 }
