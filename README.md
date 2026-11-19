@@ -94,6 +94,7 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `l8_full_network_routes` | full MRT network routes from City Hall: Woodlands North (44 min, 1 change, $2.24, NS then TE), Changi Airport (38 min, $2.12, EW branch via Tanah Merah), Tuas Link (49 min, direct, $2.54, the maximum), each with map-route and review shots; then zh search "stevens" expects the Chinese name 史蒂芬 on the route and Review |
 | `l9_pinyin_search` | toneless pinyin search: "shidifen" and "shi di fen" find Stevens, joined pinyin finds a station on each line (Marsiling, Jurong East, Farrer Park, Bras Basah, Telok Ayer, Maxwell), then zh "niuchesui" finds Chinatown |
 | `t060_map_opening_view` | Map opens zoomed in around City Hall (en, zh, ta); zoom out to the whole network; Back and reopen returns to the opening view |
+| `l10_review_figma` | Review per Figma 78:4631: "Valid for 2 hours after use." plus the trip sentence, Change link opens the destination list and returns, riders swap (child in, adult out) and keep at least one rider, direct trip "on the ... Line" sentence in ta and en |
 
 ## 3D mode (optional)
 `powershell -File Tools/play_3d.ps1` (or add `-Kiosk3D` to a `-game` launch) puts the kiosk in a small metro concourse built

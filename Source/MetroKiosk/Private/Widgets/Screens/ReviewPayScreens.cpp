@@ -17,7 +17,6 @@ namespace
 	TSharedRef<SWidget> RiderRow(const TSharedRef<FKioskSession>& Session, int32 Category, const FText& Name, const FText& Detail, int32 Count)
 	{
 		const FKioskColors& C = KC();
-		const bool bCanDecrease = Count > 0 && Session->RiderCount() > 1;
 		const TCHAR* Who = Category == 0 ? TEXT("Adult") : (Category == 1 ? TEXT("Child") : TEXT("Senior"));
 		return SNew(SBox).MinDesiredHeight(102.f)
 		[
@@ -37,10 +36,9 @@ namespace
 					.ButtonTag(*FString::Printf(TEXT("Remove %s"), Who))
 					.Padding(FMargin(0.f))
 					.Width(82.f).Height(82.f)
-					.Enabled(bCanDecrease)
-					.OnClicked_Lambda([Session, Category]() { Session->AdjustRider(Category, -1); return FReply::Handled(); })
+					.OnClicked_Lambda([Session, Category, Count]() { if (Count > 0 && Session->RiderCount() > 1) { Session->AdjustRider(Category, -1); } return FReply::Handled(); })
 					[
-						Icon(EKioskIcon::Minus, KioskLayout::IconSm, bCanDecrease ? C.Ink : C.DisabledInk, 4.f)
+						Icon(EKioskIcon::Minus, KioskLayout::IconSm, C.Ink, 4.f)
 					]
 				]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
@@ -67,8 +65,8 @@ namespace
 		];
 	}
 
-	/** A "From"/"To" row: the station, its line badges, and (optionally) the place or local name under it. */
-	TSharedRef<SWidget> PlaceRow(const FText& Label, const FText& Place, uint8 Mask, const FText& Detail = FText::GetEmpty())
+	/** A "From"/"To" row: the station with its line badges right after the name. */
+	TSharedRef<SWidget> PlaceRow(const FText& Label, const FText& Place, uint8 Mask)
 	{
 		const FKioskColors& C = KC();
 		return SNew(SVerticalBox)
@@ -76,12 +74,8 @@ namespace
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 4.f, 0.f, 0.f)
 			[
 				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center)[ TextWrap(Place, KioskType::Figure, true, C.Ink, KioskType::LineCompact) ]
-				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(16.f, 6.f, 0.f, 0.f)[ LineBadges(Mask) ]
-			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 2.f, 0.f, 0.f)
-			[
-				Detail.IsEmpty() ? StaticCastSharedRef<SWidget>(SNew(SSpacer)) : StaticCastSharedRef<SWidget>(TextWrap(Detail, KioskType::Body, false, C.Muted))
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ TextWrap(Place, KioskType::Figure, true, C.Ink, KioskType::LineCompact) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(16.f, 6.f, 0.f, 0.f)[ LineBadges(Mask) ]
 			];
 	}
 }
@@ -91,18 +85,19 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 	const FKioskColors& C = KC();
 	const TArray<FKioskStation>& Stations = FKioskData::Stations();
 	const bool bHasDestination = Stations.IsValidIndex(Session->State.Destination);
-	const FKioskRoute& Route = FKioskRoutes::FromCityHall(Session->State.Destination);
 
 	TSharedRef<SVerticalBox> Note = SNew(SVerticalBox);
 	Note->AddSlot().AutoHeight()[ TextWrap(FKioskSession::ValidityRule(Session->State.Ticket), KioskType::Body, true, C.Ink, KioskType::LineBody) ];
-	if (bHasDestination)
+	const FKioskRoute& Route = FKioskRoutes::FromCityHall(Session->State.Destination);
+	if (bHasDestination && Route.bValid && !Route.Legs.IsEmpty())
 	{
-		Note->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)
-		[
-			TextWrap(FText::Format(KT("{0}. {1}."), FKioskRoutes::Detail(Route), FKioskRoutes::Summary(Route)), KioskType::Body, false, C.Ink, KioskType::LineBody)
-		];
+		// Short trip sentence as in Figma: "About 14 min on the Blue line." / "About 13 min · 1 change."
+		const FText TripText = Route.Changes == 0
+			? FText::Format(KT("About {0} min on the {1}."), FText::AsNumber(Route.Minutes), FKioskRoutes::LineName(Route.Legs[0].Line))
+			: FText::Format(KT("{0}."), FText::Format(KT("About {0} min · {1} {1}|plural(one=change,other=changes)"), FText::AsNumber(Route.Minutes), Route.Changes));
+		Note->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ TextWrap(TripText, KioskType::Body, false, C.Ink, KioskType::LineBody) ];
 	}
-	else if (!FKioskSession::DayPassWarning().IsEmpty())
+	else if (!bHasDestination && !FKioskSession::DayPassWarning().IsEmpty())
 	{
 		Note->AddSlot().AutoHeight().Padding(0.f, 8.f, 0.f, 0.f)[ TextWrap(FKioskSession::DayPassWarning(), KioskType::Body, false, C.AmberStrong, KioskType::LineBody) ];
 	}
@@ -118,30 +113,22 @@ void SReviewScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskS
 		+ SHorizontalBox::Slot().FillWidth(1.f)[ SNew(SSpacer) ]
 		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
 		[
-			ChangeButton(FOnClicked::CreateLambda([Session]() { Session->Back(); return FReply::Handled(); }))
+			SNew(SKioskButton)
+			.Kind(EKioskButtonKind::Link)
+			.Label(KT("Change"))
+			.ButtonTag(TEXT("Change"))
+			.Padding(FMargin(24.f, 10.f))
+			.OnClicked_Lambda([Session]() { Session->Back(); return FReply::Handled(); })
 		]
 	];
 	Trip->AddSlot().AutoHeight().Padding(0.f, 30.f, 0.f, 0.f)[ PlaceRow(KT("From"), FKioskSession::OriginLabel(), 0b000011) ];
 	if (bHasDestination)
 	{
 		const FKioskStation& Station = Stations[Session->State.Destination];
-		const TArray<FKioskPlace>& Places = FKioskPlaces::All();
-		// Title in the active language (matching "From"), with the English signage name and the chosen place beneath.
+		// Title in the active language (matching "From").
 		const FString LocalStation = FKioskPlaces::LocalName(Station.Name);
-		TArray<FString> DetailParts;
-		if (!LocalStation.IsEmpty())
-		{
-			DetailParts.Add(Station.Name);
-		}
-		if (Places.IsValidIndex(Session->State.DestinationPlace))
-		{
-			const FString& PlaceName = Places[Session->State.DestinationPlace].Name;
-			const FString LocalPlace = FKioskPlaces::LocalName(PlaceName);
-			DetailParts.Add(LocalPlace.IsEmpty() ? PlaceName : LocalPlace);
-		}
 		const FText Title = FText::FromString(LocalStation.IsEmpty() ? Station.Name : LocalStation);
-		const FText Detail = FText::FromString(FString::Join(DetailParts, TEXT(" · ")));
-		Trip->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ PlaceRow(KT("To"), Title, Station.LineMask, Detail) ];
+		Trip->AddSlot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)[ PlaceRow(KT("To"), Title, Station.LineMask) ];
 	}
 	else
 	{
