@@ -1120,6 +1120,13 @@ bool FKioskSession::ApplySample(const FString& RawName)
 		State.bKeyboardOpen = true;
 		Place(S::Destination, { S::Home, S::TicketType });
 	}
+	else if (Name == TEXT("DestinationRoundTrip")) { State.Ticket = ETicketType::RoundTrip; Place(S::Destination, { S::Home, S::TicketType }); }
+	else if (Name == TEXT("DestinationRoundTripSelected"))
+	{
+		State.Ticket = ETicketType::RoundTrip;
+		State.Destination = FKioskData::FindStation(TEXT("HarbourFront"));
+		Place(S::Destination, { S::Home, S::TicketType });
+	}
 	else if (Name == TEXT("DestinationFiltered")) { State.Ticket = ETicketType::OneWay; State.LineFilter = 0; Place(S::Destination, { S::Home, S::TicketType }); }
 	else if (Name == TEXT("DestinationSearchSelected"))
 	{
