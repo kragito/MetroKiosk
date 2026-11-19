@@ -1,4 +1,4 @@
-// A filled panel with a dashed outline. Used for notes and for the "SIMULATE" hardware affordances.
+// A filled panel with a dashed outline, used for notes.
 #pragma once
 
 #include "CoreMinimal.h"

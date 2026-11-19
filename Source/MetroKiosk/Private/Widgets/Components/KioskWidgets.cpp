@@ -4,7 +4,6 @@
 #include "KioskLoc.h"
 #include "KioskSession.h"
 #include "SKioskButton.h"
-#include "SKioskDashedBox.h"
 #include "Fonts/FontMeasure.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Rendering/SlateRenderer.h"
@@ -327,35 +326,6 @@ namespace KioskUI
 		return SNew(SHorizontalBox)
 			+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ HardwareDiagram(HighlightMask, Scale) ]
 			+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Center).Padding(20.f, 0.f, 0.f, 0.f)[ Captions ];
-	}
-
-	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked, const FName& Tag)
-	{
-		const FKioskColors& C = KC();
-		return SNew(SKioskDashedBox)
-			.Fill(C.SimFill)
-			.DashColor(C.SimInk)
-			.Padding(FMargin(4.f))
-			.Radius(10.f)
-			[
-				SNew(SKioskButton)
-				.Kind(EKioskButtonKind::Card)
-				.Label(Label)
-				.ButtonTag(Tag.IsNone() ? FName(*Label.ToString()) : Tag)
-				.Padding(FMargin(16.f, 10.f))
-				.OnClicked(OnClicked)
-				[
-					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 10.f, 0.f)
-					[
-						Icon(EKioskIcon::ArrowRight, KioskType::Caption, C.SimInk, 2.5f)
-					]
-					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-					[
-						Text(Label, KioskType::Caption, true, C.SimInk)
-					]
-				]
-			];
 	}
 
 	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg)

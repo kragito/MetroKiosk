@@ -18,7 +18,7 @@ public:
 	void Shutdown();
 
 private:
-	enum class EStepKind : uint8 { Click, Drag, Scroll, Wait, Shot, Dump, Expect, Absent };
+	enum class EStepKind : uint8 { Click, Drag, Scroll, Wait, Shot, Dump, Expect, Absent, Pay, Card };
 	struct FStep
 	{
 		EStepKind Kind = EStepKind::Click;
@@ -26,6 +26,7 @@ private:
 		FString Source;     // original step text for the log
 		FVector2f Delta = FVector2f::ZeroVector;
 		float Seconds = 0.f;
+		int32 Cents = 0;    // Pay: face value in cents
 		bool bAutoShot = true;
 		FString ShotName;
 	};

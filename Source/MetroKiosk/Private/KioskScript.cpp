@@ -1,4 +1,5 @@
 #include "KioskScript.h"
+#include "KioskData.h"
 #include "Widgets/Text/STextBlock.h"
 
 #include "Engine/Engine.h"
@@ -194,6 +195,21 @@ void FKioskScriptRunner::ParseScript(const FString& Script)
 		{
 			Step.Kind = Verb == TEXT("expect") ? EStepKind::Expect : EStepKind::Absent;
 			Step.Text = Arg;
+			Steps.Add(Step);
+		}
+		else if (Verb == TEXT("pay"))
+		{
+			// pay:<dollars>, e.g. pay:2, pay:50, pay:0.50. Must match an accepted note or coin.
+			Step.Kind = EStepKind::Pay;
+			Step.Text = Arg;
+			Step.Cents = FMath::RoundToInt(FCString::Atod(*Arg.Replace(TEXT("$"), TEXT(""))) * 100.0);
+			Steps.Add(Step);
+		}
+		else if (Verb == TEXT("card"))
+		{
+			// card:tap | card:chip | card:student | card:adult | card:lift
+			Step.Kind = EStepKind::Card;
+			Step.Text = Arg.ToLower();
 			Steps.Add(Step);
 		}
 		else if (Verb == TEXT("dump"))
@@ -534,6 +550,65 @@ void FKioskScriptRunner::RunStep(const FStep& Step)
 	case EStepKind::Dump:
 		DoDump();
 		break;
+	case EStepKind::Pay:
+	{
+		const int32 Serial = Session->ChangeSerial();
+		if (Session->Current() != EKioskScreen::WaitCash)
+		{
+			bOk = false;
+			Why = FString::Printf(TEXT("pay:%s not accepted: the cash screen is not showing"), *Step.Text);
+		}
+		else if (!FKioskData::IsAcceptedCash(Step.Cents))
+		{
+			bOk = false;
+			Why = FString::Printf(TEXT("pay:%s is not a note or coin the kiosk accepts"), *Step.Text);
+		}
+		else
+		{
+			Session->InsertCash(Step.Cents);
+			if (Session->ChangeSerial() == Serial)
+			{
+				bOk = false;
+				Why = FString::Printf(TEXT("pay:%s changed nothing"), *Step.Text);
+			}
+		}
+		break;
+	}
+	case EStepKind::Card:
+	{
+		const int32 Serial = Session->ChangeSerial();
+		const EKioskScreen Screen = Session->Current();
+		const FString& What = Step.Text;
+		const bool bOnReader = Screen == EKioskScreen::Home || Screen == EKioskScreen::ScanCard || Screen == EKioskScreen::WaitTapCard;
+		if (What == TEXT("tap") && bOnReader)
+		{
+			Session->SimulateCardTap();
+		}
+		else if (What == TEXT("chip") && Screen == EKioskScreen::WaitChipCard)
+		{
+			Session->SimulateCardTap();
+		}
+		else if ((What == TEXT("student") || What == TEXT("adult")) && Screen == EKioskScreen::ScanCard)
+		{
+			Session->SimulateMetroCardTap(What == TEXT("adult") ? EKioskCardType::Adult : EKioskCardType::Student);
+		}
+		else if (What == TEXT("lift") && Screen == EKioskScreen::DoneLiftCard)
+		{
+			Session->SimulateCardLift();
+		}
+		else
+		{
+			bOk = false;
+			Why = FString::Printf(TEXT("card:%s not accepted on this screen (screen %s)"), *What, ScreenName(Screen));
+			break;
+		}
+		if (Session->ChangeSerial() == Serial)
+		{
+			bOk = false;
+			Why = FString::Printf(TEXT("card:%s changed nothing"), *What);
+		}
+		break;
+	}
 	case EStepKind::Expect:
 		bOk = VisibleTextContains(Step.Text);
 		Why = FString::Printf(TEXT("no visible text contains '%s'"), *Step.Text);

@@ -1,1 +1,1 @@
-click:SIMULATE: tap card on reader|click:Top up another amount|click:Amount More|type:25|click:Continue|shot:pay_25|click:Pay with card|click:SIMULATE: tap card on reader|wait:4|shot:done_lift_card|dump
+card:tap|click:Top up another amount|click:Amount More|type:25|click:Continue|shot:pay_25|click:Pay with card|card:tap|wait:4|shot:done_lift_card|dump

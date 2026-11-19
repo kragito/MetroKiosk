@@ -9,7 +9,7 @@ plain language, Back / Start over / Help visible where applicable, a step indica
 languages (English, 中文, Melayu, தமிழ்) and on-screen hints that show where the physical hardware is.
 
 Flows: one-time ticket, card top-up, and concession pass renewal. Hardware (card reader, chip
-slot, cash slots) is simulated with clearly marked dashed "SIMULATE" controls.
+slot, cash slots) is operated on the 3D kiosk's slots and reader (T-068); the 2D screens show no simulate buttons, and journeys use the hidden `pay:` and `card:` script steps.
 
 ## Requirements
 - Unreal Engine 5.8. The `Tools/` scripts find it through `Tools/engine.ps1`, in this order: the
@@ -29,6 +29,7 @@ powershell -File Tools/launch_editor.ps1  # opens the editor; press Play (PIE) t
 The kiosk UI is hosted by `AKioskGameMode`, which is the project's default game mode.
 
 ## QA hooks
+- The game opens in 3D by default now, so a manual `-game` launch with `-KioskScreen`, `-KioskCaptureAll` or `-KioskScript` needs `-Kiosk2D` too (`Tools/journey.ps1` and `Tools/capture.ps1` add it themselves).
 - `-KioskScreen=<Name>` opens a screen with sample state (for example `PayMethod`, `CardOptions`).
 - `-KioskCaptureAll=<absolute dir>` saves a PNG of every screen and state (including destination: empty, search "garden",
   typo "harbor frnt", "Did you mean", place selected, 中文 and தமிழ்), then quits.
@@ -58,6 +59,8 @@ Steps are separated by `|`:
 | `wait:<seconds>` | Lets real time pass; timers run normally in script mode. |
 | `shot:<name>` | Saves `NN_<name>.png`. |
 | `lang:<en\|zh\|ms\|ta>` | Clicks the language pill. |
+| `pay:<dollars>` | Hidden step: puts a note or coin in the cash slot by face value, through `InsertCash` (the same session call as the 3D kiosk's slots). Works on the cash screen only: `pay:2`, `pay:5`, `pay:10`, `pay:50`, `pay:0.10`, `pay:0.20`, `pay:0.50`, `pay:1`. Fails with a message if the cash screen is not showing, the value is not an accepted note or coin, or nothing changed. |
+| `card:<tap\|chip\|student\|adult\|lift>` | Hidden step for the card hardware, through the same session calls as the 3D reader. `card:tap` taps on the reader (Home, Scan card, or the contactless wait screen); `card:chip` inserts the chip card (chip wait screen); `card:student` / `card:adult` put that Metro card on the reader (Scan card); `card:lift` takes the card back (Done, lift card). Fails with a message on any other screen or when nothing changed. |
 | `dump` | Writes `NN_tree.txt`: every visible interactive widget with its name, enabled/disabled state and rect in design px (canvas 1917x1105). Use it to discover what can be clicked. |
 
 A failed step (not found, disabled, covered, or a click that changed nothing) logs `FAIL`, saves a `NN_failure.png`, and aborts the run with an `ABORT` line so later steps do not cascade. Pass `-KioskScriptKeepGoing` to the game (not the wrapper) to continue instead. Matching is exact first; if an exact match exists but is covered or disabled the step fails rather than falling back to a looser match.
@@ -65,8 +68,8 @@ A failed step (not found, disabled, covered, or a click that changed nothing) lo
 Outputs go to `-Out`: `log.txt` (one line per step, `OK`/`FAIL`/`WARN`, then `DONE`), the PNGs and the trees.
 Useful names: `Buy a ticket`, `Choose One-way`, `Search`, `Place <name>` (for example `Place Gardens by the Bay`),
 `Station <name>`, `Change destination` (map card), `Confirm selected ticket`, `Open metro map view`, `Filter NS|EW|NE|CC|DT|TE` (destination list and map),
-`Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Insert $2`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
-`Keypad 5`, `Amount More`, `SIMULATE: tap card on reader` (on Scan card this is the Student card; the Adult card is `SIMULATE: tap Adult card on reader`), `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
+`Add Adult|Child|Senior`, `Go to payment`, `Pay with card|cash`, `Key H`, `Key Space`, `Hide keyboard` (the Done key),
+`Keypad 5`, `Amount More`, `Help`, `Back to my purchase`, `Language English|Chinese|Malay|Tamil`.
 Step names stay in English whatever language is active (the on-screen map labels follow the active language). The language pills live in the footer, so switch language after the first
 screen (`click:Buy a ticket|lang:zh`), not on Home.
 
@@ -96,16 +99,32 @@ and prints PASS/FAIL, with screenshots and the log in `Saved/Journeys/<name>/` (
 | `t060_map_opening_view` | Map opens zoomed in around City Hall (en, zh, ta); zoom out to the whole network; Back and reopen returns to the opening view |
 | `l10_review_figma` | Review per Figma 78:4631: "Valid for 2 hours after use." plus the trip sentence, Change link opens the destination list and returns, riders swap (child in, adult out) and keep at least one rider, direct trip "on the ... Line" sentence in ta and en |
 
-## 3D mode (optional)
-`powershell -File Tools/play_3d.ps1` (or add `-Kiosk3D` to a `-game` launch) puts the kiosk in a small metro concourse built
-at runtime from engine basic shapes only (`/Engine/BasicShapes`, no assets under `Content/`). The kiosk screen shows the live
-kiosk UI. Without `-Kiosk3D` the app opens the 2D kiosk exactly as before.
-- Controls: WASD or arrow keys walk, mouse looks, left click presses on the kiosk screen, **E** near the kiosk opens the
-  full-screen kiosk view, **Esc** steps back out.
-- Switches: `-Kiosk3DStart=kiosk` starts in the full-screen view (journey scripts can run as `-Kiosk3D -Kiosk3DStart=kiosk`);
-  `-Kiosk3DShot=<abs path.png>` saves a screenshot of the scene from the spawn point after about 4 s, then quits
-  (`Tools/play_3d.ps1 -Shot <png>`). `-StartAtKiosk` and `-NoBuild` are also script switches.
-- Code: `Source/MetroKiosk/Private/World/` (`KioskEnvironment` scene, `KioskVisitorPawn` first-person pawn, `KioskWorld` mode switching).
+## 3D mode (the default)
+`powershell -File Tools/play_3d.ps1` (or any `-game` launch without `-Kiosk2D`) puts the kiosk in a small metro concourse built
+at runtime from engine basic shapes only (`/Engine/BasicShapes`, no assets under `Content/`). `-Kiosk2D` opens the flat full-screen
+kiosk instead; `Tools/journey.ps1` and `Tools/capture.ps1` always pass it. `-Kiosk3D` is still accepted and does nothing extra.
+- The kiosk cabinet follows `Docs/ref/figma/64-75_kiosk_hardware.png`: the touch screen, then (to its right) the contactless
+  reader, the chip card / NETS slot, the note slot and the coin slot, the round Metro card pad under the screen, the ticket and
+  receipt slot and the collection tray with the change. A small light by each part turns green while the screen asks for it.
+- Walk: WASD or arrow keys, mouse looks. Near the kiosk press **E**: the camera blends to a fixed spot facing the kiosk, the mouse
+  becomes a cursor, **Esc** steps back. The cursor clicks buttons on the 3D screen and the kiosk parts; the part under it
+  is highlighted.
+- Wallet (bottom of the screen while stepped up): Metro card (`1`), bank card (`2`), notes $2 $5 $10 $50 (`3`-`6`), coins
+  10c 20c 50c $1 (`7`-`9`, `0`). Choose an item with its number key or a click, then click the matching part. A part
+  refuses the wrong item or the wrong moment with a hint line.
+- Part to action: pad + Metro card = tap on Home (top-up) and Scan card, the same click with empty hands lifts the card
+  at the end; contactless reader + bank or Metro card = card tap on "Pay with card"; chip slot + bank card = chip payment;
+  note slot + note and coin slot + coin = cash; tray with empty hands = collect the ticket, receipt and change.
+- Switches: `-Kiosk3DStart=kiosk` starts stepped up to the kiosk; `-Kiosk3DShot=<abs path.png>` saves a screenshot after about
+  4 s, then quits (`Tools/play_3d.ps1 -Shot <png>`); `-Kiosk3DShotView=wide` is the overview (`-Wide`) and `-Kiosk3DShotView=kiosk`
+  the hardware close-up with a card on the pad, lit parts and a full tray (`-Hardware`). `-NoBuild` and `-StartAtKiosk` are also script switches.
+- Self-test: `powershell -File Tools/play_3d.ps1 -SelfTest [-ShotDir <dir>]` (`-Kiosk3DSelfTest`, `-Kiosk3DShotDir=<dir>`) walks up, presses
+  E, buys a one-way ticket with $2 notes through the wallet and the note slot (and checks that the Metro card is refused there),
+  collects the ticket and change from the tray, buys a day pass with the bank card on the contactless reader, then presses
+  Esc and walks into the kiosk to check collision. It logs one line per step and exits 1 unless it ends with `KIOSK3D SELFTEST PASS`;
+  with `-ShotDir` it also saves a screenshot at each stage.
+- Code: `Source/MetroKiosk/Private/World/` (`KioskEnvironment` scene and kiosk parts, `KioskVisitorPawn` first-person pawn and camera
+  lock-on, `KioskWorld` cursor, parts, tray and self-test, `KioskWallet` wallet items and which part takes what).
 
 ## Automation tests
 ```powershell
@@ -115,8 +134,7 @@ powershell -File Tools/run_tests.ps1            # MetroKiosk.Search.*, MetroKios
 `MetroKiosk.Loc.Coverage` scans every `KT("...")` in the sources and builds every screen in 中文, Melayu and தமிழ் to catch
 missing translations, placeholder mismatches and English mixed into Chinese or Tamil. Close the editor first.
 
-QA switches: `-KioskCard=Student|Adult` sets which Metro card the reader detects when no card is chosen (default Student; Scan card's
-SIMULATE buttons still pick either card explicitly). Sample names also take an `Adult` or `Student` prefix, for example
+QA switches: `-KioskCard=Student|Adult` sets which Metro card the reader detects when no card is chosen (default Student; the `card:student` and `card:adult` script steps pick either card explicitly). Sample names also take an `Adult` or `Student` prefix, for example
 `-KioskScreen=AdultCardOptions`, `AdultTopUpAmountSelected`, `AdultConcession`, `AdultPassDates`, `AdultDoneLiftCard`,
 `AdultDoneLiftCardConcession` (the capture run saves these last). `-KioskFakeTime=HH:MM` freezes the kiosk clock start (Tools/capture.ps1 uses 10:30; samples `TicketTypeLate`
 and `IdlePrompt` show the late-night warning and the idle overlay). Captures cover every screen in English and the key screens

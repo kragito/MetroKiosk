@@ -105,16 +105,6 @@ void SScanCardScreen::Construct(const FArguments& InArgs, const TSharedRef<FKios
 			[
 				TextWrap(KT("Not reading? Take the card out of your wallet or phone case, then try again."), KioskType::Caption, false, C.Muted, KioskType::LineBody)
 			]
-			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
-			[
-				// The Student button keeps its original tag so existing journeys still find it.
-				SimControl(KT("SIMULATE: tap Student card on reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateMetroCardTap(EKioskCardType::Student); return FReply::Handled(); }), TEXT("SIMULATE: tap card on reader"))
-			]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left).Padding(0.f, 10.f, 0.f, 0.f)
-			[
-				SimControl(KT("SIMULATE: tap Adult card on reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateMetroCardTap(EKioskCardType::Adult); return FReply::Handled(); }), TEXT("SIMULATE: tap Adult card on reader"))
-			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.55f)
 		[
@@ -947,11 +937,6 @@ void SDoneScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 14.f, 0.f, 0.f)
 			[
 				ReturnCountdown(Session)
-			]
-			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)
-			[
-				SimControl(KT("SIMULATE: lift card off reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateCardLift(); return FReply::Handled(); }), TEXT("SIMULATE: lift card off reader"))
 			]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.46f)

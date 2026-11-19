@@ -6,9 +6,9 @@
 #include "KioskRoutes.h"
 #include "Widgets/Components/KioskWidgets.h"
 #include "Widgets/Components/SKioskButton.h"
-#include "Widgets/Components/SKioskDashedBox.h"
 #include "Widgets/Layout/SConstraintCanvas.h"
 #include "Widgets/Layout/SScaleBox.h"
+#include "Widgets/Layout/SWrapBox.h"
 #include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SCanvas.h"
 
@@ -112,80 +112,35 @@ namespace
 		};
 
 		const bool bShowChange = bProcessing && Change > 0;
-		auto Chip = [&](const FText& Label, int32 Cents, bool bCoin)
-		{
-			return SNew(SKioskButton)
-				.Kind(bCoin ? EKioskButtonKind::PillOutline : EKioskButtonKind::Key)
-				.Label(Label)
-				.ButtonTag(*FString::Printf(TEXT("Insert %s"), *Label.ToString()))
-				.FontPx(KioskType::BtnStd)
-				.MinWidth(KioskLayout::ChipMinW).MinHeight(KioskLayout::KeyH)
-				.Padding(FMargin(8.f, 4.f))
-				.Enabled(!bProcessing)
-				.OnClicked_Lambda([Session, Cents]() { Session->InsertCash(Cents); return FReply::Handled(); });
-		};
-		// The accepted notes or coins from the shared denomination list, two chips per row.
-		auto ChipGrid = [&](bool bCoin)
-		{
-			TSharedRef<SVerticalBox> Grid = SNew(SVerticalBox);
-			TSharedPtr<SHorizontalBox> Row;
-			int32 InRow = 0;
-			for (const FKioskCashDenom& Denom : FKioskData::CashDenominations())
-			{
-				if (Denom.bCoin != bCoin)
-				{
-					continue;
-				}
-				if (InRow % 2 == 0)
-				{
-					Row = SNew(SHorizontalBox);
-					Grid->AddSlot().AutoHeight().Padding(0.f, InRow == 0 ? 10.f : 12.f, 0.f, 0.f)[ Row.ToSharedRef() ];
-				}
-				Row->AddSlot().AutoWidth().Padding(InRow % 2 == 0 ? 0.f : 12.f, 0.f, 0.f, 0.f)[ Chip(FText::FromString(Denom.Label), Denom.Cents, bCoin) ];
-				++InRow;
-			}
-			return Grid;
-		};
-
 		const float Progress = Total > 0 ? static_cast<float>(FMath::Min(Inserted, Total)) / Total : 0.f;
 
-		TSharedRef<SWidget> Slots = SNew(SKioskDashedBox)
-			.DashColor(C.SimInk)
-			.Fill(C.SimFill)
-			.Padding(FMargin(22.f, 14.f, 22.f, 16.f))
-			[
-				SNew(SVerticalBox)
-				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 0.f, 0.f, 10.f)
-				[
-					TextWrap(KT("SIMULATE: tap a note or coin to insert it"), KioskType::Caption, true, C.SimInk)
-				]
+		// One column of the accepted notes or coins: icon + heading, plain outlined labels (not controls), slot caption.
+		auto DenomColumn = [&](bool bCoin)
+		{
+			TSharedRef<SWrapBox> Pills = SNew(SWrapBox).UseAllottedSize(true).InnerSlotPadding(FVector2D(10.f, 10.f));
+			for (const FKioskCashDenom& Denom : FKioskData::CashDenominations())
+			{
+				if (Denom.bCoin == bCoin)
+				{
+					Pills->AddSlot()
+					[
+						Panel(Text(FText::FromString(Denom.Label), KioskType::Caption, true, C.Ink), C.Surface, 14.f, C.BorderStrong, 2.f, FMargin(16.f, 6.f))
+					];
+				}
+			}
+			return SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()
 				[
 					SNew(SHorizontalBox)
-					+ SHorizontalBox::Slot().FillWidth(1.f)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Icon(EKioskIcon::Cash, KioskLayout::IconSm, C.Ink, 3.f) ]
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(12.f, 0.f, 0.f, 0.f)[ Text(KT("Notes"), KioskType::Body, true, C.Ink) ]
-						]
-						+ SVerticalBox::Slot().AutoHeight()[ ChipGrid(false) ]
-					]
-					+ SHorizontalBox::Slot().FillWidth(1.f).Padding(20.f, 0.f, 0.f, 0.f)
-					[
-						SNew(SVerticalBox)
-						+ SVerticalBox::Slot().AutoHeight()
-						[
-							SNew(SHorizontalBox)
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ SNew(SBox).Padding(FMargin(0.f, 0.f, 12.f, 0.f))[ Icon(EKioskIcon::Coin, KioskLayout::IconSm, C.Ink, 3.f) ] ]
-							+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(KT("Coins"), KioskType::Body, true, C.Ink) ]
-						]
-						+ SVerticalBox::Slot().AutoHeight()[ ChipGrid(true) ]
-					]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 12.f, 0.f)[ Icon(bCoin ? EKioskIcon::Coin : EKioskIcon::Cash, KioskLayout::IconSm, C.Ink, 3.f) ]
+					+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(bCoin ? KT("Coins") : KT("Notes"), KioskType::Body, true, C.Ink) ]
 				]
-			];
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)[ Pills ]
+				+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
+				[
+					TextWrap(bCoin ? KT("One at a time or a handful.") : KT("Insert flat, any way up."), KioskType::Caption, false, C.Muted, KioskType::LineBody)
+				];
+		};
 
 		return Card(
 			SNew(SVerticalBox)
@@ -211,7 +166,12 @@ namespace
 			[
 				ProgressBar([Progress]() { return Progress; }, 0.f, 18.f, C.BorderStrong, C.Primary)
 			]
-			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 18.f, 0.f, 0.f)[ Slots ]
+			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 26.f, 0.f, 0.f)
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Top)[ DenomColumn(false) ]
+				+ SHorizontalBox::Slot().FillWidth(1.f).VAlign(VAlign_Top).Padding(24.f, 0.f, 0.f, 0.f)[ DenomColumn(true) ]
+			]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 12.f, 0.f, 0.f)
 			[
@@ -267,15 +227,6 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 		TipBox->AddSlot().AutoHeight().Padding(0.f, 0.f, 0.f, 8.f)[ TextWrap(Tip, KioskType::Caption, false, C.Muted, KioskType::LineBody) ];
 	}
 
-	TSharedRef<SWidget> Hardware = SNullWidget::NullWidget;
-	if (!bCash && !bProcessing)
-	{
-		Hardware = SimControl(
-			bChip ? KT("SIMULATE: insert chip card") : KT("SIMULATE: tap card on reader"),
-			FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }),
-			bChip ? TEXT("SIMULATE: insert chip card") : TEXT("SIMULATE: tap card on reader"));
-	}
-
 	TSharedRef<SWidget> Illustration = bChip ? CardIllustrationChip() : CardIllustrationTap();
 
 	ChildSlot
@@ -301,7 +252,6 @@ void SWaitScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f).HAlign(HAlign_Left)[ StatusPill(Session, bProcessing, bCash) ]
 			+ SVerticalBox::Slot().AutoHeight().Padding(0.f, 22.f, 0.f, 0.f)[ TipBox ]
 			+ SVerticalBox::Slot().FillHeight(1.f)[ SNew(SSpacer) ]
-			+ SVerticalBox::Slot().AutoHeight().HAlign(HAlign_Left)[ Hardware ]
 		]
 		+ SHorizontalBox::Slot().FillWidth(0.55f)
 		[

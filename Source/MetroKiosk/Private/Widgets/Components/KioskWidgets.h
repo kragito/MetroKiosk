@@ -112,10 +112,6 @@ namespace KioskUI
 	/** Diagram plus a caption naming each lit part. */
 	TSharedRef<SWidget> HardwareHint(uint32 HighlightMask, float Scale = 1.f, float CaptionPx = KioskType::Caption);
 
-	/** Clearly-marked on-screen stand-in for a hardware action (card tap, chip insert, card lift). */
-	/** Tag is the English name used by the scripted harness, so journeys work in any language. */
-	TSharedRef<SWidget> SimControl(const FText& Label, FOnClicked OnClicked, const FName& Tag = NAME_None);
-
 	/** Places a fixed-size child at an offset inside an SOverlay slot (optionally rotated about its centre). */
 	TSharedRef<SWidget> Positioned(const TSharedRef<SWidget>& Child, FVector2D Pos, FVector2D Size, float AngleDeg = 0.f);
 

@@ -31,8 +31,6 @@ struct FKioskColors
 	FLinearColor AmberStroke;
 	FLinearColor AmberStrong;
 	FLinearColor Video;         // staff video placeholder
-	FLinearColor SimInk;        // simulation-affordance accent
-	FLinearColor SimFill;
 	FLinearColor Transparent;
 	FLinearColor White;
 	FLinearColor Black;

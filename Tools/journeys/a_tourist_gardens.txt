@@ -1,1 +1,1 @@
-click:Buy a ticket|click:Choose One-way|shot:destination_empty|click:Search|type:gardens by the bay|shot:results|click:Place Gardens by the Bay|shot:selected|click:Confirm selected ticket|shot:review|click:Go to payment|click:Pay with card|click:SIMULATE: tap card on reader|wait:4|shot:receipt|dump
+click:Buy a ticket|click:Choose One-way|shot:destination_empty|click:Search|type:gardens by the bay|shot:results|click:Place Gardens by the Bay|shot:selected|click:Confirm selected ticket|shot:review|click:Go to payment|click:Pay with card|card:tap|wait:4|shot:receipt|dump

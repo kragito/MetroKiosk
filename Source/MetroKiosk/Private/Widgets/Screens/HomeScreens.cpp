@@ -166,11 +166,7 @@ void SHomeScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSes
 				]
 			]
 		]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 28.f, 0.f)[ HardwareDiagram(Mask(EHardware::MetroReader), 0.55f) ]
-		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 60.f, 0.f)
-		[
-			SimControl(KT("SIMULATE: tap card on reader"), FOnClicked::CreateLambda([Session]() { Session->SimulateCardTap(); return FReply::Handled(); }), TEXT("SIMULATE: tap card on reader"))
-		],
+		+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(0.f, 0.f, 60.f, 0.f)[ HardwareDiagram(Mask(EHardware::MetroReader), 0.55f) ],
 		C.Surface, 0.f);
 
 	ChildSlot
