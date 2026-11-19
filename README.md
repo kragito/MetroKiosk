@@ -25,6 +25,7 @@ slot, cash slots) is simulated with clearly marked dashed "SIMULATE" controls.
 powershell -File Tools/build.ps1          # builds the editor target (closes a running editor first)
 powershell -File Tools/launch_editor.ps1  # opens the editor; press Play (PIE) to see the kiosk
 ```
+`Tools/build.ps1` passes `-NoUBA` because the Unreal Build Accelerator hung locally (cl.exe idle, nothing finishing); add `-UBA` to turn it back on.
 The kiosk UI is hosted by `AKioskGameMode`, which is the project's default game mode.
 
 ## QA hooks

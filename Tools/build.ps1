@@ -1,6 +1,7 @@
 # Closes any running editor for this project, then builds the editor target.
-# Usage: powershell -File Tools\build.ps1 [-Relaunch]
-param([switch]$Relaunch)
+# UBA (Unreal Build Accelerator) is off by default: it hung locally with cl.exe idle. Pass -UBA to re-enable it.
+# Usage: powershell -File Tools\build.ps1 [-Relaunch] [-UBA]
+param([switch]$Relaunch, [switch]$UBA)
 
 . "$PSScriptRoot\engine.ps1"
 $Engine = Join-Path (Get-UnrealRoot) "Engine"
@@ -9,7 +10,9 @@ $Project = (Resolve-Path "$PSScriptRoot\..\MetroKiosk.uproject").Path
 Get-Process UnrealEditor -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
 
-& "$Engine\Build\BatchFiles\Build.bat" MetroKioskEditor Win64 Development "-Project=$Project" -WaitMutex -NoHotReloadFromIDE
+$ubtArgs = @("-Project=$Project", "-WaitMutex", "-NoHotReloadFromIDE")
+if (-not $UBA) { $ubtArgs += "-NoUBA" }
+& "$Engine\Build\BatchFiles\Build.bat" MetroKioskEditor Win64 Development @ubtArgs
 $code = $LASTEXITCODE
 if ($code -ne 0) { Write-Output "BUILD FAILED ($code)"; exit $code }
 Write-Output "BUILD SUCCEEDED"
