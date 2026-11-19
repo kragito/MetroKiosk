@@ -49,8 +49,10 @@ public:
 	bool bMicMuted = false;
 	bool bStaffRequested = false;
 	bool bCaptionsOn = true;
+	/** Zoom the destination map opens at: a little in around City Hall so the central interchanges have room for labels. */
+	static constexpr float MapOpeningZoom = 1.75f;
 	/** Map zoom factor (1 = whole network). */
-	float MapZoom = 1.f;
+	float MapZoom = MapOpeningZoom;
 	/** Map pan in widget pixels (only used while zoomed in). */
 	FVector2f MapPan = FVector2f::ZeroVector;
 

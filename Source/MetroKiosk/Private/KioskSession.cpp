@@ -65,7 +65,7 @@ void FKioskSession::ResetState()
 	ReturnLimit = ReturnSeconds;
 	IdleSeconds = 0.f;
 	bIdlePrompt = false;
-	MapZoom = 1.f;
+	MapZoom = MapOpeningZoom;
 	MapPan = FVector2f::ZeroVector;
 	++NavCount;
 	History.Reset();
@@ -93,6 +93,7 @@ void FKioskSession::EnterScreen(EKioskScreen Screen)
 	if (Screen != EKioskScreen::DestinationMap)
 	{
 		MapPan = FVector2f::ZeroVector;
+		MapZoom = MapOpeningZoom; // the next visit to the map opens at the opening view
 	}
 	if (Screen == EKioskScreen::Concession && State.Concession == INDEX_NONE)
 	{

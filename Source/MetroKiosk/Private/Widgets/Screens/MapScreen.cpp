@@ -163,7 +163,18 @@ void SMapScreen::Construct(const FArguments& InArgs, const TSharedRef<FKioskSess
 			.Width(72.f).Height(72.f)
 			.OnClicked_Lambda([Session, Delta]()
 			{
-				Session->MapZoom = FMath::Clamp(Session->MapZoom + Delta, 1.f, 2.5f);
+				// Fixed ladder: whole network, the opening view, close in. Each click moves one rung.
+				const float Ladder[] = { 1.f, FKioskSession::MapOpeningZoom, 2.5f };
+				int32 Rung = 0;
+				for (int32 Index = 0; Index < 3; ++Index)
+				{
+					if (Session->MapZoom >= Ladder[Index] - 0.01f)
+					{
+						Rung = Index;
+					}
+				}
+				Rung = FMath::Clamp(Rung + (Delta > 0.f ? 1 : -1), 0, 2);
+				Session->MapZoom = Ladder[Rung];
 				if (Session->MapZoom <= 1.f)
 				{
 					Session->MapPan = FVector2f::ZeroVector;

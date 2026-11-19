@@ -1,0 +1,1 @@
+click:Buy a ticket|click:Choose One-way|click:Open metro map view|shot:opening_en|lang:zh|wait:1|shot:opening_zh|lang:ta|wait:1|shot:opening_ta|lang:en|wait:1|click:Zoom out|click:Zoom out|wait:1|shot:overview|click:Back|click:Open metro map view|wait:1|shot:reopen_after_back|dump

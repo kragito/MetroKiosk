@@ -5,6 +5,9 @@
 #include "KioskSession.h"
 #include "Widgets/SLeafWidget.h"
 
+struct FKioskMapShapeCache;
+struct FKioskMapLayout;
+
 DECLARE_DELEGATE_OneParam(FOnKioskStationTapped, int32 /*StationIndex*/);
 
 class SKioskMap : public SLeafWidget
@@ -35,6 +38,10 @@ public:
 private:
 	/** Maps schematic space to widget-local space. */
 	FVector2f ToLocal(const FVector2f& MapPos, const FVector2f& LocalSize) const;
+	/** Pixels per map unit on each axis (before zoom) and the map point shown at the widget centre (before pan). */
+	void ViewParams(const FVector2f& LocalSize, FVector2f& OutScale, FVector2f& OutFocus) const;
+	/** Keeps the network's bounding box overlapping the viewport (most of it) at every zoom and centre mode. */
+	FVector2f ClampPan(const FVector2f& Pan, const FVector2f& LocalSize) const;
 
 	int32 SelectedStation = INDEX_NONE;
 	float Zoom = 1.f;
@@ -46,4 +53,8 @@ private:
 	bool bPressed = false;
 	bool bDragging = false;
 	FOnKioskStationTapped OnStationTapped;
+
+	/** Shaped label text and the last label/pill placement; owned by the widget so they die with it, rebuilt when an input changes. */
+	mutable TSharedPtr<FKioskMapShapeCache> ShapeCache;
+	mutable TSharedPtr<FKioskMapLayout> LayoutCache;
 };

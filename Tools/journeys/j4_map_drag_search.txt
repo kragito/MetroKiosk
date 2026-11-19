@@ -1,1 +1,1 @@
-click:Buy a ticket|click:Choose One-way|click:Open metro map view|click:Filter CC|shot:line_highlight|click:Zoom in|click:Zoom in|shot:zoomed|drag:Map:-250,-120|click:Search|type:har|shot:search_from_map|click:Hide keyboard|dump
+click:Buy a ticket|click:Choose One-way|click:Open metro map view|click:Filter CC|shot:opening_line_highlight|drag:Map:-200,-100|shot:opening_dragged|click:Zoom in|click:Zoom in|shot:zoomed_max|drag:Map:-250,-120|click:Search|type:har|shot:search_from_map|click:Hide keyboard|dump
