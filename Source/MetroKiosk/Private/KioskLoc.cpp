@@ -9,9 +9,18 @@ namespace
 #include "KioskLocTable.inl"
 	};
 
-	const TMap<FString, const FKioskTranslation*>& Index()
+	// Keys are matched case-sensitively; FString's default map compare is case-insensitive.
+	struct FCaseSensitiveKeyFuncs : BaseKeyFuncs<TPair<FString, const FKioskTranslation*>, FString, false>
 	{
-		static TMap<FString, const FKioskTranslation*> Map;
+		static const FString& GetSetKey(const TPair<FString, const FKioskTranslation*>& Element) { return Element.Key; }
+		static bool Matches(const FString& A, const FString& B) { return A.Equals(B, ESearchCase::CaseSensitive); }
+		static uint32 GetKeyHash(const FString& Key) { return FCrc::StrCrc32(*Key); }
+	};
+	using FIndexMap = TMap<FString, const FKioskTranslation*, FDefaultSetAllocator, FCaseSensitiveKeyFuncs>;
+
+	const FIndexMap& Index()
+	{
+		static FIndexMap Map;
 		if (Map.IsEmpty())
 		{
 			for (const FKioskTranslation& Entry : GTable)

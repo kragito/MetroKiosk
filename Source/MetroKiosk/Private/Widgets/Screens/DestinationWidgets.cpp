@@ -267,8 +267,8 @@ namespace KioskDest
 			const FKioskRoute& Route = FKioskRoutes::FromCityHall(State.Destination);
 			const FDescribed Info = Describe(State);
 			const FText About = Route.Changes == 0
-				? FText::Format(KT("about {0} min · direct"), FText::AsNumber(Route.Minutes))
-				: FText::Format(KT("about {0} min · {1} {1}|plural(one=change,other=changes)"), FText::AsNumber(Route.Minutes), FText::AsNumber(Route.Changes));
+				? FText::Format(KT("About {0} min · direct"), FText::AsNumber(Route.Minutes)).ToLower()
+				: FText::Format(KT("About {0} min · {1} {1}|plural(one=change,other=changes)"), FText::AsNumber(Route.Minutes), FText::AsNumber(Route.Changes)).ToLower();
 			Body = SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)[ Text(FKioskSession::OriginLabel(), KioskType::Body, false, C.Ink) ]
 				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(18.f, 0.f)[ Icon(EKioskIcon::ArrowRight, 30.f, C.Ink, 3.f) ]

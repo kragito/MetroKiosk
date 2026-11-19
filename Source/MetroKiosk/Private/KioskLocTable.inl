@@ -126,8 +126,6 @@
 { TEXT("No match for “{0}”. Try one of these popular places"), TEXT("没有找到“{0}”。试试这些热门地点"), TEXT("Tiada padanan untuk “{0}”. Cuba tempat popular ini"), TEXT("“{0}” க்குப் பொருத்தம் இல்லை. இந்த பிரபல இடங்களை முயலுங்கள்") },
 { TEXT("Filtered by {0}"), TEXT("按{0}筛选"), TEXT("Ditapis mengikut {0}"), TEXT("{0} படி வடிகட்டப்பட்டது") },
 { TEXT("Nothing on the {0} matches “{1}”. Clear the line or change what you typed."), TEXT("{0}上没有与“{1}”相符的地点。请取消线路筛选或修改输入。"), TEXT("Tiada padanan untuk “{1}” pada {0}. Kosongkan laluan atau ubah apa yang ditaip."), TEXT("{0} வழித்தடத்தில் “{1}” க்குப் பொருத்தம் இல்லை. வழித்தடத்தை நீக்கவும் அல்லது உள்ளீட்டை மாற்றவும்.") },
-{ TEXT("about {0} min · direct"), TEXT("约 {0} 分钟 · 直达"), TEXT("kira-kira {0} min · terus"), TEXT("சுமார் {0} நிமி · நேரடி") },
-{ TEXT("about {0} min · {1} {1}|plural(one=change,other=changes)"), TEXT("约 {0} 分钟 · 换乘 {1} 次"), TEXT("kira-kira {0} min · {1} kali tukar"), TEXT("சுமார் {0} நிமி · {1} மாற்றம்") },
 { TEXT("North–South"), TEXT("南北"), TEXT("Utara–Selatan"), TEXT("வடக்கு–தெற்கு") },
 { TEXT("East–West"), TEXT("东西"), TEXT("Timur–Barat"), TEXT("கிழக்கு–மேற்கு") },
 { TEXT("North East"), TEXT("东北"), TEXT("Timur Laut"), TEXT("வடகிழக்கு") },

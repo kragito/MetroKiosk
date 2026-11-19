@@ -203,6 +203,20 @@ bool FKioskLocCoverageTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	// 1b. No two rows may share an English key, even when they differ only in case (translators must not depend on case).
+	{
+		TSet<FString> SeenKeys; // FString set hashing/compare is case-insensitive
+		for (const FKioskTranslation& Entry : FKioskLoc::Table())
+		{
+			bool bAlready = false;
+			SeenKeys.Add(FString(Entry.English), &bAlready);
+			if (bAlready)
+			{
+				AddError(FString::Printf(TEXT("Duplicate loc key (compared case-insensitively): \"%s\""), Entry.English));
+			}
+		}
+	}
+
 	// 2. Every KT("...") literal in the sources has a translation in all three languages, and nothing bypasses KT.
 	const FString SourceDir = FPaths::ProjectDir() / TEXT("Source/MetroKiosk");
 	TArray<FString> Files;
