@@ -5,6 +5,7 @@
 #   -Wide          with -Shot: take it from an overview position (-Kiosk3DShotView=wide)
 #   -Hardware      with -Shot: close-up of the kiosk hardware (-Kiosk3DShotView=kiosk)
 #   -ShotDir <dir> with -SelfTest: also save a screenshot at each stage (-Kiosk3DShotDir=)
+#   -Map <path>    open this map instead of the project default (e.g. a copy of the level for testing)
 #   -SelfTest      run the automatic walk / lock-on / cash purchase / card tap check (-Kiosk3DSelfTest); exits 1 unless it logs KIOSK3D SELFTEST PASS
 param(
     [switch]$NoBuild,
@@ -13,7 +14,8 @@ param(
     [switch]$Wide,
     [switch]$Hardware,
     [switch]$SelfTest,
-    [string]$ShotDir = ""
+    [string]$ShotDir = "",
+    [string]$Map = ""
 )
 
 . "$PSScriptRoot\engine.ps1"
@@ -32,6 +34,7 @@ if ($NoBuild -and (Test-Path $Dll)) {
 }
 
 $args = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound")
+if ($Map) { $args = @($args[0], "`"$Map`"") + $args[1..($args.Count - 1)] }
 if ($StartAtKiosk) { $args += "-Kiosk3DStart=kiosk" }
 if ($Shot) {
     New-Item -ItemType Directory -Force (Split-Path -Parent $Shot) | Out-Null

@@ -93,11 +93,7 @@ bool FKioskWorld::Start()
 	}
 
 	// The scene is the level (Content/Maps/Concourse.umap): find what is placed there, spawn nothing.
-	int32 ActorsBefore = 0;
-	for (TActorIterator<AActor> It(PlayWorld); It; ++It)
-	{
-		++ActorsBefore;
-	}
+	const int32 ActorsBefore = PlayWorld->GetActorCount();
 	AKioskCabinet* Env = nullptr;
 	for (TActorIterator<AKioskCabinet> It(PlayWorld); It; ++It)
 	{
@@ -116,7 +112,7 @@ bool FKioskWorld::Start()
 		return false;
 	}
 	bStarted = true;
-	Environment = Env;
+	Cabinet = Env;
 	Env->SetScreenContent(Root.ToSharedRef());
 
 	APlayerController* Controller = PlayWorld->GetFirstPlayerController();
@@ -132,16 +128,17 @@ bool FKioskWorld::Start()
 		Controller->SetControlRotation(Look);
 	}
 
-	int32 ActorsAfter = 0;
 	int32 Blocks = 0;
 	int32 Lights = 0;
-	for (TActorIterator<AActor> It(PlayWorld); It; ++It)
+	for (TActorIterator<AKioskBlock> It(PlayWorld); It; ++It)
 	{
-		++ActorsAfter;
-		Blocks += Cast<AKioskBlock>(*It) ? 1 : 0;
-		Lights += Cast<ALight>(*It) ? 1 : 0;
+		++Blocks;
 	}
-	UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D scene: found %d placed actors (%d blocks, %d lights, 1 kiosk cabinet, 1 visitor), spawned %d"), ActorsAfter, Blocks, Lights, ActorsAfter - ActorsBefore);
+	for (TActorIterator<ALight> It(PlayWorld); It; ++It)
+	{
+		++Lights;
+	}
+	UE_LOG(LogKiosk3D, Display, TEXT("KIOSK3D scene loaded from level: %d blocks, %d lights, 1 kiosk cabinet, 1 visitor; spawned %d"), Blocks, Lights, PlayWorld->GetActorCount() - ActorsBefore);
 
 	FString ShotView;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-Kiosk3DShotView="), ShotView) && Pawn.IsValid() && Controller && Env)
@@ -149,8 +146,20 @@ bool FKioskWorld::Start()
 		if (ShotView.Equals(TEXT("wide"), ESearchCase::IgnoreCase))
 		{
 			// Overview for the screenshot: back and to the side, raised, wide lens, so one frame shows the kiosk, floor, pillar, benches, lights and platform edge.
-			Pawn->SetActorLocation(FVector(620.f, -720.f, 150.f), false, nullptr, ETeleportType::TeleportPhysics);
-			Controller->SetControlRotation(FRotator(-14.f, 96.f, 0.f));
+			// Placed with the cabinet: a camera or target point tagged "WideShot" if the level has one, else relative to the cabinet.
+			FVector WideEye = Env->GetActorTransform().TransformPosition(FVector(620.f, -720.f, 150.f));
+			FRotator WideLook = FRotator(-14.f, Env->GetActorRotation().Yaw + 96.f, 0.f);
+			for (TActorIterator<AActor> It(PlayWorld); It; ++It)
+			{
+				if (It->ActorHasTag(TEXT("WideShot")))
+				{
+					WideEye = It->GetActorLocation();
+					WideLook = It->GetActorRotation();
+					break;
+				}
+			}
+			Pawn->SetActorLocation(WideEye, false, nullptr, ETeleportType::TeleportPhysics);
+			Controller->SetControlRotation(WideLook);
 			Pawn->SetFieldOfView(105.f);
 		}
 		else if (ShotView.Equals(TEXT("kiosk"), ESearchCase::IgnoreCase))
@@ -240,7 +249,7 @@ void FKioskWorld::Shutdown()
 	}
 	Hud.Reset();
 	WalletHud.Reset();
-	if (AKioskCabinet* Env = Environment.Get())
+	if (AKioskCabinet* Env = Cabinet.Get())
 	{
 		Env->ClearScreenContent();
 	}
@@ -266,7 +275,7 @@ void FKioskWorld::EnterKioskView()
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	if (bKioskView || !Controller || !Visitor || !Env)
 	{
 		return;
@@ -298,7 +307,7 @@ void FKioskWorld::ExitKioskView()
 	bSyntheticCursor = false;
 	SyntheticClickFrames = 0;
 	Visitor->ReleaseView();
-	if (AKioskCabinet* Env = Environment.Get())
+	if (AKioskCabinet* Env = Cabinet.Get())
 	{
 		Env->SetPartHighlight(EKioskPart::None);
 	}
@@ -308,7 +317,7 @@ void FKioskWorld::ExitKioskView()
 
 bool FKioskWorld::IsNearKiosk() const
 {
-	const AKioskCabinet* Env = Environment.Get();
+	const AKioskCabinet* Env = Cabinet.Get();
 	const AKioskVisitorPawn* Visitor = Pawn.Get();
 	if (!Env || !Visitor)
 	{
@@ -369,7 +378,7 @@ void FKioskWorld::ShowToast(const FText& Text)
 
 void FKioskWorld::SyncTray()
 {
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	const EKioskScreen Now = Session->Current();
 	if (Now == LastScreen || !Env)
 	{
@@ -405,7 +414,7 @@ void FKioskWorld::SyncTray()
 
 void FKioskWorld::PickUpFromTray()
 {
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	const int32 Change = TrayChangeCents;
 	bTrayTicket = false;
 	bTrayReceipt = false;
@@ -464,7 +473,7 @@ void FKioskWorld::OnPartClicked(EKioskPart Part)
 void FKioskWorld::TickKiosk(float DeltaSeconds)
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	if (!Visitor || !Env || !Controller || !Session.IsValid())
@@ -988,7 +997,7 @@ void FKioskWorld::BuildSelfTestPlan()
 
 int32 FKioskWorld::StepClickPart(EKioskPart Part)
 {
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	switch (TestSub)
 	{
 	case 0:
@@ -1024,7 +1033,7 @@ int32 FKioskWorld::StepClickPart(EKioskPart Part)
 int32 FKioskWorld::StepSelfTest()
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	const FTestAct& Act = TestPlan[TestStep];
@@ -1101,7 +1110,7 @@ int32 FKioskWorld::StepSelfTest()
 		{
 			TestDetail = TEXT("camera back at the eye, walking enabled, cursor hidden");
 			Visitor->ResetPointerAim();
-			Controller->SetControlRotation(FRotator(0.f, 180.f, 0.f)); // face the kiosk wall straight on
+			Controller->SetControlRotation(FRotator(0.f, Cabinet.IsValid() ? Cabinet->GetActorRotation().Yaw + 180.f : 180.f, 0.f)); // face the kiosk wall straight on
 			Visitor->SetInjectedMove(1.f, 0.f);
 			return 1;
 		}
@@ -1116,7 +1125,9 @@ int32 FKioskWorld::StepSelfTest()
 		if (TestTime >= 2.5f)
 		{
 			Visitor->SetInjectedMove(0.f, 0.f);
-			const float X = Visitor->GetActorLocation().X;
+			// Distance in front of the cabinet face (its +X side), wherever the cabinet is placed.
+			const AKioskCabinet* Cab = Cabinet.Get();
+			const float X = Cab ? FVector::DotProduct(Visitor->GetActorLocation() - Cab->GetActorLocation(), Cab->GetActorForwardVector()) : 0.f;
 			constexpr float CapsuleRadius = 34.f;
 			TestDetail = FString::Printf(TEXT("stopped %.0f cm from the cabinet face (capsule radius %.0f cm)"), X, CapsuleRadius);
 			return (X >= CapsuleRadius - 1.f && X < CapsuleRadius + 80.f) ? 1 : -1;
@@ -1289,7 +1300,7 @@ int32 FKioskWorld::StepSelfTest()
 bool FKioskWorld::TickSelfTest(float DeltaSeconds)
 {
 	AKioskVisitorPawn* Visitor = Pawn.Get();
-	AKioskCabinet* Env = Environment.Get();
+	AKioskCabinet* Env = Cabinet.Get();
 	UWorld* PlayWorld = World.Get();
 	APlayerController* Controller = PlayWorld ? PlayWorld->GetFirstPlayerController() : nullptr;
 	if (!Visitor || !Env || !Controller)

@@ -103,6 +103,9 @@ visitor = eas.spawn_actor_from_class(unreal.KioskVisitorPawn, V(300, 0, 93), unr
 visitor.set_actor_label("Visitor")
 visitor.set_editor_property("auto_possess_player", unreal.AutoReceiveInput.PLAYER0)
 
+# No baked lighting: every light is dynamic, so a default Stationary light dropped in the editor never asks for a lighting build.
+unreal.EditorLevelLibrary.get_editor_world().get_world_settings().set_editor_property("force_no_precomputed_lighting", True)
+
 if not les.save_current_level():
     raise RuntimeError("could not save the level")
 unreal.log("make_concourse_level: saved %s with %d blocks, %d lights, 1 kiosk, 1 visitor" % (MAP, count["blocks"], count["lights"]))

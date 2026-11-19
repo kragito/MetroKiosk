@@ -77,7 +77,7 @@ private:
 	TWeakObjectPtr<UGameViewportClient> Viewport;
 	TSharedPtr<SKioskRoot> Root;
 	TSharedPtr<FKioskSession> Session;
-	TWeakObjectPtr<AKioskCabinet> Environment;
+	TWeakObjectPtr<AKioskCabinet> Cabinet;
 	TWeakObjectPtr<AKioskVisitorPawn> Pawn;
 	TSharedPtr<IInputProcessor> InputProcessor;
 	TSharedPtr<SWidget> Hud;

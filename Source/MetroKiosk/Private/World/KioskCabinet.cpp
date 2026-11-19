@@ -148,6 +148,9 @@ void AKioskCabinet::BeginPlay()
 	Super::BeginPlay();
 	ScreenHost = SNew(SBox);
 	Screen->SetSlateWidget(ScreenHost);
+	// The card, ticket, receipt and change pieces always start hidden, whatever was saved in the level.
+	SetCardOnPad(false);
+	SetTrayContents(false, false, 0);
 }
 
 void AKioskCabinet::RefreshPartColour(EKioskPart Part)
@@ -315,7 +318,7 @@ bool AKioskCabinet::ScreenContentIs(const TSharedRef<SWidget>& Widget) const
 FTransform AKioskCabinet::GetLockOnView() const
 {
 	// Square on, 1 m from the face, at the middle of the screen's height: the screen, the hardware column and the tray all fit with a 90 degree lens.
-	return FTransform(FRotator(0.f, 180.f, 0.f), GetActorTransform().TransformPosition(FVector(115.f, 0.f, 105.f)));
+	return FTransform(GetActorQuat() * FRotator(0.f, 180.f, 0.f).Quaternion(), GetActorTransform().TransformPosition(FVector(115.f, 0.f, 105.f)));
 }
 
 FTransform AKioskCabinet::GetHardwareShotView() const
