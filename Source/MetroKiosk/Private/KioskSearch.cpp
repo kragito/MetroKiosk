@@ -6,7 +6,7 @@
 
 namespace
 {
-	enum EKeyKind : int32 { KeyPrimary = 0, KeyLocal = 1, KeyAlias = 2 };
+	enum EKeyKind : int32 { KeyPrimary = 0, KeyLocal = 1, KeyAlias = 2, KeyPinyin = 3 };
 
 	struct FSearchKey
 	{
@@ -84,7 +84,7 @@ namespace
 		{
 			if (Alias.Target == Name)
 			{
-				AddKey(Entry, Alias.Alias, KeyAlias);
+				AddKey(Entry, Alias.Alias, Alias.bPinyin ? KeyPinyin : KeyAlias);
 			}
 		}
 	}
@@ -158,7 +158,8 @@ namespace
 	/** Score for one key; 0 means no match. Exact > prefix > word prefix > substring > fuzzy, then primary > translated > alias. */
 	int32 ScoreKey(const FString& Query, const TArray<FString>& QueryTokens, const FSearchKey& Key)
 	{
-		const int32 Penalty = Key.Kind == KeyPrimary ? 0 : (Key.Kind == KeyLocal ? 50 : 150);
+		// Pinyin prefix hits (at most ~898) must stay under an English word-prefix hit (700), so "bay" lists the Bay stations before Paya Lebar.
+		const int32 Penalty = Key.Kind == KeyPrimary ? 0 : (Key.Kind == KeyLocal ? 50 : (Key.Kind == KeyAlias ? 150 : 210));
 		const int32 Length = Query.Len();
 		const bool bHasWide = Query.Len() > 0 && Query[0] > 127;
 		int32 Base = 0;

@@ -133,7 +133,7 @@
 { TEXT("Downtown"), TEXT("市区"), TEXT("Pusat Bandar"), TEXT("டவுன்டவுன்") },
 { TEXT("Thomson"), TEXT("汤申"), TEXT("Thomson"), TEXT("தாம்சன்") },
 { TEXT("VivoCity · Sentosa"), TEXT("怡丰城 · 圣淘沙"), TEXT("VivoCity · Sentosa"), TEXT("விவோசிட்டி · செந்தோசா") },
-{ TEXT("Gardens by the Bay · Marina Bay Sands"), TEXT("滨海湾花园 · 滨海湾金沙"), TEXT("Gardens by the Bay · Marina Bay Sands"), TEXT("கார்டன்ஸ் பை தி பே · மரினா பே சேண்ட்ஸ்") },
+{ TEXT("Marina Bay Sands"), TEXT("滨海湾金沙"), TEXT("Marina Bay Sands"), TEXT("மரினா பே சேண்ட்ஸ்") },
 { TEXT("Flights · Jewel"), TEXT("航班 · 星耀樟宜"), TEXT("Penerbangan · Jewel"), TEXT("விமானங்கள் · ஜுவல்") },
 { TEXT("Shopping · ION Orchard"), TEXT("购物 · ION乌节"), TEXT("Beli-belah · ION Orchard"), TEXT("ஷாப்பிங் · ஐயான் ஆர்ச்சர்ட்") },
 { TEXT("Heritage · food · Chinatown Point"), TEXT("文化遗产 · 美食 · 牛车水坊"), TEXT("Warisan · makanan · Chinatown Point"), TEXT("பாரம்பரியம் · உணவு · சைனாடவுன் பாயிண்ட்") },

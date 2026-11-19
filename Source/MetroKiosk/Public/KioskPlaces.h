@@ -29,6 +29,7 @@ struct FKioskAlias
 {
 	FString Alias;
 	FString Target; // English station or place name
+	bool bPinyin = false; // toneless Chinese pinyin; searched with a larger penalty so it never outranks English names
 };
 
 class METROKIOSK_API FKioskPlaces

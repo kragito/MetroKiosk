@@ -599,4 +599,52 @@ bool FKioskSearchPinyinTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Every station with a Chinese name has a pinyin alias, and pinyin never outranks English names ("bay" is not Paya Lebar).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FKioskSearchPinyinCoverageTest, "MetroKiosk.Search.PinyinCoverage",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+
+bool FKioskSearchPinyinCoverageTest::RunTest(const FString& Parameters)
+{
+	TSet<FString> WithPinyin;
+	for (const FKioskAlias& Alias : FKioskPlaces::Aliases())
+	{
+		if (Alias.bPinyin)
+		{
+			WithPinyin.Add(Alias.Target);
+		}
+	}
+	for (const FKioskStation& Station : FKioskData::Stations())
+	{
+		if (!FKioskPlaces::LocalNameIn(Station.Name, 0).IsEmpty())
+		{
+			TestTrue(*FString::Printf(TEXT("%s has a pinyin alias"), *Station.Name), WithPinyin.Contains(Station.Name));
+		}
+	}
+
+	const FKioskSearchResult Bay = FKioskSearch::Run(TEXT("bay"));
+	int32 PayaLebarAt = INDEX_NONE;
+	int32 MarinaBayAt = INDEX_NONE;
+	int32 BayfrontAt = INDEX_NONE;
+	int32 GardensAt = INDEX_NONE;
+	for (int32 Rank = 0; Rank < Bay.Hits.Num(); ++Rank)
+	{
+		const FKioskSearchHit& Hit = Bay.Hits[Rank];
+		const FString& Found = Hit.bPlace ? FKioskPlaces::All()[Hit.Index].Name : FKioskData::Stations()[Hit.Index].Name;
+		if (Found == TEXT("Paya Lebar")) PayaLebarAt = Rank;
+		if (Found == TEXT("Marina Bay")) MarinaBayAt = Rank;
+		if (Found == TEXT("Bayfront")) BayfrontAt = Rank;
+		if (Found == TEXT("Gardens by the Bay")) GardensAt = Rank;
+	}
+	TestTrue(TEXT("'bay' finds Marina Bay"), MarinaBayAt != INDEX_NONE);
+	TestTrue(TEXT("'bay' finds Bayfront"), BayfrontAt != INDEX_NONE);
+	TestTrue(TEXT("'bay' finds Gardens by the Bay"), GardensAt != INDEX_NONE);
+	if (PayaLebarAt != INDEX_NONE)
+	{
+		TestTrue(TEXT("'bay': Marina Bay before Paya Lebar"), MarinaBayAt != INDEX_NONE && MarinaBayAt < PayaLebarAt);
+		TestTrue(TEXT("'bay': Bayfront before Paya Lebar"), BayfrontAt != INDEX_NONE && BayfrontAt < PayaLebarAt);
+		TestTrue(TEXT("'bay': Gardens by the Bay before Paya Lebar"), GardensAt != INDEX_NONE && GardensAt < PayaLebarAt);
+	}
+	return true;
+}
+
 #endif

@@ -149,7 +149,10 @@ namespace
 		{ TEXT("kebun botani"), TEXT("Singapore Botanic Gardens") },
 		{ TEXT("zoo"), TEXT("Singapore Zoo") },
 		{ TEXT("nus"), TEXT("National University of Singapore") },
-		// Pinyin, for people who read Chinese but type on this Latin keyboard
+	};
+
+	// Pinyin, for people who read Chinese but type on this Latin keyboard
+	const FKioskAlias GPinyinAliasRows[] = {
 		{ TEXT("gangwan"), TEXT("HarbourFront") },
 		{ TEXT("shengtaosha"), TEXT("Sentosa") },
 		{ TEXT("niuchesui"), TEXT("Chinatown") },
@@ -585,9 +588,13 @@ const TArray<FKioskAlias>& FKioskPlaces::Aliases()
 	if (Data.IsEmpty())
 	{
 		Data.Append(GAliasRows, UE_ARRAY_COUNT(GAliasRows));
+		for (const FKioskAlias& Row : GPinyinAliasRows)
+		{
+			Data.Add({ Row.Alias, Row.Target, true });
+		}
 		for (const FPinyinRow& Row : GPinyinRows)
 		{
-			Data.Add({ Row.Pinyin, Row.English });
+			Data.Add({ Row.Pinyin, Row.English, true });
 		}
 	}
 	return Data;
@@ -675,7 +682,7 @@ FText FKioskPlaces::Blurb(int32 StationIndex)
 	}
 	const FString& Name = Stations[StationIndex].Name;
 	if (Name == TEXT("HarbourFront")) return KT("VivoCity · Sentosa");
-	if (Name == TEXT("Bayfront")) return KT("Gardens by the Bay · Marina Bay Sands");
+	if (Name == TEXT("Bayfront")) return KT("Marina Bay Sands");
 	if (Name == TEXT("Changi Airport")) return KT("Flights · Jewel");
 	if (Name == TEXT("Orchard")) return KT("Shopping · ION Orchard");
 	if (Name == TEXT("Chinatown")) return KT("Heritage · food · Chinatown Point");
