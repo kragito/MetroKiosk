@@ -596,9 +596,11 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		// The window must also exist, not be minimised, have a client rect matching the root and lie on a monitor
 		// with an unchanged position; otherwise the first click can land "outside the window".
 		bool bSized = true;
+		FIntPoint ViewportSize = FIntPoint(1917, 1105);
 		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
 		{
 			const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
+			ViewportSize = Size;
 			bSized = (Size.X == 1917 && Size.Y == 1105);
 			if (!bSized && FrameCounter > 20 && ResizeAttempts++ % 30 == 0)
 			{
@@ -613,7 +615,7 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 		FVector2f ClientPos = FVector2f::ZeroVector;
 		if (!bSized)
 		{
-			NotReady = TEXT("viewport is not 1917x1105");
+			NotReady = FString::Printf(TEXT("viewport is %dx%d, not 1917x1105"), ViewportSize.X, ViewportSize.Y);
 		}
 		else if (RootSize.X <= 100.f)
 		{
@@ -632,15 +634,7 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 			const FSlateRect Client = StartWindow->GetClientRectInScreen();
 			ClientPos = FVector2f(Client.Left, Client.Top);
 			const FVector2f ClientSize(Client.Right - Client.Left, Client.Bottom - Client.Top);
-			FDisplayMetrics Metrics;
-			FSlateApplication::Get().GetDisplayMetrics(Metrics);
 			const FVector2f RootCentre = RootGeo.GetAbsolutePosition() + RootSize * 0.5f;
-			bool bOnMonitor = Metrics.MonitorInfo.Num() == 0;
-			for (const FMonitorInfo& Mon : Metrics.MonitorInfo)
-			{
-				const FSlateRect MonRect(Mon.DisplayRect.Left, Mon.DisplayRect.Top, Mon.DisplayRect.Right, Mon.DisplayRect.Bottom);
-				bOnMonitor |= MonRect.ContainsPoint(RootCentre);
-			}
 			if (!ClientSize.Equals(RootSize, 2.f))
 			{
 				NotReady = FString::Printf(TEXT("client rect %.0fx%.0f does not match root %.0fx%.0f"), ClientSize.X, ClientSize.Y, RootSize.X, RootSize.Y);
@@ -649,13 +643,25 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 			{
 				NotReady = TEXT("root centre is outside the client rect");
 			}
-			else if (!bOnMonitor)
+			else
 			{
-				NotReady = TEXT("window centre is not on any monitor");
-			}
-			else if (!ClientPos.Equals(LastClientPos, 0.5f))
-			{
-				NotReady = TEXT("window position is still changing");
+				// Only query the display metrics once the cheaper checks have passed.
+				FDisplayMetrics Metrics;
+				FSlateApplication::Get().GetDisplayMetrics(Metrics);
+				bool bOnMonitor = Metrics.MonitorInfo.Num() == 0;
+				for (const FMonitorInfo& Mon : Metrics.MonitorInfo)
+				{
+					const FSlateRect MonRect(Mon.DisplayRect.Left, Mon.DisplayRect.Top, Mon.DisplayRect.Right, Mon.DisplayRect.Bottom);
+					bOnMonitor |= MonRect.ContainsPoint(RootCentre);
+				}
+				if (!bOnMonitor)
+				{
+					NotReady = TEXT("window centre is not on any monitor");
+				}
+				else if (!ClientPos.Equals(LastClientPos, 0.5f))
+				{
+					NotReady = TEXT("window position is still changing");
+				}
 			}
 		}
 		LastClientPos = ClientPos;

@@ -34,24 +34,30 @@ if ($NoBuild -and (Test-Path $Dll)) {
 New-Item -ItemType Directory -Force $Out | Out-Null
 Remove-Item (Join-Path $Out "*") -Include *.png, *.txt -ErrorAction SilentlyContinue
 
-$args = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
+$launchArgs = @("`"$Project`"", "-game", "-windowed", "-ResX=1917", "-ResY=1105", "-nosplash", "-nosound",
           "-KioskScript=`"$Script`"", "-KioskScriptOut=`"$Out`"")
-if ($Extra) { $args += $Extra.Split(" ", [StringSplitOptions]::RemoveEmptyEntries) }
+if ($Extra) { $launchArgs += $Extra.Split(" ", [StringSplitOptions]::RemoveEmptyEntries) }
 # Let any previous -game process (ours: started with -KioskScript) exit completely so its window cannot interfere.
 $prevDeadline = (Get-Date).AddSeconds(60)
+$prevCleared = $false
 While ((Get-Date) -lt $prevDeadline) {
     $prev = @(Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '-KioskScript' })
     $win = @(Get-Process UnrealEditor -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -match 'Preview' -or $_.MainWindowTitle -eq 'MetroKiosk' })
-    if ($prev.Count -eq 0 -and $win.Count -eq 0) { break }
+    if ($prev.Count -eq 0 -and $win.Count -eq 0) { $prevCleared = $true; break }
     Start-Sleep -Seconds 1
 }
-if ((Get-Date) -ge $prevDeadline) {
-    Write-Output "WARN: a previous game process was still running after 60 s; stopping it."
-    Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" | Where-Object { $_.CommandLine -match '-KioskScript' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+if (-not $prevCleared) {
+    $leftover = @(Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match '-KioskScript' })
+    if ($leftover.Count -gt 0) {
+        Write-Output "WARN: a previous game process was still running after 60 s; stopping $($leftover.Count) process(es)."
+        $leftover | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    } else {
+        Write-Output "WARN: a previous editor window (Preview/MetroKiosk) was still open after 60 s; no -KioskScript process to stop, continuing."
+    }
     Start-Sleep -Seconds 2
 }
 Start-Sleep -Seconds 3
-$proc = Start-Process -FilePath "$Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList $args -PassThru
+$proc = Start-Process -FilePath "$Engine\Binaries\Win64\UnrealEditor.exe" -ArgumentList $launchArgs -PassThru
 $np = $null
 if ($StealFocusForTest) {
     Start-Sleep -Seconds 4
