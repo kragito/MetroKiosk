@@ -4,6 +4,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Framework/Application/SlateApplication.h"
+#include "GenericPlatform/GenericApplication.h"
 #include "HAL/FileManager.h"
 #include "HAL/PlatformMisc.h"
 #include "Input/Events.h"
@@ -592,24 +593,86 @@ bool FKioskScriptRunner::Tick(float DeltaSeconds)
 	case EPhase::Starting:
 	{
 		// Wait for the window to reach the 1917x1105 design size and for the layout to stay unchanged for a while.
+		// The window must also exist, not be minimised, have a client rect matching the root and lie on a monitor
+		// with an unchanged position; otherwise the first click can land "outside the window".
 		bool bSized = true;
 		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
 		{
 			const FIntPoint Size = GEngine->GameViewport->Viewport->GetSizeXY();
-			bSized = (Size.X == 1917 && Size.Y == 1105) || ResizeAttempts > 900;
+			bSized = (Size.X == 1917 && Size.Y == 1105);
 			if (!bSized && FrameCounter > 20 && ResizeAttempts++ % 30 == 0)
 			{
 				GEngine->Exec(GEngine->GameViewport->GetWorld(), TEXT("r.SetRes 1917x1105w"));
 			}
 		}
-		const FVector2f RootSize = Root->GetTickSpaceGeometry().GetAbsoluteSize();
-		StableFrames = (bSized && RootSize.X > 100.f && RootSize.Equals(LastRootSize, 0.5f)) ? StableFrames + 1 : 0;
+		const FGeometry RootGeo = Root->GetTickSpaceGeometry();
+		const FVector2f RootSize = RootGeo.GetAbsoluteSize();
+		const TSharedPtr<SWindow> StartWindow = FSlateApplication::Get().FindWidgetWindow(Root.ToSharedRef());
+		FString NotReady;
+		static FVector2f LastClientPos = FVector2f::ZeroVector;
+		FVector2f ClientPos = FVector2f::ZeroVector;
+		if (!bSized)
+		{
+			NotReady = TEXT("viewport is not 1917x1105");
+		}
+		else if (RootSize.X <= 100.f)
+		{
+			NotReady = TEXT("root widget has no size yet");
+		}
+		else if (!StartWindow.IsValid())
+		{
+			NotReady = TEXT("no game window");
+		}
+		else if (StartWindow->IsWindowMinimized())
+		{
+			NotReady = TEXT("window is minimised");
+		}
+		else
+		{
+			const FSlateRect Client = StartWindow->GetClientRectInScreen();
+			ClientPos = FVector2f(Client.Left, Client.Top);
+			const FVector2f ClientSize(Client.Right - Client.Left, Client.Bottom - Client.Top);
+			FDisplayMetrics Metrics;
+			FSlateApplication::Get().GetDisplayMetrics(Metrics);
+			const FVector2f RootCentre = RootGeo.GetAbsolutePosition() + RootSize * 0.5f;
+			bool bOnMonitor = Metrics.MonitorInfo.Num() == 0;
+			for (const FMonitorInfo& Mon : Metrics.MonitorInfo)
+			{
+				const FSlateRect MonRect(Mon.DisplayRect.Left, Mon.DisplayRect.Top, Mon.DisplayRect.Right, Mon.DisplayRect.Bottom);
+				bOnMonitor |= MonRect.ContainsPoint(RootCentre);
+			}
+			if (!ClientSize.Equals(RootSize, 2.f))
+			{
+				NotReady = FString::Printf(TEXT("client rect %.0fx%.0f does not match root %.0fx%.0f"), ClientSize.X, ClientSize.Y, RootSize.X, RootSize.Y);
+			}
+			else if (!Client.ContainsPoint(RootCentre))
+			{
+				NotReady = TEXT("root centre is outside the client rect");
+			}
+			else if (!bOnMonitor)
+			{
+				NotReady = TEXT("window centre is not on any monitor");
+			}
+			else if (!ClientPos.Equals(LastClientPos, 0.5f))
+			{
+				NotReady = TEXT("window position is still changing");
+			}
+		}
+		LastClientPos = ClientPos;
+		StableFrames = (NotReady.IsEmpty() && RootSize.Equals(LastRootSize, 0.5f)) ? StableFrames + 1 : 0;
 		LastRootSize = RootSize;
 		StartupSeconds += DeltaSeconds;
 		if (FrameCounter > 90 && StableFrames > 45 && StartupSeconds > 4.f)
 		{
 			FrameCounter = 0;
 			Phase = EPhase::Next;
+		}
+		else if (StartupSeconds > 90.f)
+		{
+			Log(FString::Printf(TEXT("START FAIL: window not ready (%s)"), NotReady.IsEmpty() ? TEXT("layout never stayed stable") : *NotReady));
+			++FailCount;
+			Finish();
+			return false;
 		}
 		break;
 	}
