@@ -107,7 +107,7 @@ kiosk instead; `Tools/journey.ps1` and `Tools/capture.ps1` always pass it. `-Kio
   receipt slot and the collection tray with the change. A small light by each part turns green while the screen asks for it.
 - Walk: WASD or arrow keys, mouse looks. Near the kiosk press **E**: the camera blends to a fixed spot facing the kiosk, the mouse
   becomes a cursor, **Esc** steps back. The cursor clicks buttons on the 3D screen and the kiosk parts; the part under it
-  is highlighted.
+  is highlighted. Look sensitivity while walking is `LookSensitivity` on the placed Visitor (Details panel, Kiosk|Look).
 - Wallet (bottom of the screen while stepped up): Metro card (`1`), bank card (`2`), notes $2 $5 $10 $50 (`3`-`6`), coins
   10c 20c 50c $1 (`7`-`9`, `0`). Choose an item with its number key or a click, then click the matching part. A part
   refuses the wrong item or the wrong moment with a hint line.

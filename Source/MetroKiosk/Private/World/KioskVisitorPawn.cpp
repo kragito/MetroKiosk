@@ -10,7 +10,6 @@
 namespace
 {
 	constexpr float WalkSpeed = 220.f; // cm per second
-	constexpr float LookDegPerCount = 0.12f;
 	constexpr float ExposureBrightness = 1.f; // min = max pins auto-exposure
 	constexpr float EyeHeight = 70.f;         // camera above the capsule centre
 	constexpr float ViewBlendSeconds = 0.4f;  // stepping up to / back from the kiosk
@@ -198,8 +197,8 @@ void AKioskVisitorPawn::Tick(float DeltaSeconds)
 	float MouseY = 0.f;
 	PC->GetInputMouseDelta(MouseX, MouseY);
 	FRotator Look = PC->GetControlRotation();
-	Look.Yaw += MouseX * LookDegPerCount;
-	Look.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Look.Pitch) + MouseY * LookDegPerCount, -80.f, 80.f);
+	Look.Yaw += MouseX * LookSensitivity;
+	Look.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Look.Pitch) + MouseY * LookSensitivity, -80.f, 80.f);
 	Look.Roll = 0.f;
 	PC->SetControlRotation(Look);
 

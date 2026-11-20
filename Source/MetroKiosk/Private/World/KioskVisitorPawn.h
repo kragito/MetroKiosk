@@ -48,6 +48,10 @@ public:
 	FVector GetEyeLocation() const;
 	FVector GetEyeForward() const;
 
+	/** Degrees turned per mouse count while walking (was a fixed 0.12). Does not affect the cursor at the locked kiosk view. */
+	UPROPERTY(EditAnywhere, Category = "Kiosk|Look", meta = (ClampMin = "0.01", ClampMax = "2.0"))
+	float LookSensitivity = 0.24f;
+
 private:
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UCapsuleComponent> Capsule;
